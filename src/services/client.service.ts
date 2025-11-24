@@ -362,10 +362,10 @@ export class ClientService {
           clientConfig.mcpServers = {};
         }
 
-        // Add mcpsm gateway server
+        // Add mcpsm gateway server using mcp-remote (stdio wrapper for HTTP/SSE)
         clientConfig.mcpServers.mcpsm = {
           command: "npx",
-          args: ["-y", "mcp-proxy", `http://localhost:${port}/mcp`],
+          args: ["-y", "mcp-remote", `http://localhost:${port}/mcp`],
         };
 
         // Write to additional MCP path only (the source of truth)
@@ -400,7 +400,7 @@ export class ClientService {
 
       clientConfig.mcpServers.mcpsm = {
         command: "npx",
-        args: ["-y", "mcp-proxy", `http://localhost:${port}/mcp`],
+        args: ["-y", "mcp-remote", `http://localhost:${port}/mcp`],
       };
 
       const success = this.writeClientConfig(clientId, clientConfig);
