@@ -1,0 +1,88 @@
+/**
+ * Import/Export-related type definitions
+ */
+
+import type { LocalServer, RemoteServer } from "./server.types.js";
+import type { ClientId } from "./client.types.js";
+
+/** Export format types */
+export type ExportFormat = "mcpsm" | "claude";
+
+/** Import source types */
+export type ImportSource = "file" | ClientId;
+
+/** MCPSM export format */
+export interface McpsmExport {
+  version: string;
+  exportedAt: string;
+  servers: LocalServer[];
+  remoteServers: RemoteServer[];
+}
+
+/** Claude Desktop export format */
+export interface ClaudeExport {
+  mcpServers: Record<
+    string,
+    {
+      command: string;
+      args: string[];
+      env?: Record<string, string>;
+    }
+  >;
+}
+
+/** Export options */
+export interface ExportOptions {
+  /** Export format */
+  format?: ExportFormat;
+  /** Output file path */
+  outputPath?: string;
+  /** Include disabled servers */
+  includeDisabled?: boolean;
+}
+
+/** Import options */
+export interface ImportOptions {
+  /** Import source (file path or client ID) */
+  source: string;
+  /** Source type */
+  sourceType: ImportSource;
+  /** Merge with existing or replace */
+  merge?: boolean;
+  /** Skip duplicates */
+  skipDuplicates?: boolean;
+}
+
+/** Import result */
+export interface ImportResult {
+  success: boolean;
+  error?: string;
+  imported: number;
+  skipped: number;
+  errors: string[];
+}
+
+/** Export result */
+export interface ExportResult {
+  success: boolean;
+  error?: string;
+  path?: string;
+  serverCount?: number;
+}
+
+/** Import preview item */
+export interface ImportPreviewItem {
+  id: string;
+  name: string;
+  type: "local" | "remote";
+  exists: boolean;
+  action: "add" | "skip" | "replace";
+}
+
+/** Import preview */
+export interface ImportPreview {
+  items: ImportPreviewItem[];
+  totalNew: number;
+  totalSkipped: number;
+  totalReplaced: number;
+}

@@ -1,0 +1,48 @@
+# Development files
+.git/
+.github/
+.vscode/
+.idea/
+
+# Config files (user-specific)
+config.json
+tool-filters.json
+selection-state.json
+*.example.json
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.docker/
+
+# Environment
+.env
+.env.*
+
+# Temp files
+.fastmcp-*.json
+.proxy-*.py
+.temp-*.json
+*.log
+
+# Tests
+test/
+tests/
+__tests__/
+*.test.js
+*.spec.js
+coverage/
+
+# Other
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Old main file (replaced by src/index.js)
+serve-mcp.js
+
+# MCP config
+.mcp.json
+backup*

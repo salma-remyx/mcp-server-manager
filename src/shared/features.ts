@@ -1,0 +1,339 @@
+/**
+ * Feature registry - Single source of truth for CLI/TUI feature parity
+ *
+ * This file defines all features that should be available in both CLI and TUI.
+ * The parity test uses this to verify both interfaces implement all features.
+ */
+
+/** Feature category */
+export type FeatureCategory =
+  | "servers"
+  | "tools"
+  | "clients"
+  | "profiles"
+  | "settings"
+  | "daemon"
+  | "import-export"
+  | "utilities";
+
+/** Feature definition */
+export interface Feature {
+  /** Unique feature ID */
+  id: string;
+  /** Human-readable name */
+  name: string;
+  /** Feature category */
+  category: FeatureCategory;
+  /** CLI command(s) that implement this feature */
+  cliCommands: string[];
+  /** TUI implementation identifier (screen file or key binding) */
+  tuiImplementation: string | null;
+  /** Whether this feature is required in TUI (some CLI-only features are OK) */
+  requiredInTui: boolean;
+}
+
+/**
+ * All features that should have CLI/TUI parity
+ */
+export const FEATURES: Feature[] = [
+  // === Servers ===
+  {
+    id: "server-list",
+    name: "List servers",
+    category: "servers",
+    cliCommands: ["list"],
+    tuiImplementation: "main-screen",
+    requiredInTui: true,
+  },
+  {
+    id: "server-add",
+    name: "Add server",
+    category: "servers",
+    cliCommands: ["add"],
+    tuiImplementation: "add-server.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "server-remove",
+    name: "Remove server",
+    category: "servers",
+    cliCommands: ["remove"],
+    tuiImplementation: "key:d",
+    requiredInTui: true,
+  },
+  {
+    id: "server-edit",
+    name: "Edit server",
+    category: "servers",
+    cliCommands: ["edit"],
+    tuiImplementation: "key:e",
+    requiredInTui: true,
+  },
+  {
+    id: "server-test",
+    name: "Test server(s)",
+    category: "servers",
+    cliCommands: ["test"],
+    tuiImplementation: "key:x",
+    requiredInTui: true,
+  },
+  {
+    id: "server-enable-disable",
+    name: "Enable/disable server",
+    category: "servers",
+    cliCommands: ["enable", "disable"],
+    tuiImplementation: "key:n",
+    requiredInTui: true,
+  },
+
+  // === Tools ===
+  {
+    id: "tools-list",
+    name: "List tools",
+    category: "tools",
+    cliCommands: ["tools list"],
+    tuiImplementation: "tools.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "tools-discover",
+    name: "Discover tools",
+    category: "tools",
+    cliCommands: ["tools discover"],
+    tuiImplementation: "tools.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "tools-enable-disable",
+    name: "Enable/disable tool",
+    category: "tools",
+    cliCommands: ["tools enable", "tools disable"],
+    tuiImplementation: "tools.screen.ts",
+    requiredInTui: true,
+  },
+
+  // === Clients ===
+  {
+    id: "clients-list",
+    name: "List clients",
+    category: "clients",
+    cliCommands: ["clients list"],
+    tuiImplementation: "clients.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "clients-sync",
+    name: "Sync to clients",
+    category: "clients",
+    cliCommands: ["clients sync"],
+    tuiImplementation: "clients.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "clients-enable-disable",
+    name: "Enable/disable client sync",
+    category: "clients",
+    cliCommands: ["clients enable", "clients disable"],
+    tuiImplementation: "clients.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "clients-open",
+    name: "Open client config",
+    category: "clients",
+    cliCommands: ["clients open"],
+    tuiImplementation: null, // CLI-only is OK
+    requiredInTui: false,
+  },
+
+  // === Profiles ===
+  {
+    id: "profiles-list",
+    name: "List profiles",
+    category: "profiles",
+    cliCommands: ["profile list"],
+    tuiImplementation: "profiles.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "profiles-create",
+    name: "Create profile",
+    category: "profiles",
+    cliCommands: ["profile create"],
+    tuiImplementation: "profiles.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "profiles-delete",
+    name: "Delete profile",
+    category: "profiles",
+    cliCommands: ["profile delete"],
+    tuiImplementation: "profiles.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "profiles-use",
+    name: "Switch profile",
+    category: "profiles",
+    cliCommands: ["profile use"],
+    tuiImplementation: "profiles.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "profiles-add-server",
+    name: "Add server to profile",
+    category: "profiles",
+    cliCommands: ["profile add"],
+    tuiImplementation: "profiles.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "profiles-remove-server",
+    name: "Remove server from profile",
+    category: "profiles",
+    cliCommands: ["profile remove"],
+    tuiImplementation: "profiles.screen.ts",
+    requiredInTui: true,
+  },
+
+  // === Settings ===
+  {
+    id: "settings-list",
+    name: "List settings",
+    category: "settings",
+    cliCommands: ["settings list"],
+    tuiImplementation: "settings.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "settings-get-set",
+    name: "Get/set setting",
+    category: "settings",
+    cliCommands: ["settings get", "settings set"],
+    tuiImplementation: "settings.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "settings-port",
+    name: "Configure port",
+    category: "settings",
+    cliCommands: ["port"],
+    tuiImplementation: "key:p",
+    requiredInTui: true,
+  },
+
+  // === Daemon ===
+  {
+    id: "daemon-start-stop",
+    name: "Start/stop daemon",
+    category: "daemon",
+    cliCommands: ["daemon start", "daemon stop"],
+    tuiImplementation: "daemon.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "daemon-status",
+    name: "Daemon status",
+    category: "daemon",
+    cliCommands: ["daemon status"],
+    tuiImplementation: "daemon.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "daemon-logs",
+    name: "View daemon logs",
+    category: "daemon",
+    cliCommands: ["daemon logs"],
+    tuiImplementation: "daemon.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "daemon-startup",
+    name: "Configure auto-start",
+    category: "daemon",
+    cliCommands: ["daemon startup enable", "daemon startup disable"],
+    tuiImplementation: "daemon.screen.ts",
+    requiredInTui: true,
+  },
+
+  // === Import/Export ===
+  {
+    id: "import",
+    name: "Import servers",
+    category: "import-export",
+    cliCommands: ["import"],
+    tuiImplementation: "import-export.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "export",
+    name: "Export servers",
+    category: "import-export",
+    cliCommands: ["export"],
+    tuiImplementation: "import-export.screen.ts",
+    requiredInTui: true,
+  },
+
+  // === Utilities ===
+  {
+    id: "doctor",
+    name: "Health check",
+    category: "utilities",
+    cliCommands: ["doctor"],
+    tuiImplementation: "utilities.screen.ts",
+    requiredInTui: true,
+  },
+  {
+    id: "config-path",
+    name: "Show config path",
+    category: "utilities",
+    cliCommands: ["config"],
+    tuiImplementation: null, // CLI-only is OK
+    requiredInTui: false,
+  },
+  {
+    id: "tokens",
+    name: "Token usage report",
+    category: "utilities",
+    cliCommands: ["tokens"],
+    tuiImplementation: "utilities.screen.ts",
+    requiredInTui: true,
+  },
+];
+
+/**
+ * Get features missing TUI implementation
+ */
+export function getMissingTuiFeatures(): Feature[] {
+  return FEATURES.filter((f) => f.requiredInTui && !f.tuiImplementation);
+}
+
+/**
+ * Get features by category
+ */
+export function getFeaturesByCategory(category: FeatureCategory): Feature[] {
+  return FEATURES.filter((f) => f.category === category);
+}
+
+/**
+ * Get parity status summary
+ */
+export function getParityStatus(): {
+  total: number;
+  implemented: number;
+  missing: number;
+  optional: number;
+  percentage: number;
+} {
+  const required = FEATURES.filter((f) => f.requiredInTui);
+  const implemented = required.filter((f) => f.tuiImplementation !== null);
+  const optional = FEATURES.filter((f) => !f.requiredInTui);
+
+  return {
+    total: FEATURES.length,
+    implemented: implemented.length,
+    missing: required.length - implemented.length,
+    optional: optional.length,
+    percentage: Math.round((implemented.length / required.length) * 100),
+  };
+}

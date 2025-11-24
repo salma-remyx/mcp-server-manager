@@ -1,0 +1,487 @@
+/**
+ * Client service - manages MCP client detection and sync
+ */
+
+import fs from "fs";
+import path from "path";
+import os from "os";
+import { spawnSync } from "child_process";
+import TOML from "@iarna/toml";
+import type {
+  ClientId,
+  Platform,
+  ClientPathsConfig,
+  ClientNames,
+  DetectedClient,
+  ClientsState,
+  ClientMcpConfig,
+  ClaudeServerConfig,
+  SyncResult,
+  ClientSyncResult,
+  OperationResult,
+  LocalServer,
+  RemoteServer,
+} from "../types/index.js";
+import { getConfigService } from "./config.service.js";
+import { createLogger } from "../shared/logger.js";
+
+const log = createLogger("ClientService");
+
+/** Client configuration paths by platform */
+const CLIENT_PATHS: ClientPathsConfig = {
+  claude: {
+    darwin: path.join(
+      os.homedir(),
+      "Library/Application Support/Claude/claude_desktop_config.json"
+    ),
+    win32: path.join(process.env.APPDATA || "", "Claude/claude_desktop_config.json"),
+    linux: path.join(os.homedir(), ".config/Claude/claude_desktop_config.json"),
+  },
+  cursor: {
+    darwin: path.join(
+      os.homedir(),
+      "Library/Application Support/Cursor/User/globalStorage/cursor.mcp/config.json"
+    ),
+    win32: path.join(process.env.APPDATA || "", "Cursor/User/globalStorage/cursor.mcp/config.json"),
+    linux: path.join(os.homedir(), ".config/Cursor/User/globalStorage/cursor.mcp/config.json"),
+  },
+  windsurf: {
+    darwin: path.join(
+      os.homedir(),
+      "Library/Application Support/Windsurf/User/globalStorage/windsurf.mcp/config.json"
+    ),
+    win32: path.join(
+      process.env.APPDATA || "",
+      "Windsurf/User/globalStorage/windsurf.mcp/config.json"
+    ),
+    linux: path.join(os.homedir(), ".config/Windsurf/User/globalStorage/windsurf.mcp/config.json"),
+  },
+  vscode: {
+    darwin: path.join(os.homedir(), ".continue/config.json"),
+    win32: path.join(os.homedir(), ".continue/config.json"),
+    linux: path.join(os.homedir(), ".continue/config.json"),
+  },
+  "claude-code": {
+    darwin: path.join(os.homedir(), ".claude/claude_code_config.json"),
+    win32: path.join(os.homedir(), ".claude/claude_code_config.json"),
+    linux: path.join(os.homedir(), ".claude/claude_code_config.json"),
+  },
+  codex: {
+    darwin: path.join(os.homedir(), ".codex/config.toml"),
+    win32: path.join(os.homedir(), ".codex/config.toml"),
+    linux: path.join(os.homedir(), ".codex/config.toml"),
+  },
+  gemini: {
+    darwin: path.join(os.homedir(), ".gemini/settings.json"),
+    win32: path.join(os.homedir(), ".gemini/settings.json"),
+    linux: path.join(os.homedir(), ".gemini/settings.json"),
+  },
+};
+
+/** Client display names */
+const CLIENT_NAMES: ClientNames = {
+  claude: "Claude Desktop",
+  cursor: "Cursor",
+  windsurf: "Windsurf",
+  vscode: "VS Code (Continue)",
+  "claude-code": "Claude Code",
+  codex: "Codex CLI",
+  gemini: "Gemini CLI",
+};
+
+/** Client service class */
+export class ClientService {
+  private clientsStatePath: string;
+
+  constructor() {
+    const configService = getConfigService();
+    this.clientsStatePath = configService.getPaths().clientsStatePath;
+  }
+
+  /** Get current platform */
+  private getPlatform(): Platform {
+    return process.platform as Platform;
+  }
+
+  /** Load clients state */
+  private loadState(): ClientsState {
+    try {
+      if (fs.existsSync(this.clientsStatePath)) {
+        const data = fs.readFileSync(this.clientsStatePath, "utf8");
+        return JSON.parse(data) as ClientsState;
+      }
+    } catch (error) {
+      log.debug("Failed to load clients state:", error);
+    }
+    return { enabledClients: [] };
+  }
+
+  /** Save clients state */
+  private saveState(state: ClientsState): void {
+    fs.writeFileSync(this.clientsStatePath, JSON.stringify(state, null, 2));
+  }
+
+  /** Get config path for a client on current platform */
+  getClientConfigPath(clientId: ClientId): string | null {
+    const paths = CLIENT_PATHS[clientId];
+    if (!paths) return null;
+    return paths[this.getPlatform()] || null;
+  }
+
+  /** Get client display name */
+  getClientName(clientId: ClientId): string {
+    return CLIENT_NAMES[clientId] || clientId;
+  }
+
+  /** Get all supported client IDs */
+  getSupportedClients(): ClientId[] {
+    return Object.keys(CLIENT_PATHS) as ClientId[];
+  }
+
+  /** Check if a client is installed */
+  isClientInstalled(clientId: ClientId): boolean {
+    const configPath = this.getClientConfigPath(clientId);
+    if (!configPath) return false;
+
+    // Check if config file exists OR if parent directory exists
+    if (fs.existsSync(configPath)) return true;
+
+    const parentDir = path.dirname(configPath);
+    return fs.existsSync(parentDir);
+  }
+
+  /** Read Codex TOML config and convert to standard format */
+  private readCodexConfig(): ClientMcpConfig | null {
+    const configPath = this.getClientConfigPath("codex");
+    if (!configPath || !fs.existsSync(configPath)) return null;
+
+    try {
+      const data = fs.readFileSync(configPath, "utf8");
+      const tomlConfig = TOML.parse(data);
+      const mcpServers: Record<string, ClaudeServerConfig> = {};
+
+      // Convert mcp_servers from TOML format to standard format
+      const mcpServersToml = tomlConfig.mcp_servers as
+        | Record<string, Record<string, unknown>>
+        | undefined;
+      if (mcpServersToml) {
+        for (const [name, server] of Object.entries(mcpServersToml)) {
+          if (server.command) {
+            mcpServers[name] = {
+              command: server.command as string,
+              args: (server.args as string[]) || [],
+              env: server.env as Record<string, string> | undefined,
+            };
+          }
+        }
+      }
+
+      return { mcpServers };
+    } catch (error) {
+      log.debug("Failed to read Codex config:", error);
+      return null;
+    }
+  }
+
+  /** Write Codex config in TOML format */
+  private writeCodexConfig(config: ClientMcpConfig): boolean {
+    const configPath = this.getClientConfigPath("codex");
+    if (!configPath) return false;
+
+    try {
+      const dir = path.dirname(configPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      // Read existing config to preserve other settings
+      let existingConfig: TOML.JsonMap = {};
+      if (fs.existsSync(configPath)) {
+        const data = fs.readFileSync(configPath, "utf8");
+        existingConfig = TOML.parse(data);
+      }
+
+      // Convert mcpServers to mcp_servers TOML format
+      const mcpServers: TOML.JsonMap = {};
+      if (config.mcpServers) {
+        for (const [name, server] of Object.entries(config.mcpServers)) {
+          const serverConfig: TOML.JsonMap = {
+            command: server.command,
+          };
+          if (server.args && server.args.length > 0) {
+            serverConfig.args = server.args;
+          }
+          if (server.env) {
+            serverConfig.env = server.env;
+          }
+          mcpServers[name] = serverConfig;
+        }
+      }
+
+      existingConfig.mcp_servers = mcpServers;
+
+      fs.writeFileSync(configPath, TOML.stringify(existingConfig));
+      return true;
+    } catch (error) {
+      log.debug("Failed to write Codex config:", error);
+      return false;
+    }
+  }
+
+  /** Read client's current config */
+  readClientConfig(clientId: ClientId): ClientMcpConfig | null {
+    // Handle TOML-based clients
+    if (clientId === "codex") {
+      return this.readCodexConfig();
+    }
+
+    const configPath = this.getClientConfigPath(clientId);
+    if (!configPath) return null;
+
+    try {
+      if (fs.existsSync(configPath)) {
+        const data = fs.readFileSync(configPath, "utf8");
+        return JSON.parse(data) as ClientMcpConfig;
+      }
+    } catch (error) {
+      log.debug(`Failed to read ${clientId} config:`, error);
+    }
+    return null;
+  }
+
+  /** Write client's config */
+  writeClientConfig(clientId: ClientId, config: ClientMcpConfig): boolean {
+    // Handle TOML-based clients
+    if (clientId === "codex") {
+      return this.writeCodexConfig(config);
+    }
+
+    const configPath = this.getClientConfigPath(clientId);
+    if (!configPath) return false;
+
+    try {
+      const dir = path.dirname(configPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+      return true;
+    } catch (error) {
+      log.debug(`Failed to write ${clientId} config:`, error);
+      return false;
+    }
+  }
+
+  /** Convert local server to Claude format */
+  private localServerToClaudeFormat(server: LocalServer): ClaudeServerConfig {
+    const config: ClaudeServerConfig = {
+      command: server.command,
+      args: server.args || [],
+    };
+    if (server.env) {
+      config.env = server.env;
+    }
+    return config;
+  }
+
+  /** Convert remote server to Claude format */
+  private remoteServerToClaudeFormat(server: RemoteServer): ClaudeServerConfig | null {
+    if (server.type === "http" || server.type === "sse") {
+      return {
+        command: "npx",
+        args: ["-y", "mcp-remote", server.url],
+        env: server.bearerToken ? { MCP_AUTH_TOKEN: server.bearerToken } : undefined,
+      };
+    }
+    return null;
+  }
+
+  /** Detect all installed clients */
+  detectClients(): DetectedClient[] {
+    const configService = getConfigService();
+    const state = this.loadState();
+    const clients: DetectedClient[] = [];
+
+    for (const clientId of this.getSupportedClients()) {
+      const configPath = this.getClientConfigPath(clientId);
+      const installed = this.isClientInstalled(clientId);
+      const currentConfig = this.readClientConfig(clientId);
+      const enabled = state.enabledClients?.includes(clientId) || false;
+
+      // Check if synced with our servers
+      let synced = false;
+      if (currentConfig?.mcpServers) {
+        const ourServerIds = [
+          ...configService.getEnabledLocalServers().map((s) => s.id),
+          ...configService.getEnabledRemoteServers().map((s) => s.id),
+        ];
+        const clientServerIds = Object.keys(currentConfig.mcpServers);
+        synced = ourServerIds.every((id) => clientServerIds.includes(id));
+      }
+
+      clients.push({
+        id: clientId,
+        name: CLIENT_NAMES[clientId] || clientId,
+        configPath,
+        installed,
+        hasConfig: !!currentConfig,
+        enabled,
+        synced,
+        serverCount: currentConfig?.mcpServers ? Object.keys(currentConfig.mcpServers).length : 0,
+      });
+    }
+
+    return clients;
+  }
+
+  /** Sync servers to a specific client */
+  syncToClient(clientId: ClientId): SyncResult {
+    const configPath = this.getClientConfigPath(clientId);
+    if (!configPath) {
+      return { success: false, error: "Unknown client" };
+    }
+
+    if (!this.isClientInstalled(clientId)) {
+      return { success: false, error: "Client not installed" };
+    }
+
+    const configService = getConfigService();
+
+    // Read current client config
+    const clientConfig: ClientMcpConfig = this.readClientConfig(clientId) || {};
+
+    // Initialize mcpServers if not present
+    if (!clientConfig.mcpServers) {
+      clientConfig.mcpServers = {};
+    }
+
+    let addedCount = 0;
+    let skippedCount = 0;
+
+    // Add local servers
+    for (const server of configService.getEnabledLocalServers()) {
+      const formatted = this.localServerToClaudeFormat(server);
+      clientConfig.mcpServers[server.id] = formatted;
+      addedCount++;
+    }
+
+    // Add remote servers
+    for (const server of configService.getEnabledRemoteServers()) {
+      const formatted = this.remoteServerToClaudeFormat(server);
+      if (formatted) {
+        clientConfig.mcpServers[server.id] = formatted;
+        addedCount++;
+      } else {
+        skippedCount++;
+      }
+    }
+
+    // Write config
+    const success = this.writeClientConfig(clientId, clientConfig);
+
+    return {
+      success,
+      addedCount,
+      skippedCount,
+      error: success ? null : "Failed to write config",
+    };
+  }
+
+  /** Sync servers to all enabled clients */
+  syncToAllClients(): ClientSyncResult[] {
+    const state = this.loadState();
+    const results: ClientSyncResult[] = [];
+
+    for (const clientId of state.enabledClients || []) {
+      const result = this.syncToClient(clientId);
+      results.push({
+        clientId,
+        clientName: CLIENT_NAMES[clientId] || clientId,
+        ...result,
+      });
+    }
+
+    return results;
+  }
+
+  /** Enable sync for a client */
+  enableClient(clientId: ClientId): OperationResult {
+    if (!CLIENT_PATHS[clientId]) {
+      return { success: false, error: "Unknown client" };
+    }
+
+    const state = this.loadState();
+    if (!state.enabledClients) {
+      state.enabledClients = [];
+    }
+
+    if (!state.enabledClients.includes(clientId)) {
+      state.enabledClients.push(clientId);
+      this.saveState(state);
+    }
+
+    return { success: true };
+  }
+
+  /** Disable sync for a client */
+  disableClient(clientId: ClientId): OperationResult {
+    const state = this.loadState();
+    if (state.enabledClients) {
+      state.enabledClients = state.enabledClients.filter((id) => id !== clientId);
+      this.saveState(state);
+    }
+
+    return { success: true };
+  }
+
+  /** Get enabled clients */
+  getEnabledClients(): ClientId[] {
+    const state = this.loadState();
+    return state.enabledClients || [];
+  }
+
+  /** Open client config in editor */
+  openClientConfig(clientId: ClientId): OperationResult {
+    const configPath = this.getClientConfigPath(clientId);
+    if (!configPath) {
+      return { success: false, error: "Unknown client" };
+    }
+
+    if (!fs.existsSync(configPath)) {
+      return { success: false, error: "Config file does not exist" };
+    }
+
+    const editor = process.env.EDITOR || process.env.VISUAL || "vi";
+
+    try {
+      spawnSync(editor, [configPath], { stdio: "inherit" });
+      return { success: true };
+    } catch (e) {
+      const error = e instanceof Error ? e.message : "Unknown error";
+      return { success: false, error };
+    }
+  }
+
+  /** Check if client exists */
+  clientExists(clientId: string): clientId is ClientId {
+    return clientId in CLIENT_PATHS;
+  }
+}
+
+/** Singleton instance */
+let instance: ClientService | null = null;
+
+/** Get or create the client service instance */
+export function getClientService(): ClientService {
+  if (!instance) {
+    instance = new ClientService();
+  }
+  return instance;
+}
+
+/** Reset the singleton instance (for testing) */
+export function resetClientService(): void {
+  instance = null;
+}
+
+export default ClientService;

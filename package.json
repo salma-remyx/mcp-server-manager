@@ -1,0 +1,111 @@
+{
+  "name": "mcp-server-manager",
+  "version": "1.0.0",
+  "description": "Interactive CLI to manage, test, and run multiple MCP (Model Context Protocol) servers with OAuth support",
+  "type": "module",
+  "bin": {
+    "mcp-server-manager": "./bin/cli.js",
+    "mcpsm": "./bin/cli.js"
+  },
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./cli": "./dist/cli/index.js",
+    "./tui": "./dist/tui/index.js"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node dist/cli/index.js",
+    "dev": "tsx watch src/cli/index.ts",
+    "dev:tui": "tsx watch src/tui/index.ts",
+    "build": "tsup",
+    "build:check": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/ tests/",
+    "lint:fix": "eslint src/ tests/ --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "prepublishOnly": "npm run build && npm run lint && npm run format:check",
+    "prepare": "husky",
+    "clean": "rm -rf dist .tsbuildinfo",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "server-manager",
+    "cli",
+    "interactive",
+    "oauth",
+    "gateway",
+    "ai",
+    "llm",
+    "claude",
+    "anthropic",
+    "openai"
+  ],
+  "author": "Mateus Torquato",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MateusTorquato/mcp-server-manager.git"
+  },
+  "homepage": "https://github.com/MateusTorquato/mcp-server-manager#readme",
+  "bugs": {
+    "url": "https://github.com/MateusTorquato/mcp-server-manager/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "lint-staged": {
+    "src/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "tests/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "@iarna/toml": "^2.2.5",
+    "commander": "^13.0.0",
+    "js-tiktoken": "^1.0.15"
+  },
+  "devDependencies": {
+    "@types/iarna__toml": "^2.0.5",
+    "@types/node": "^24.10.1",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/coverage-v8": "^4.0.13",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3",
+    "vitepress": "^1.6.4",
+    "vitest": "^4.0.13"
+  }
+}
