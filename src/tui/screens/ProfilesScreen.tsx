@@ -232,11 +232,15 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
   }
 
   // List view
-  const profilesMenuSections = createMenuSections([
-    { key: "Enter", label: "Use" },
-    { key: "N", label: "New" },
-    { key: "D", label: "Delete" },
-  ]);
+  const profilesMenuSections = createMenuSections({
+    actions: [
+      { key: "Enter", label: "Use" },
+      { key: "N", label: "New" },
+      { key: "D", label: "Delete" },
+    ],
+    showConfig: false,
+    showSystem: false,
+  });
 
   return (
     <Box flexDirection="column">

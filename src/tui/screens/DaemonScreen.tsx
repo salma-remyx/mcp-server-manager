@@ -253,9 +253,12 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
   }
 
   // Menu view
-  const daemonMenuSections = createMenuSections([
-    { key: "Enter", label: "Select" },
-  ]);
+  const daemonMenuSections = createMenuSections({
+    actions: [{ key: "Enter", label: "Select" }],
+    showData: false,
+    showConfig: false,
+    showSystem: false,
+  });
 
   return (
     <Box flexDirection="column">

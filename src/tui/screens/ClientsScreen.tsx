@@ -146,10 +146,15 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
     );
   }
 
-  const clientsMenuSections = createMenuSections([
-    { key: "Enter", label: "Connect/Disconnect" },
-    { key: "R", label: "Refresh" },
-  ]);
+  const clientsMenuSections = createMenuSections({
+    actions: [
+      { key: "Enter", label: "Connect/Disconnect" },
+      { key: "R", label: "Refresh" },
+    ],
+    showData: false,
+    showConfig: false,
+    showSystem: false,
+  });
 
   return (
     <Box flexDirection="column">

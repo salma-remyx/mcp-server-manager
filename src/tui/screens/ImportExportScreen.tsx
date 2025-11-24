@@ -472,9 +472,11 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
   }
 
   // Menu view
-  const importExportMenuSections = createMenuSections([
-    { key: "Enter", label: "Select" },
-  ]);
+  const importExportMenuSections = createMenuSections({
+    actions: [{ key: "Enter", label: "Select" }],
+    showConfig: false,
+    showSystem: false,
+  });
 
   return (
     <Box flexDirection="column">

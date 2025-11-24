@@ -253,11 +253,16 @@ export function SettingsScreen({ onBack }: SettingsScreenProps): React.ReactElem
   }
 
   // List view
-  const settingsMenuSections = createMenuSections([
-    { key: "Enter", label: "Edit" },
-    { key: "Space", label: "Toggle" },
-    { key: "R", label: "Reset all" },
-  ]);
+  const settingsMenuSections = createMenuSections({
+    actions: [
+      { key: "Enter", label: "Edit" },
+      { key: "Space", label: "Toggle" },
+      { key: "R", label: "Reset all" },
+    ],
+    showData: false,
+    showConfig: false,
+    showSystem: false,
+  });
 
   return (
     <Box flexDirection="column">

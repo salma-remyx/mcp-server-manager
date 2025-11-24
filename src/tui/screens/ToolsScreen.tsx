@@ -193,12 +193,16 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     );
   }
 
-  const toolsMenuSections = createMenuSections([
-    { key: "Space", label: "Toggle" },
-    { key: "A", label: "Enable all" },
-    { key: "N", label: "Disable all" },
-    { key: "R", label: "Reset" },
-  ]);
+  const toolsMenuSections = createMenuSections({
+    actions: [
+      { key: "Space", label: "Toggle" },
+      { key: "A", label: "Enable all" },
+      { key: "N", label: "Disable all" },
+      { key: "R", label: "Reset" },
+    ],
+    showConfig: false,
+    showSystem: false,
+  });
 
   return (
     <Box flexDirection="column">
