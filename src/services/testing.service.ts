@@ -226,6 +226,7 @@ export class TestingService {
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
       };
 
       if (server.bearerToken) {
@@ -249,10 +250,17 @@ export class TestingService {
         return { success: false, error, toolCount: 0 };
       }
 
+      // Capture session ID if provided (for servers like deepwiki)
+      const sessionId = initResponse.headers.get("mcp-session-id");
+      const toolsHeaders = { ...headers };
+      if (sessionId) {
+        toolsHeaders["mcp-session-id"] = sessionId;
+      }
+
       // Get tools
       const toolsResponse = await fetch(url, {
         method: "POST",
-        headers,
+        headers: toolsHeaders,
         body: JSON.stringify(this.createToolsListRequest()),
         signal: controller.signal,
       });
@@ -265,7 +273,42 @@ export class TestingService {
         return { success: false, error, toolCount: 0 };
       }
 
-      const result = (await toolsResponse.json()) as McpToolsResponse;
+      // Parse response - handle both JSON and SSE
+      let result: McpToolsResponse;
+      const contentType = toolsResponse.headers.get("content-type") || "";
+
+      if (contentType.includes("text/event-stream")) {
+        // Parse SSE response - extract JSON from data: field
+        // Following MCP SDK pattern: event-source automatically handles SSE format
+        const text = await toolsResponse.text();
+        let jsonStr: string | null = null;
+
+        // Process lines to find first data line with JSON object
+        const lines = text.split("\n");
+        for (const line of lines) {
+          if (line.startsWith("data: {")) {
+            jsonStr = line.slice(6); // Remove "data: " prefix
+            break;
+          }
+        }
+
+        if (!jsonStr) {
+          const error = "No JSON data in SSE response";
+          this.updateToolFilter(filterId, [], error);
+          return { success: false, error, toolCount: 0 };
+        }
+
+        try {
+          result = JSON.parse(jsonStr);
+        } catch (parseError) {
+          const error = `Failed to parse SSE data: ${parseError instanceof Error ? parseError.message : "unknown error"}`;
+          this.updateToolFilter(filterId, [], error);
+          return { success: false, error, toolCount: 0 };
+        }
+      } else {
+        // Parse JSON response
+        result = (await toolsResponse.json()) as McpToolsResponse;
+      }
 
       if (result.result?.tools) {
         const tools = result.result.tools;

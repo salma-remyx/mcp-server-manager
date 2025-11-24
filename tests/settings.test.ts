@@ -41,22 +41,17 @@ describe("SettingsService", () => {
 
       const settings = settingsService.getAll();
       expect(settings.port).toBe(8850);
-      expect(settings.autoSync).toBe(false);
-      expect(settings.autoTest).toBe(true);
+      expect(settings.editor).toBeDefined();
       expect(settings.theme).toBe("default");
     });
 
     it("should load existing settings", () => {
-      fs.writeFileSync(
-        path.join(testConfigDir, "settings.json"),
-        JSON.stringify({ port: 9000, autoSync: true })
-      );
+      fs.writeFileSync(path.join(testConfigDir, "settings.json"), JSON.stringify({ port: 9000 }));
 
       settingsService = new SettingsService();
       const settings = settingsService.getAll();
 
       expect(settings.port).toBe(9000);
-      expect(settings.autoSync).toBe(true);
       // Should merge with defaults
       expect(settings.theme).toBe("default");
     });
@@ -83,11 +78,11 @@ describe("SettingsService", () => {
       expect(settingsService.get("port")).toBe(9002);
     });
 
-    it("should set a boolean setting", () => {
-      const result = settingsService.set("autoSync", "true");
+    it("should set a string setting with validation", () => {
+      const result = settingsService.set("editor", "nano");
       expect(result.success).toBe(true);
-      expect(result.value).toBe(true);
-      expect(settingsService.get("autoSync")).toBe(true);
+      expect(result.value).toBe("nano");
+      expect(settingsService.get("editor")).toBe("nano");
     });
 
     it("should set a string setting", () => {
@@ -124,7 +119,6 @@ describe("SettingsService", () => {
 
       // Change some settings
       settingsService.set("port", "9999");
-      settingsService.set("autoSync", "true");
       settingsService.set("theme", "colorful");
 
       // Reset
@@ -132,7 +126,6 @@ describe("SettingsService", () => {
 
       // Verify defaults
       expect(settingsService.get("port")).toBe(8850);
-      expect(settingsService.get("autoSync")).toBe(false);
       expect(settingsService.get("theme")).toBe("default");
     });
   });
@@ -155,8 +148,9 @@ describe("SettingsService", () => {
 
       const keys = settingsService.getKeys();
       expect(keys).toContain("port");
+      expect(keys).toContain("editor");
       expect(keys).toContain("theme");
-      expect(keys).toContain("autoSync");
+      expect(keys).toContain("defaultProfile");
     });
   });
 

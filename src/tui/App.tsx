@@ -9,6 +9,7 @@ import { Header, MenuPanel } from "./components/index.js";
 import { getConfigService } from "../services/config.service.js";
 import { getTestingService } from "../services/testing.service.js";
 import { getProfileService } from "../services/profile.service.js";
+import { getDaemonService } from "../services/daemon.service.js";
 import type { LocalServer, RemoteServer } from "../types/index.js";
 import { VERSION } from "../shared/version.js";
 
@@ -362,6 +363,16 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
           if (result.success) {
             showMessage(`Server '${server.name}' deleted`, "success");
+            // Restart daemon if running (auto-sync)
+            const daemonService = getDaemonService();
+            const daemonStatus = daemonService.isDaemonRunning();
+            if (daemonStatus.running) {
+              daemonService.stopDaemon();
+              // Small delay to ensure process exits before restarting
+              setTimeout(() => {
+                daemonService.startDaemon();
+              }, 100);
+            }
             // Adjust index and refresh
             setState((prev) => {
               const newLocal = configService.getLocalServers();

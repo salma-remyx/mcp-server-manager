@@ -124,6 +124,25 @@ export class DaemonService {
     }
   }
 
+  /** Restart the daemon if it's running */
+  restartDaemon(): Result & { pid?: number } {
+    const status = this.isDaemonRunning();
+    if (!status.running) {
+      return { success: false, error: "Daemon is not running" };
+    }
+
+    // Stop the daemon
+    const stopResult = this.stopDaemon();
+    if (!stopResult.success) {
+      return { success: false, error: `Failed to stop daemon: ${stopResult.error}` };
+    }
+
+    return {
+      success: true,
+      error: "Use startDaemon() to start with new configuration",
+    };
+  }
+
   /** Get logs */
   getLogs(lines = 50): string[] {
     if (!fs.existsSync(this.logFile)) {
