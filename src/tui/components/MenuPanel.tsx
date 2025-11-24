@@ -12,6 +12,7 @@ interface MenuSection {
 
 interface MenuPanelProps {
   sections?: MenuSection[];
+  highlightedView?: string; // View that's currently active
 }
 
 const defaultSections: MenuSection[] = [
@@ -21,7 +22,7 @@ const defaultSections: MenuSection[] = [
       { key: "↑↓", label: "Move" },
       { key: "Space", label: "Select" },
       { key: "Enter", label: "Manage" },
-      { key: "Q", label: "Quit" },
+      { key: "Q", label: "Back" },
     ],
   },
   {
@@ -35,13 +36,18 @@ const defaultSections: MenuSection[] = [
     ],
   },
   {
-    title: "Views",
+    title: "Data",
     items: [
       { key: "T", label: "Tools" },
-      { key: "C", label: "Clients" },
       { key: "F", label: "Profiles" },
-      { key: "G", label: "Settings" },
       { key: "I", label: "Import/Export" },
+    ],
+  },
+  {
+    title: "Config",
+    items: [
+      { key: "C", label: "Clients" },
+      { key: "G", label: "Settings" },
     ],
   },
   {
@@ -53,7 +59,7 @@ const defaultSections: MenuSection[] = [
   },
 ];
 
-export function MenuPanel({ sections = defaultSections }: MenuPanelProps): React.ReactElement {
+export function MenuPanel({ sections = defaultSections, highlightedView }: MenuPanelProps): React.ReactElement {
   return (
     <Box
       flexDirection="column"
@@ -73,14 +79,20 @@ export function MenuPanel({ sections = defaultSections }: MenuPanelProps): React
           <Text color="yellow" dimColor>
             {section.title}
           </Text>
-          {section.items.map((item) => (
-            <Box key={item.key} gap={1}>
-              <Text color="green" bold>
-                {item.key.padEnd(5)}
-              </Text>
-              <Text dimColor>{item.label}</Text>
-            </Box>
-          ))}
+          {section.items.map((item) => {
+            const isHighlighted = highlightedView === item.key;
+            return (
+              <Box key={item.key} gap={1}>
+                <Text color={isHighlighted ? "cyan" : "green"} bold={isHighlighted}>
+                  {item.key.padEnd(5)}
+                </Text>
+                <Text color={isHighlighted ? "cyan" : undefined} dimColor={!isHighlighted}>
+                  {item.label}
+                  {isHighlighted ? " ◄" : ""}
+                </Text>
+              </Box>
+            );
+          })}
         </Box>
       ))}
     </Box>

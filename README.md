@@ -9,10 +9,10 @@
 [![Node.js](https://img.shields.io/badge/Node.js->=18-green)](https://nodejs.org)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/MateusTorquato/mcp-server-manager/pulls)
 
-[Website](https://mateustorquato.github.io/mcp-server-manager/) •
-[Documentation](https://mateustorquato.github.io/mcp-server-manager/docs/) •
-[Installation](#installation) •
-[Quick Start](#quick-start)
+[📖 Docs](https://mateustorquato.github.io/mcp-server-manager/docs/) •
+[🚀 Quick Start](#quick-start) •
+[⚙️ Installation](#installation) •
+[🌐 Website](https://mateustorquato.github.io/mcp-server-manager/)
 
 </div>
 
@@ -45,6 +45,68 @@ Managing MCP servers across multiple AI clients (Claude Desktop, Cursor, Windsur
 | **Daemon mode**       | Run gateway in background with auto-start                 |
 | **OAuth support**     | Built-in OAuth flow with PKCE for remote servers          |
 | **Token counting**    | Track context usage per server and tool                   |
+
+---
+
+## 📚 Documentation
+
+Complete guides and references available at **[mateustorquato.github.io/mcp-server-manager/docs/](https://mateustorquato.github.io/mcp-server-manager/docs/)**
+
+- **[Getting Started](https://mateustorquato.github.io/mcp-server-manager/docs/#/getting-started/installation)** - Installation and setup guide
+- **[TUI Guide](https://mateustorquato.github.io/mcp-server-manager/docs/#/tui/main-menu)** - Complete guide to the terminal user interface
+- **[CLI Commands](https://mateustorquato.github.io/mcp-server-manager/docs/#/cli/servers)** - Detailed command reference
+- **[Troubleshooting](https://mateustorquato.github.io/mcp-server-manager/docs/#/guides/troubleshooting)** - Common issues and solutions
+
+---
+
+## TUI vs CLI
+
+MCP Server Manager offers two interfaces to suit your workflow:
+
+### Terminal User Interface (TUI)
+
+Perfect for **interactive management** and **visual navigation**:
+
+- Browse and manage servers with keyboard shortcuts
+- See real-time status and tool counts for each server
+- Organized menu system with consistent navigation across all screens
+- Ideal for discovering features and visual learners
+
+**Launch with:** `mcpsm` (no arguments)
+
+### Command Line Interface (CLI)
+
+Perfect for **scripting**, **automation**, and **batch operations**:
+
+- Direct commands for adding, testing, and managing servers
+- Easy integration with scripts and workflows
+- Detailed error messages and structured output
+- Works great with pipes and shell scripting
+
+**Example:** `mcpsm test` or `mcpsm list --json`
+
+Both interfaces provide the same powerful functionality - choose what works best for your workflow!
+
+### TUI Display
+
+```
+MCP Server Manager v1.1.0
+Profile: default | Port: 8850
+
+Local Servers (STDIO):
+→ ☑ filesystem ✔ 11 tools · 4.2k tokens
+  ☑ github ✔ 8 tools · 3.1k tokens
+  ☑ postgres ✔ 5 tools · 2.8k tokens
+
+Remote Servers (HTTP/SSE):
+  ☐ stripe - 0 tools
+  ☑ deepwiki ✔ 3 tools · 1.5k tokens
+
+↑/↓ Navigate SPACE Select A Add D Delete E Edit N Enable/Disable
+X Test T Tools C Clients F Profiles G Settings M Daemon Q Quit
+```
+
+See all available keyboard shortcuts at a glance, with tool counts and token estimates for each server.
 
 ---
 
@@ -121,17 +183,6 @@ Instead of syncing individual servers to each client, MCP Server Manager uses a 
 | Claude Code    | CLI                     |
 | Codex          | CLI                     |
 | Gemini CLI     | CLI                     |
-
----
-
-## Documentation
-
-Full documentation is available at **[mateustorquato.github.io/mcp-server-manager/docs/](https://mateustorquato.github.io/mcp-server-manager/docs/)**
-
-- [Getting Started](https://mateustorquato.github.io/mcp-server-manager/docs/#/getting-started/installation)
-- [CLI Commands](https://mateustorquato.github.io/mcp-server-manager/docs/#/cli/servers)
-- [TUI Guide](https://mateustorquato.github.io/mcp-server-manager/docs/#/tui/main-menu)
-- [Troubleshooting](https://mateustorquato.github.io/mcp-server-manager/docs/#/guides/troubleshooting)
 
 ---
 

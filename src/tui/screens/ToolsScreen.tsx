@@ -4,7 +4,8 @@
 
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
-import { Header } from "../components/index.js";
+import { Header, MenuPanel } from "../components/index.js";
+import { createMenuSections } from "../utils/menu.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getDaemonService } from "../../services/daemon.service.js";
 import type { ServerToolFilter } from "../../types/index.js";
@@ -192,6 +193,17 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     );
   }
 
+  const toolsMenuSections = createMenuSections({
+    actions: [
+      { key: "Space", label: "Toggle" },
+      { key: "A", label: "Enable all" },
+      { key: "N", label: "Disable all" },
+      { key: "R", label: "Reset" },
+    ],
+    showConfig: false,
+    showSystem: false,
+  });
+
   return (
     <Box flexDirection="column">
       <Header title={`Tools: ${serverName}`} />
@@ -207,32 +219,35 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
         </Box>
       )}
 
-      <Box flexDirection="column" paddingX={1} marginTop={1}>
-        {tools.length === 0 ? (
-          <Box flexDirection="column">
-            <Text dimColor>No tools discovered for this server.</Text>
-            <Text dimColor>Run a test (X) to discover tools.</Text>
-          </Box>
-        ) : (
-          tools.map((tool, idx) => {
-            const isCurrent = idx === currentToolIndex;
-            const isEnabled = !disabledTools.has(tool);
+      {/* Main content: Tools + Menu side by side */}
+      <Box marginTop={1} gap={2}>
+        {/* Left panel: Tools list */}
+        <Box flexDirection="column" flexGrow={1} paddingX={1}>
+          {tools.length === 0 ? (
+            <Box flexDirection="column">
+              <Text dimColor>No tools discovered for this server.</Text>
+              <Text dimColor>Run a test (X) to discover tools.</Text>
+            </Box>
+          ) : (
+            tools.map((tool, idx) => {
+              const isCurrent = idx === currentToolIndex;
+              const isEnabled = !disabledTools.has(tool);
 
-            return (
-              <Box key={tool} gap={1}>
-                <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                <Text color={isEnabled ? "green" : "red"}>{isEnabled ? "[✓]" : "[ ]"}</Text>
-                <Text color={isEnabled ? (isCurrent ? "white" : undefined) : "gray"} bold={isCurrent}>
-                  {tool}
-                </Text>
-              </Box>
-            );
-          })
-        )}
-      </Box>
+              return (
+                <Box key={tool} gap={1}>
+                  <Text color="cyan">{isCurrent ? "→" : " "}</Text>
+                  <Text color={isEnabled ? "green" : "red"}>{isEnabled ? "[✓]" : "[ ]"}</Text>
+                  <Text color={isEnabled ? (isCurrent ? "white" : undefined) : "gray"} bold={isCurrent}>
+                    {tool}
+                  </Text>
+                </Box>
+              );
+            })
+          )}
+        </Box>
 
-      <Box paddingX={1} marginTop={1}>
-        <Text dimColor>↑/↓ Navigate SPACE Toggle A Enable all N Disable all R Reset Q Back</Text>
+        {/* Right panel: Menu */}
+        <MenuPanel sections={toolsMenuSections} highlightedView="T" />
       </Box>
     </Box>
   );

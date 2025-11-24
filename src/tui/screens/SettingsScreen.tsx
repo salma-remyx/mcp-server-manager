@@ -5,7 +5,8 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { Header } from "../components/index.js";
+import { Header, MenuPanel } from "../components/index.js";
+import { createMenuSections } from "../utils/menu.js";
 import { getSettingsService } from "../../services/settings.service.js";
 import { getClientService } from "../../services/client.service.js";
 import type { Settings, ClientId } from "../../types/index.js";
@@ -252,6 +253,17 @@ export function SettingsScreen({ onBack }: SettingsScreenProps): React.ReactElem
   }
 
   // List view
+  const settingsMenuSections = createMenuSections({
+    actions: [
+      { key: "Enter", label: "Edit" },
+      { key: "Space", label: "Toggle" },
+      { key: "R", label: "Reset all" },
+    ],
+    showData: false,
+    showConfig: false,
+    showSystem: false,
+  });
+
   return (
     <Box flexDirection="column">
       <Header title="Settings" />
@@ -267,43 +279,46 @@ export function SettingsScreen({ onBack }: SettingsScreenProps): React.ReactElem
         </Box>
       )}
 
-      <Box flexDirection="column" paddingX={1} marginTop={1}>
-        {keys.map((settingKey, idx) => {
-          const isCurrent = idx === currentIndex;
-          const value = settings[settingKey];
-          const settingInfo = info[settingKey];
-          const isDefault = settingsService.isDefault(settingKey);
+      {/* Main content: Settings + Menu side by side */}
+      <Box marginTop={1} gap={2}>
+        {/* Left panel: Settings list */}
+        <Box flexDirection="column" flexGrow={1} paddingX={1}>
+          {keys.map((settingKey, idx) => {
+            const isCurrent = idx === currentIndex;
+            const value = settings[settingKey];
+            const settingInfo = info[settingKey];
+            const isDefault = settingsService.isDefault(settingKey);
 
-          // Format value
-          let valueDisplay: React.ReactElement;
-          if (typeof value === "boolean") {
-            valueDisplay = <Text color={value ? "green" : "red"}>{value ? "true" : "false"}</Text>;
-          } else {
-            valueDisplay = <Text color="cyan">{String(value)}</Text>;
-          }
+            // Format value
+            let valueDisplay: React.ReactElement;
+            if (typeof value === "boolean") {
+              valueDisplay = <Text color={value ? "green" : "red"}>{value ? "true" : "false"}</Text>;
+            } else {
+              valueDisplay = <Text color="cyan">{String(value)}</Text>;
+            }
 
-          return (
-            <Box key={settingKey} flexDirection="column" marginBottom={1}>
-              <Box gap={1}>
-                <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                <Text color={isCurrent ? "white" : undefined} bold={isCurrent}>
-                  {settingKey}:
-                </Text>
-                {valueDisplay}
-                {isDefault && <Text dimColor>(default)</Text>}
-              </Box>
-              {settingInfo?.description && (
-                <Box marginLeft={4}>
-                  <Text dimColor>{settingInfo.description}</Text>
+            return (
+              <Box key={settingKey} flexDirection="column" marginBottom={1}>
+                <Box gap={1}>
+                  <Text color="cyan">{isCurrent ? "→" : " "}</Text>
+                  <Text color={isCurrent ? "white" : undefined} bold={isCurrent}>
+                    {settingKey}:
+                  </Text>
+                  {valueDisplay}
+                  {isDefault && <Text dimColor>(default)</Text>}
                 </Box>
-              )}
-            </Box>
-          );
-        })}
-      </Box>
+                {settingInfo?.description && (
+                  <Box marginLeft={4}>
+                    <Text dimColor>{settingInfo.description}</Text>
+                  </Box>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
 
-      <Box paddingX={1} marginTop={1}>
-        <Text dimColor>↑/↓ Navigate ENTER Edit SPACE Toggle (bool) R Reset all Q Back</Text>
+        {/* Right panel: Menu */}
+        <MenuPanel sections={settingsMenuSections} highlightedView="G" />
       </Box>
     </Box>
   );
