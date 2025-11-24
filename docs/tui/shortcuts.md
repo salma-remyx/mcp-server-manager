@@ -23,7 +23,7 @@ Available on all screens:
 | `↑` or `k` | Move cursor up          |
 | `↓` or `j` | Move cursor down        |
 | `SPACE`    | Toggle server selection |
-| `ENTER`    | Start selected servers  |
+| `ENTER`    | Manage selected servers |
 
 ### Server Actions
 
@@ -32,25 +32,20 @@ Available on all screens:
 | `A` | Add new server            |
 | `D` | Delete current server     |
 | `E` | Edit server (remote only) |
-| `T` | Configure tool filters    |
-| `L` | Login/OAuth (remote only) |
-
-### Global Actions
-
-| Key | Action              |
-| --- | ------------------- |
-| `X` | Test all servers    |
-| `S` | Scan/discover tools |
-| `P` | Change gateway port |
+| `N` | Toggle enable/disable     |
+| `X` | Test all servers          |
 
 ### Screen Navigation
 
 | Key | Screen        |
 | --- | ------------- |
+| `T` | Tools         |
 | `C` | Clients       |
 | `F` | Profiles      |
 | `I` | Import/Export |
 | `G` | Settings      |
+| `H` | Doctor        |
+| `K` | Tokens        |
 
 ---
 
@@ -68,11 +63,12 @@ Available on all screens:
 
 ## Clients Screen
 
-| Key   | Action                          |
-| ----- | ------------------------------- |
-| `1-9` | Toggle sync for numbered client |
-| `S`   | Sync to all enabled clients     |
-| `ESC` | Return to main menu             |
+| Key     | Action                                       |
+| ------- | -------------------------------------------- |
+| `↑/↓`   | Navigate between clients                     |
+| `ENTER` | Toggle connect/disconnect for current client |
+| `O`     | Open client config in editor                 |
+| `ESC`   | Return to main menu                          |
 
 ---
 
@@ -103,11 +99,15 @@ Available on all screens:
 
 ## Settings Screen
 
-| Key   | Action                |
-| ----- | --------------------- |
-| `1-6` | Edit numbered setting |
-| `R`   | Reset all to defaults |
-| `ESC` | Return to main menu   |
+| Key     | Action                    |
+| ------- | ------------------------- |
+| `↑/↓`   | Navigate between settings |
+| `ENTER` | Edit selected setting     |
+| `SPACE` | Toggle boolean setting    |
+| `R`     | Reset all to defaults     |
+| `ESC`   | Return to main menu       |
+
+**Note:** When port is changed, all connected clients are automatically updated with the new port.
 
 ---
 
@@ -135,18 +135,19 @@ When entering text:
 ## Quick Reference Card
 
 ```
-╔═══════════════════════════════════════════════════╗
-║             MCP Server Manager Shortcuts          ║
-╠═══════════════════════════════════════════════════╣
-║  Navigation      │  Actions                       ║
+╔════════════════════════════════════════════════════╗
+║             MCP Server Manager Shortcuts           ║
+╠════════════════════════════════════════════════════╣
+║  Navigation      │  Server Actions                ║
 ║  ↑↓  Navigate    │  A  Add server                 ║
 ║  SPACE  Select   │  D  Delete server              ║
-║  ENTER  Start    │  E  Edit server                ║
-║                  │  T  Tool filters               ║
+║  ENTER  Manage   │  E  Edit server                ║
+║                  │  N  Toggle enable/disable      ║
 ║  Screens         │  X  Test all                   ║
-║  C  Clients      │  S  Scan tools                 ║
-║  F  Profiles     │  L  Login (OAuth)              ║
-║  I  Import/Exp   │  P  Change port                ║
+║  T  Tools        │                                ║
+║  C  Clients      │  System                        ║
+║  F  Profiles     │  H  Doctor                     ║
+║  I  Import/Exp   │  K  Tokens                     ║
 ║  G  Settings     │  Q  Quit                       ║
-╚═══════════════════════════════════════════════════╝
+╚════════════════════════════════════════════════════╝
 ```

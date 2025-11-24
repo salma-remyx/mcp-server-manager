@@ -6,35 +6,53 @@ Reference for all screens in the interactive TUI.
 
 **Shortcut:** `C`
 
-Manage MCP client synchronization.
+Manage MCP client connections using the gateway pattern.
 
 ```
 MCP Clients:
 
-  1. Claude Desktop     ✔ Installed   SYNC: ON    (3 servers)
-  2. Cursor            ✔ Installed   SYNC: OFF
-  3. Windsurf          ✘ Not found
-  4. VS Code           ✔ Installed   SYNC: ON    (3 servers)
-  5. Claude Code       ✔ Installed   SYNC: OFF
+  → Claude Desktop     ✔ Installed   Connected
+    Cursor            ✔ Installed   Disconnected
+    Windsurf          ✘ Not installed
+    VS Code           ✔ Installed   Connected
+    Claude Code       ✘ Not installed
 
-  1-5: Toggle sync  |  S: Sync now  |  ESC: Back
+  ↑↓: Navigate  |  ENTER: Toggle Connect/Disconnect  |  O: Open Config  |  ESC: Back
 ```
 
 ### Features
 
 - View all detected MCP clients
-- See installation status
-- Toggle sync per client
-- View server count per client
-- Sync all enabled clients at once
+- See installation status (✔ Installed, ✘ Not installed)
+- See connection status (Connected, Disconnected)
+- Connect clients to add mcpsm gateway server
+- Disconnect clients to remove gateway server
+- Open client config files for manual editing
+- Real-time status updates
+
+### Gateway Pattern
+
+When you connect a client:
+
+- A single `mcpsm` server is added to the client's config
+- This server proxies requests to `localhost:{port}/mcp`
+- All your configured servers become accessible in that client
+- Port changes automatically update all connected clients
 
 ### Actions
 
-| Key   | Action                      |
-| ----- | --------------------------- |
-| `1-6` | Toggle sync for client      |
-| `S`   | Sync to all enabled clients |
-| `ESC` | Return to main menu         |
+| Key     | Action                       |
+| ------- | ---------------------------- |
+| `↑/↓`   | Navigate between clients     |
+| `ENTER` | Toggle connect/disconnect    |
+| `O`     | Open client config in editor |
+| `ESC`   | Return to main menu          |
+
+### Status Meanings
+
+- **Connected** - Client has mcpsm gateway server; can access all your servers
+- **Disconnected** - Client is installed but not connected to mcpsm
+- **Not installed** - Client application not found on system
 
 ---
 
@@ -127,42 +145,50 @@ Configure application settings.
 ```
 Settings:
 
-  1. Gateway Port       8080
-  2. Editor             code
-  3. Auto-Sync          ON
-  4. Auto-Test          OFF
-  5. Theme              default
-  6. Default Profile    (none)
+  → Port                8850
+    Editor              code
+    Theme               default
+    Profile             (none)
 
-  1-6: Edit  |  R: Reset All  |  ESC: Back
+  ↑↓: Navigate  |  ENTER: Edit  |  SPACE: Toggle (bool)  |  R: Reset All  |  ESC: Back
 ```
 
 ### Features
 
-- View all settings
-- Edit individual settings
-- Toggle boolean settings
-- Select from options (theme)
+- View all application settings
+- Edit individual settings by pressing ENTER
+- Toggle boolean settings with SPACE
+- Select from options (e.g., theme)
 - Reset to defaults
+- **Automatic port updates:** When port is changed, all connected clients are automatically updated
 
 ### Settings
 
-| Setting         | Type    | Description              |
-| --------------- | ------- | ------------------------ |
-| Gateway Port    | Number  | Port for gateway server  |
-| Editor          | String  | Default editor command   |
-| Auto-Sync       | Boolean | Sync clients on changes  |
-| Auto-Test       | Boolean | Test servers on startup  |
-| Theme           | Options | TUI color theme          |
-| Default Profile | String  | Profile to load on start |
+| Setting | Type    | Description                                  |
+| ------- | ------- | -------------------------------------------- |
+| Port    | Number  | Gateway port (updates all connected clients) |
+| Editor  | String  | Default editor command                       |
+| Theme   | Options | TUI color theme                              |
+| Profile | String  | Profile to load on start                     |
 
 ### Actions
 
-| Key   | Action                |
-| ----- | --------------------- |
-| `1-6` | Edit setting          |
-| `R`   | Reset all to defaults |
-| `ESC` | Return to main menu   |
+| Key     | Action                |
+| ------- | --------------------- |
+| `↑/↓`   | Navigate settings     |
+| `ENTER` | Edit selected setting |
+| `SPACE` | Toggle boolean        |
+| `R`     | Reset all to defaults |
+| `ESC`   | Return to main menu   |
+
+### Important: Port Changes
+
+When you change the port setting:
+
+- ✓ All connected clients are **automatically updated**
+- ✓ The new port is written to each client's configuration
+- ✓ No need to manually edit client configs
+- ✓ Real-time loading clients (Cursor, Windsurf, VS Code) see changes without restart
 
 ---
 
