@@ -365,7 +365,7 @@ export class ClientService {
         // Add mcpsm gateway server
         clientConfig.mcpServers.mcpsm = {
           command: "npx",
-          args: ["-y", "mcp-proxy", "--transport", "stdio", `http://localhost:${port}/mcp`],
+          args: ["-y", "mcp-proxy", `http://localhost:${port}/mcp`],
         };
 
         // Write to additional MCP path only (the source of truth)
@@ -400,7 +400,7 @@ export class ClientService {
 
       clientConfig.mcpServers.mcpsm = {
         command: "npx",
-        args: ["-y", "mcp-proxy", "--transport", "stdio", `http://localhost:${port}/mcp`],
+        args: ["-y", "mcp-proxy", `http://localhost:${port}/mcp`],
       };
 
       const success = this.writeClientConfig(clientId, clientConfig);
