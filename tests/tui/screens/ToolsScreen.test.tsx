@@ -23,41 +23,43 @@ describe("ToolsScreen", () => {
     mockConfigService.getRemoteServers.mockReturnValue([]);
   });
 
-  describe("Rendering - Empty State", () => {
+  describe("Rendering - No Server Selected", () => {
     it("should render tools screen with title", () => {
       const { lastFrame } = render(<ToolsScreen onBack={mockOnBack} />);
 
       expect(lastFrame()).toContain("Tool Filters");
     });
 
-    it("should show 'no servers' message when no servers configured", () => {
+    it("should show 'no server selected' message when no initialServerId", () => {
       const { lastFrame } = render(<ToolsScreen onBack={mockOnBack} />);
 
-      expect(lastFrame()).toContain("No servers configured");
+      expect(lastFrame()).toContain("No server selected");
     });
   });
 
-  describe("Rendering - With Servers", () => {
+  describe("Rendering - With Server Selected", () => {
     beforeEach(() => {
       mockConfigService.getLocalServers.mockReturnValue(sampleLocalServers);
       mockConfigService.getToolFilters.mockReturnValue({
         server1: {
           allTools: ["tool1", "tool2", "tool3"],
-          enabled: ["tool1", "tool2"],
+          disabledTools: ["tool3"],
         },
       });
     });
 
-    it("should display server list when servers exist", () => {
-      const { lastFrame } = render(<ToolsScreen onBack={mockOnBack} />);
+    it("should display server name in title when server is selected", () => {
+      const { lastFrame } = render(<ToolsScreen onBack={mockOnBack} initialServerId="server1" />);
 
       expect(lastFrame()).toContain("Server One");
     });
 
-    it("should show tool count for servers", () => {
-      const { lastFrame } = render(<ToolsScreen onBack={mockOnBack} />);
+    it("should show tools list when server has tools", () => {
+      const { lastFrame } = render(<ToolsScreen onBack={mockOnBack} initialServerId="server1" />);
 
-      expect(lastFrame()).toMatch(/\d+ tools?/i);
+      expect(lastFrame()).toContain("tool1");
+      expect(lastFrame()).toContain("tool2");
+      expect(lastFrame()).toContain("tool3");
     });
   });
 
@@ -78,10 +80,16 @@ describe("ToolsScreen", () => {
       expect(mockOnBack).toHaveBeenCalled();
     });
 
-    it("should navigate between servers with arrow keys", async () => {
+    it("should navigate between tools with arrow keys", async () => {
       mockConfigService.getLocalServers.mockReturnValue(sampleLocalServers);
+      mockConfigService.getToolFilters.mockReturnValue({
+        server1: {
+          allTools: ["tool1", "tool2", "tool3"],
+          disabledTools: [],
+        },
+      });
 
-      const { stdin, lastFrame } = render(<ToolsScreen onBack={mockOnBack} />);
+      const { stdin, lastFrame } = render(<ToolsScreen onBack={mockOnBack} initialServerId="server1" />);
 
       const initialFrame = lastFrame();
       expect(initialFrame).toContain("→");
@@ -99,28 +107,13 @@ describe("ToolsScreen", () => {
       mockConfigService.getToolFilters.mockReturnValue({
         server1: {
           allTools: ["tool1", "tool2", "tool3"],
-          enabled: ["tool1", "tool2"],
+          disabledTools: [],
         },
       });
     });
 
-    it("should show tool list when server is selected", async () => {
-      const { stdin, lastFrame } = render(<ToolsScreen onBack={mockOnBack} />);
-
-      // Select server
-      stdin.write(KEYS.ENTER);
-      await waitForStateUpdate();
-
-      const frame = lastFrame();
-      expect(frame).toMatch(/tool|Tool/i);
-    });
-
     it("should toggle tool with Space key", async () => {
-      const { stdin } = render(<ToolsScreen onBack={mockOnBack} />);
-
-      // Select server
-      stdin.write(KEYS.ENTER);
-      await waitForStateUpdate();
+      const { stdin } = render(<ToolsScreen onBack={mockOnBack} initialServerId="server1" />);
 
       // Toggle first tool
       stdin.write(KEYS.SPACE);
@@ -130,11 +123,7 @@ describe("ToolsScreen", () => {
     });
 
     it("should enable all tools with A key", async () => {
-      const { stdin } = render(<ToolsScreen onBack={mockOnBack} />);
-
-      // Select server
-      stdin.write(KEYS.ENTER);
-      await waitForStateUpdate();
+      const { stdin } = render(<ToolsScreen onBack={mockOnBack} initialServerId="server1" />);
 
       // Enable all
       stdin.write("a");
@@ -144,11 +133,7 @@ describe("ToolsScreen", () => {
     });
 
     it("should disable all tools with N key", async () => {
-      const { stdin } = render(<ToolsScreen onBack={mockOnBack} />);
-
-      // Select server
-      stdin.write(KEYS.ENTER);
-      await waitForStateUpdate();
+      const { stdin } = render(<ToolsScreen onBack={mockOnBack} initialServerId="server1" />);
 
       // Disable all
       stdin.write("n");
@@ -167,23 +152,21 @@ describe("ToolsScreen", () => {
     });
   });
 
-  describe("Navigation Back from Tool View", () => {
+  describe("No Tools Discovered", () => {
     beforeEach(() => {
       mockConfigService.getLocalServers.mockReturnValue(sampleLocalServers);
+      mockConfigService.getToolFilters.mockReturnValue({
+        server1: {
+          allTools: [],
+          disabledTools: [],
+        },
+      });
     });
 
-    it("should return to server list when ESC is pressed in tool view", async () => {
-      const { stdin, lastFrame } = render(<ToolsScreen onBack={mockOnBack} />);
+    it("should show message when no tools discovered", () => {
+      const { lastFrame } = render(<ToolsScreen onBack={mockOnBack} initialServerId="server1" />);
 
-      // Select server
-      stdin.write(KEYS.ENTER);
-      await waitForStateUpdate();
-
-      // Press ESC to go back to server list
-      stdin.write(KEYS.ESCAPE);
-      await waitForStateUpdate();
-
-      expect(lastFrame()).toContain("Server One");
+      expect(lastFrame()).toContain("No tools discovered");
     });
   });
 });

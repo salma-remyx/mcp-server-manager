@@ -486,7 +486,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return;
       }
 
-      // Enter - Start gateway
+      // Enter - Go to daemon screen
       if (key.return) {
         const selectedLocal = localServers.filter((s) => selectedServers.has(s.id));
         const selectedRemote = remoteServers.filter((s) => selectedServers.has(`remote:${s.id}`));
@@ -496,7 +496,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
           return;
         }
 
-        showMessage("Use: mcpsm daemon start", "info");
+        // Go to daemon management screen
+        setState((prev) => ({ ...prev, screen: "daemon" }));
         return;
       }
     },
@@ -512,7 +513,9 @@ export function App({ onExit }: AppProps): React.ReactElement {
   }
 
   if (screen === "tools") {
-    return <ToolsScreen onBack={goBack} />;
+    const { server, type } = getCurrentServer();
+    const initialServerId = server ? (type === "remote" ? `remote:${server.id}` : server.id) : undefined;
+    return <ToolsScreen onBack={goBack} initialServerId={initialServerId} />;
   }
 
   if (screen === "clients") {
@@ -592,13 +595,13 @@ export function App({ onExit }: AppProps): React.ReactElement {
     currentSection,
     currentIndex,
     selectedServers,
-    toolCounts,
     message,
     messageType,
   } = state;
   const hasServers = localServers.length > 0 || remoteServers.length > 0;
   const activeProfile = profileService.getActiveProfileId();
   const port = configService.getPort();
+  const toolFilters = configService.getToolFilters();
 
   return (
     <Box flexDirection="column">
@@ -643,7 +646,10 @@ export function App({ onExit }: AppProps): React.ReactElement {
                     const isCurrent = currentSection === "local" && idx === currentIndex;
                     const isSelected = selectedServers.has(server.id);
                     const isDisabled = server.disabled;
-                    const toolCount = toolCounts.get(server.id) ?? 0;
+                    const filter = toolFilters[server.id];
+                    const totalTools = filter?.allTools?.length ?? 0;
+                    const disabledCount = filter?.disabledTools?.length ?? 0;
+                    const enabledTools = totalTools - disabledCount;
 
                     return (
                       <Box key={server.id} gap={1}>
@@ -655,8 +661,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
                           {server.name || server.id}
                         </Text>
                         <Text dimColor>-</Text>
-                        <Text color={isDisabled ? "yellow" : "gray"}>
-                          {isDisabled ? "disabled" : `${toolCount} tools`}
+                        <Text color={isDisabled ? "yellow" : disabledCount > 0 ? "yellow" : "gray"}>
+                          {isDisabled ? "disabled" : `${enabledTools}/${totalTools} tools`}
                         </Text>
                       </Box>
                     );
@@ -682,7 +688,10 @@ export function App({ onExit }: AppProps): React.ReactElement {
                     const isCurrent = currentSection === "remote" && idx === currentIndex;
                     const isSelected = selectedServers.has(`remote:${server.id}`);
                     const isDisabled = server.disabled;
-                    const toolCount = toolCounts.get(`remote:${server.id}`) ?? 0;
+                    const filter = toolFilters[`remote:${server.id}`];
+                    const totalTools = filter?.allTools?.length ?? 0;
+                    const disabledCount = filter?.disabledTools?.length ?? 0;
+                    const enabledTools = totalTools - disabledCount;
 
                     return (
                       <Box key={server.id} gap={1}>
@@ -694,8 +703,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
                           {server.name || server.id}
                         </Text>
                         <Text dimColor>-</Text>
-                        <Text color={isDisabled ? "yellow" : "gray"}>
-                          {isDisabled ? "disabled" : `${toolCount} tools`}
+                        <Text color={isDisabled ? "yellow" : disabledCount > 0 ? "yellow" : "gray"}>
+                          {isDisabled ? "disabled" : `${enabledTools}/${totalTools} tools`}
                         </Text>
                       </Box>
                     );

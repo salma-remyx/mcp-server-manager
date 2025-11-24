@@ -44,7 +44,6 @@ describe("DaemonScreen", () => {
     it("should display menu options", () => {
       const { lastFrame } = render(<DaemonScreen onBack={mockOnBack} />);
 
-      expect(lastFrame()).toContain("View Status");
       expect(lastFrame()).toContain("Start Daemon");
       expect(lastFrame()).toContain("Stop Daemon");
       expect(lastFrame()).toContain("View Logs");
@@ -55,6 +54,12 @@ describe("DaemonScreen", () => {
 
       // Should show startup-related option
       expect(lastFrame()).toMatch(/startup|Startup|Enable|Disable/i);
+    });
+
+    it("should display log file path", () => {
+      const { lastFrame } = render(<DaemonScreen onBack={mockOnBack} />);
+
+      expect(lastFrame()).toContain("Log file");
     });
   });
 
@@ -89,28 +94,23 @@ describe("DaemonScreen", () => {
   });
 
   describe("Daemon Actions", () => {
-    it("should start daemon when Start option is selected", async () => {
-      const { stdin } = render(<DaemonScreen onBack={mockOnBack} />);
+    it("should show not implemented message when Start option is selected", async () => {
+      const { stdin, lastFrame } = render(<DaemonScreen onBack={mockOnBack} />);
 
-      // Navigate to "Start Daemon" (second option)
-      stdin.write(KEYS.DOWN);
-      await waitForStateUpdate();
-
-      // Select
+      // Select "Start Daemon" (first option)
       stdin.write(KEYS.ENTER);
       await waitForStateUpdate();
 
-      expect(mockDaemonService.startDaemon).toHaveBeenCalled();
+      expect(lastFrame()).toContain("not yet implemented");
     });
-
   });
 
   describe("Startup Management", () => {
     it("should toggle startup when Enable/Disable Startup is selected", async () => {
       const { stdin } = render(<DaemonScreen onBack={mockOnBack} />);
 
-      // Navigate to startup option (varies by position)
-      for (let i = 0; i < 4; i++) {
+      // Navigate to startup option (Enable Auto-start is 4th option, index 3)
+      for (let i = 0; i < 3; i++) {
         stdin.write(KEYS.DOWN);
       }
       await waitForStateUpdate();

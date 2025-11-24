@@ -9,7 +9,7 @@ import fs from "fs";
 import { Header } from "../components/index.js";
 import { getDaemonService } from "../../services/daemon.service.js";
 
-type View = "menu" | "status" | "logs" | "action";
+type View = "menu" | "logs" | "action";
 
 interface MenuOption {
   id: string;
@@ -18,7 +18,6 @@ interface MenuOption {
 }
 
 const MENU_OPTIONS: MenuOption[] = [
-  { id: "status", label: "View Status", description: "Show daemon status" },
   { id: "start", label: "Start Daemon", description: "Start the gateway daemon" },
   { id: "stop", label: "Stop Daemon", description: "Stop the running daemon" },
   { id: "logs", label: "View Logs", description: "View recent daemon logs" },
@@ -53,55 +52,27 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
   const handleMenuOption = useCallback(
     (optionId: string) => {
       switch (optionId) {
-        case "status": {
-          setState((prev) => ({ ...prev, view: "status" }));
-          break;
-        }
-
         case "start": {
-          const runningStatus = daemonService.isDaemonRunning();
-          if (runningStatus.running) {
-            setState((prev) => ({
-              ...prev,
-              view: "action",
-              actionResult: {
-                success: false,
-                message: `Daemon already running (PID: ${runningStatus.pid})`,
-              },
-            }));
-          } else {
-            setState((prev) => ({ ...prev, isLoading: true }));
-            const result = daemonService.startDaemon([]);
-            setState((prev) => ({
-              ...prev,
-              isLoading: false,
-              view: "action",
-              actionResult: result.success
-                ? { success: true, message: `Daemon started (PID: ${result.pid})` }
-                : { success: false, message: `Failed: ${result.error}` },
-            }));
-          }
+          setState((prev) => ({
+            ...prev,
+            view: "action",
+            actionResult: {
+              success: false,
+              message: "Gateway daemon not yet implemented",
+            },
+          }));
           break;
         }
 
         case "stop": {
-          const runningStatus = daemonService.isDaemonRunning();
-          if (!runningStatus.running) {
-            setState((prev) => ({
-              ...prev,
-              view: "action",
-              actionResult: { success: false, message: "Daemon is not running" },
-            }));
-          } else {
-            const result = daemonService.stopDaemon();
-            setState((prev) => ({
-              ...prev,
-              view: "action",
-              actionResult: result.success
-                ? { success: true, message: "Daemon stopped" }
-                : { success: false, message: `Failed: ${result.error}` },
-            }));
-          }
+          setState((prev) => ({
+            ...prev,
+            view: "action",
+            actionResult: {
+              success: false,
+              message: "Gateway daemon not yet implemented",
+            },
+          }));
           break;
         }
 
@@ -208,42 +179,6 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
     );
   }
 
-  // Status view
-  if (view === "status") {
-    return (
-      <Box flexDirection="column">
-        <Header title="Daemon Status" />
-
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
-          <Box gap={1}>
-            <Text>Status:</Text>
-            <Text color={status.running ? "green" : "red"}>
-              {status.running ? `Running (PID: ${status.pid})` : "Stopped"}
-            </Text>
-          </Box>
-          <Box gap={1}>
-            <Text>Port:</Text>
-            <Text color="cyan">{status.port}</Text>
-          </Box>
-          <Box gap={1}>
-            <Text>Auto-start:</Text>
-            <Text color={status.startupEnabled ? "green" : "gray"}>
-              {status.startupEnabled ? "enabled" : "disabled"}
-            </Text>
-          </Box>
-          <Box gap={1}>
-            <Text>Log file:</Text>
-            <Text dimColor>{status.logFile}</Text>
-          </Box>
-        </Box>
-
-        <Box paddingX={1} marginTop={2}>
-          <Text dimColor>Press any key to go back...</Text>
-        </Box>
-      </Box>
-    );
-  }
-
   // Logs view
   if (view === "logs") {
     return (
@@ -315,6 +250,10 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
           <Text color={status.startupEnabled ? "green" : "gray"}>
             {status.startupEnabled ? "enabled" : "disabled"}
           </Text>
+        </Box>
+        <Box gap={1}>
+          <Text>Log file:</Text>
+          <Text dimColor>{status.logFile}</Text>
         </Box>
       </Box>
 

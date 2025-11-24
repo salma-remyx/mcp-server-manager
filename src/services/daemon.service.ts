@@ -91,7 +91,7 @@ export class DaemonService {
       env.MCPSM_SERVERS = selectedServers.join(",");
     }
 
-    const child: ChildProcess = spawn("node", [finalCliPath, "--daemon-mode"], {
+    const child: ChildProcess = spawn("node", [finalCliPath, "daemon", "start", "--foreground"], {
       detached: true,
       stdio: ["ignore", logStream, logStream],
       env,
@@ -178,7 +178,9 @@ export class DaemonService {
     <array>
         <string>${nodePath}</string>
         <string>${finalCliPath}</string>
-        <string>--daemon-mode</string>
+        <string>daemon</string>
+        <string>start</string>
+        <string>--foreground</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
@@ -211,7 +213,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=${nodePath} ${finalCliPath} --daemon-mode
+ExecStart=${nodePath} ${finalCliPath} daemon start --foreground
 Restart=always
 Environment=MCPSM_DAEMON=1
 

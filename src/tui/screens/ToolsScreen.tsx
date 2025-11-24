@@ -1,96 +1,83 @@
 /**
- * ToolsScreen - Manage tool filtering per server (ink component)
+ * ToolsScreen - Manage tool filtering for a specific server (ink component)
  */
 
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import { Header } from "../components/index.js";
 import { getConfigService } from "../../services/config.service.js";
-import type { LocalServer, RemoteServer, ServerToolFilter } from "../../types/index.js";
-
-type View = "servers" | "tools";
-
-interface ServerItem {
-  id: string;
-  filterId: string;
-  name: string;
-  type: "local" | "remote";
-  server: LocalServer | RemoteServer;
-}
+import type { ServerToolFilter } from "../../types/index.js";
 
 interface ToolsScreenProps {
   onBack: () => void;
+  initialServerId?: string; // Server to show tools for
 }
 
 interface ToolsState {
-  servers: ServerItem[];
-  currentServerIndex: number;
+  serverId: string;
+  serverName: string;
   filter: ServerToolFilter | null;
   tools: string[];
   currentToolIndex: number;
-  view: View;
   message: string | null;
   messageType: "success" | "error" | "info";
 }
 
-export function ToolsScreen({ onBack }: ToolsScreenProps): React.ReactElement {
+export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): React.ReactElement {
   const configService = getConfigService();
 
   const [state, setState] = useState<ToolsState>(() => {
     const localServers = configService.getLocalServers();
     const remoteServers = configService.getRemoteServers();
 
-    const servers: ServerItem[] = [
-      ...localServers.map((s) => ({
-        id: s.id,
-        filterId: s.id,
-        name: s.name,
-        type: "local" as const,
-        server: s,
-      })),
-      ...remoteServers.map((s) => ({
-        id: s.id,
-        filterId: `remote:${s.id}`,
-        name: s.name,
-        type: "remote" as const,
-        server: s,
-      })),
-    ];
+    // Find the server
+    let serverId = initialServerId || "";
+    let serverName = "";
 
-    // Load tools for first server
+    if (initialServerId?.startsWith("remote:")) {
+      const id = initialServerId.replace("remote:", "");
+      const server = remoteServers.find((s) => s.id === id);
+      if (server) {
+        serverId = initialServerId;
+        serverName = server.name;
+      }
+    } else if (initialServerId) {
+      const server = localServers.find((s) => s.id === initialServerId);
+      if (server) {
+        serverId = initialServerId;
+        serverName = server.name;
+      }
+    }
+
+    // Load tools for the server
     const toolFilters = configService.getToolFilters();
-    const firstServer = servers[0];
-    const filter = firstServer ? toolFilters[firstServer.filterId] || null : null;
+    const filter = serverId ? toolFilters[serverId] || null : null;
 
     return {
-      servers,
-      currentServerIndex: 0,
+      serverId,
+      serverName,
       filter,
       tools: filter?.allTools || [],
       currentToolIndex: 0,
-      view: "servers",
       message: null,
       messageType: "info",
     };
   });
 
-  // Load tools for current server
-  const loadServerTools = useCallback(
-    (serverIndex: number) => {
-      const server = state.servers[serverIndex];
-      if (!server) return;
-
+  // Reload tools from config
+  const reloadTools = useCallback(
+    (preserveIndex = false) => {
       const toolFilters = configService.getToolFilters();
-      const filter = toolFilters[server.filterId] || null;
+      const filter = state.serverId ? toolFilters[state.serverId] || null : null;
 
       setState((prev) => ({
         ...prev,
         filter,
         tools: filter?.allTools || [],
-        currentToolIndex: 0,
+        currentToolIndex: preserveIndex ? prev.currentToolIndex : 0,
       }));
     },
-    [state.servers, configService]
+    [state.serverId, configService]
   );
 
   // Show temporary message
@@ -106,114 +93,79 @@ export function ToolsScreen({ onBack }: ToolsScreenProps): React.ReactElement {
 
   // Handle keyboard input
   useInput((input, key) => {
-    const { servers, currentServerIndex, tools, currentToolIndex, view } = state;
+    const { serverId, tools, currentToolIndex } = state;
 
     // Quit / Back
     if (input === "q" || key.escape) {
-      if (view === "tools") {
-        setState((prev) => ({ ...prev, view: "servers" }));
-      } else {
-        onBack();
-      }
+      onBack();
       return;
     }
 
-    if (view === "servers") {
-      // Navigation - Up
-      if (key.upArrow && servers.length > 0) {
-        const newIndex = (currentServerIndex - 1 + servers.length) % servers.length;
-        setState((prev) => ({ ...prev, currentServerIndex: newIndex }));
-        loadServerTools(newIndex);
-        return;
-      }
+    // Navigation - Up
+    if (key.upArrow && tools.length > 0) {
+      setState((prev) => ({
+        ...prev,
+        currentToolIndex: (currentToolIndex - 1 + tools.length) % tools.length,
+      }));
+      return;
+    }
 
-      // Navigation - Down
-      if (key.downArrow && servers.length > 0) {
-        const newIndex = (currentServerIndex + 1) % servers.length;
-        setState((prev) => ({ ...prev, currentServerIndex: newIndex }));
-        loadServerTools(newIndex);
-        return;
-      }
+    // Navigation - Down
+    if (key.downArrow && tools.length > 0) {
+      setState((prev) => ({
+        ...prev,
+        currentToolIndex: (currentToolIndex + 1) % tools.length,
+      }));
+      return;
+    }
 
-      // View tools - Enter
-      if (key.return && state.tools.length > 0) {
-        setState((prev) => ({ ...prev, view: "tools", currentToolIndex: 0 }));
-        return;
-      }
+    // Toggle tool - Space
+    if (input === " " && tools.length > 0 && serverId) {
+      const tool = tools[currentToolIndex];
+      configService.toggleTool(serverId, tool);
+      reloadTools(true);
+      return;
+    }
 
-      // Reset filters - R
-      if (input.toLowerCase() === "r") {
-        const server = servers[currentServerIndex];
-        if (server) {
-          const result = configService.resetToolFilters(server.filterId);
-          if (result.success) {
-            showMessage("Filters reset", "success");
-            loadServerTools(currentServerIndex);
-          } else {
-            showMessage(result.error || "Failed to reset", "error");
-          }
-        }
-        return;
-      }
-    } else {
-      // Tools view
-      const server = servers[currentServerIndex];
+    // Enable all - A
+    if (input.toLowerCase() === "a" && tools.length > 0 && serverId) {
+      configService.enableAllTools(serverId);
+      reloadTools();
+      showMessage("All tools enabled", "success");
+      return;
+    }
 
-      // Navigation - Up
-      if (key.upArrow && tools.length > 0) {
-        setState((prev) => ({
-          ...prev,
-          currentToolIndex: (currentToolIndex - 1 + tools.length) % tools.length,
-        }));
-        return;
-      }
+    // Disable all - N
+    if (input.toLowerCase() === "n" && tools.length > 0 && serverId) {
+      configService.disableAllTools(serverId);
+      reloadTools();
+      showMessage("All tools disabled", "success");
+      return;
+    }
 
-      // Navigation - Down
-      if (key.downArrow && tools.length > 0) {
-        setState((prev) => ({
-          ...prev,
-          currentToolIndex: (currentToolIndex + 1) % tools.length,
-        }));
-        return;
+    // Reset filters - R
+    if (input.toLowerCase() === "r" && serverId) {
+      const result = configService.resetToolFilters(serverId);
+      if (result.success) {
+        showMessage("Filters reset", "success");
+        reloadTools();
+      } else {
+        showMessage(result.error || "Failed to reset", "error");
       }
-
-      // Toggle tool - Space
-      if (input === " " && tools.length > 0 && server) {
-        const tool = tools[currentToolIndex];
-        configService.toggleTool(server.filterId, tool);
-        loadServerTools(currentServerIndex);
-        return;
-      }
-
-      // Enable all - A
-      if (input.toLowerCase() === "a" && tools.length > 0 && server) {
-        configService.enableAllTools(server.filterId);
-        loadServerTools(currentServerIndex);
-        showMessage("All tools enabled", "success");
-        return;
-      }
-
-      // Disable all - N
-      if (input.toLowerCase() === "n" && tools.length > 0 && server) {
-        configService.disableAllTools(server.filterId);
-        loadServerTools(currentServerIndex);
-        showMessage("All tools disabled", "success");
-        return;
-      }
+      return;
     }
   });
 
-  const { servers, currentServerIndex, tools, currentToolIndex, view, filter, message, messageType } =
-    state;
-  const toolFilters = configService.getToolFilters();
+  const { serverName, tools, currentToolIndex, filter, message, messageType } = state;
+  const disabledTools = new Set(filter?.disabledTools || []);
 
-  // No servers configured
-  if (servers.length === 0) {
+  // No server selected
+  if (!state.serverId) {
     return (
       <Box flexDirection="column">
         <Header title="Tool Filters" />
         <Box paddingX={1} marginTop={1}>
-          <Text dimColor>No servers configured.</Text>
+          <Text dimColor>No server selected.</Text>
         </Box>
         <Box paddingX={1} marginTop={1}>
           <Text dimColor>Press Q or ESC to go back</Text>
@@ -222,82 +174,9 @@ export function ToolsScreen({ onBack }: ToolsScreenProps): React.ReactElement {
     );
   }
 
-  // Servers view
-  if (view === "servers") {
-    return (
-      <Box flexDirection="column">
-        <Header title="Tool Filters" />
-
-        <Box paddingX={1} marginTop={1}>
-          <Text dimColor>Select a server to manage its tools</Text>
-        </Box>
-
-        {/* Message */}
-        {message && (
-          <Box paddingX={1} marginTop={1}>
-            <Text
-              color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}
-            >
-              {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
-            </Text>
-          </Box>
-        )}
-
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
-          {servers.map((server, idx) => {
-            const isCurrent = idx === currentServerIndex;
-            const serverFilter = toolFilters[server.filterId];
-            const totalTools = serverFilter?.allTools?.length || 0;
-            const disabledCount = serverFilter?.disabledTools?.length || 0;
-            const enabledCount = totalTools - disabledCount;
-
-            const typeLabel =
-              server.type === "remote" ? ` (${(server.server as RemoteServer).type})` : "";
-
-            let toolsInfo: string;
-            let toolsColor: string;
-            if (totalTools === 0) {
-              toolsInfo = "no tools discovered";
-              toolsColor = "gray";
-            } else if (disabledCount === 0) {
-              toolsInfo = `${enabledCount}/${totalTools} tools enabled`;
-              toolsColor = "green";
-            } else {
-              toolsInfo = `${enabledCount}/${totalTools} tools enabled`;
-              toolsColor = "yellow";
-            }
-
-            return (
-              <Box key={server.id} flexDirection="column" marginBottom={1}>
-                <Box gap={1}>
-                  <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                  <Text color={isCurrent ? "cyan" : undefined} bold={isCurrent}>
-                    {server.name}
-                  </Text>
-                  <Text dimColor>{typeLabel}</Text>
-                </Box>
-                <Box marginLeft={4}>
-                  <Text color={toolsColor as "gray" | "green" | "yellow"}>{toolsInfo}</Text>
-                </Box>
-              </Box>
-            );
-          })}
-        </Box>
-
-        <Box paddingX={1} marginTop={1}>
-          <Text dimColor>↑/↓ Navigate ENTER View tools R Reset filters Q Back</Text>
-        </Box>
-      </Box>
-    );
-  }
-
-  // Tools view
-  const currentServer = servers[currentServerIndex];
-  const disabledTools = new Set(filter?.disabledTools || []);
-
   return (
     <Box flexDirection="column">
-      <Header title={`Tools: ${currentServer?.name || ""}`} />
+      <Header title={`Tools: ${serverName}`} />
 
       {/* Message */}
       {message && (
@@ -314,7 +193,7 @@ export function ToolsScreen({ onBack }: ToolsScreenProps): React.ReactElement {
         {tools.length === 0 ? (
           <Box flexDirection="column">
             <Text dimColor>No tools discovered for this server.</Text>
-            <Text dimColor>Run a test to discover tools.</Text>
+            <Text dimColor>Run a test (X) to discover tools.</Text>
           </Box>
         ) : (
           tools.map((tool, idx) => {
@@ -335,7 +214,7 @@ export function ToolsScreen({ onBack }: ToolsScreenProps): React.ReactElement {
       </Box>
 
       <Box paddingX={1} marginTop={1}>
-        <Text dimColor>↑/↓ Navigate SPACE Toggle A Enable all N Disable all ESC Back</Text>
+        <Text dimColor>↑/↓ Navigate SPACE Toggle A Enable all N Disable all R Reset Q Back</Text>
       </Box>
     </Box>
   );
