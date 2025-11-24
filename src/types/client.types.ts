@@ -24,6 +24,9 @@ export type ClientPathsConfig = Record<ClientId, ClientPaths>;
 /** Client display names */
 export type ClientNames = Record<ClientId, string>;
 
+/** Connection status for a client */
+export type ClientStatus = "connected" | "disconnected" | "not-installed";
+
 /** Detected client information */
 export interface DetectedClient {
   /** Client identifier */
@@ -36,18 +39,10 @@ export interface DetectedClient {
   installed: boolean;
   /** Whether client has config file */
   hasConfig: boolean;
-  /** Whether sync is enabled for this client */
-  enabled: boolean;
-  /** Whether servers are synced */
-  synced: boolean;
+  /** Connection status (connected/disconnected/not-installed) */
+  status: ClientStatus;
   /** Number of MCP servers in client config */
   serverCount: number;
-}
-
-/** Client sync state */
-export interface ClientsState {
-  /** List of enabled client IDs */
-  enabledClients: ClientId[];
 }
 
 /** Claude Desktop server format */
@@ -61,20 +56,6 @@ export interface ClaudeServerConfig {
 export interface ClientMcpConfig {
   mcpServers?: Record<string, ClaudeServerConfig>;
   [key: string]: unknown;
-}
-
-/** Sync result for a single client */
-export interface SyncResult {
-  success: boolean;
-  addedCount?: number;
-  skippedCount?: number;
-  error?: string | null;
-}
-
-/** Sync result with client info */
-export interface ClientSyncResult extends SyncResult {
-  clientId: ClientId;
-  clientName: string;
 }
 
 /** Operation result */

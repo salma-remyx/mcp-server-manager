@@ -13,11 +13,9 @@ import type {
   ClientPathsConfig,
   ClientNames,
   DetectedClient,
-  ClientsState,
+  ClientStatus,
   ClientMcpConfig,
   ClaudeServerConfig,
-  SyncResult,
-  ClientSyncResult,
   OperationResult,
   LocalServer,
   RemoteServer,
@@ -91,34 +89,13 @@ const CLIENT_NAMES: ClientNames = {
 
 /** Client service class */
 export class ClientService {
-  private clientsStatePath: string;
-
   constructor() {
-    const configService = getConfigService();
-    this.clientsStatePath = configService.getPaths().clientsStatePath;
+    // No initialization needed after removing state management
   }
 
   /** Get current platform */
   private getPlatform(): Platform {
     return process.platform as Platform;
-  }
-
-  /** Load clients state */
-  private loadState(): ClientsState {
-    try {
-      if (fs.existsSync(this.clientsStatePath)) {
-        const data = fs.readFileSync(this.clientsStatePath, "utf8");
-        return JSON.parse(data) as ClientsState;
-      }
-    } catch (error) {
-      log.debug("Failed to load clients state:", error);
-    }
-    return { enabledClients: [] };
-  }
-
-  /** Save clients state */
-  private saveState(state: ClientsState): void {
-    fs.writeFileSync(this.clientsStatePath, JSON.stringify(state, null, 2));
   }
 
   /** Get config path for a client on current platform */
@@ -299,24 +276,30 @@ export class ClientService {
   /** Detect all installed clients */
   detectClients(): DetectedClient[] {
     const configService = getConfigService();
-    const state = this.loadState();
     const clients: DetectedClient[] = [];
 
     for (const clientId of this.getSupportedClients()) {
       const configPath = this.getClientConfigPath(clientId);
       const installed = this.isClientInstalled(clientId);
       const currentConfig = this.readClientConfig(clientId);
-      const enabled = state.enabledClients?.includes(clientId) || false;
 
-      // Check if synced with our servers
-      let synced = false;
-      if (currentConfig?.mcpServers) {
-        const ourServerIds = [
-          ...configService.getEnabledLocalServers().map((s) => s.id),
-          ...configService.getEnabledRemoteServers().map((s) => s.id),
-        ];
-        const clientServerIds = Object.keys(currentConfig.mcpServers);
-        synced = ourServerIds.every((id) => clientServerIds.includes(id));
+      // Determine connection status
+      let status: ClientStatus;
+      if (!installed) {
+        status = "not-installed";
+      } else {
+        // Check if connected (has our servers)
+        let connected = false;
+        if (currentConfig?.mcpServers) {
+          const ourServerIds = [
+            ...configService.getEnabledLocalServers().map((s) => s.id),
+            ...configService.getEnabledRemoteServers().map((s) => s.id),
+          ];
+          const clientServerIds = Object.keys(currentConfig.mcpServers);
+          connected =
+            ourServerIds.length > 0 && ourServerIds.every((id) => clientServerIds.includes(id));
+        }
+        status = connected ? "connected" : "disconnected";
       }
 
       clients.push({
@@ -325,8 +308,7 @@ export class ClientService {
         configPath,
         installed,
         hasConfig: !!currentConfig,
-        enabled,
-        synced,
+        status,
         serverCount: currentConfig?.mcpServers ? Object.keys(currentConfig.mcpServers).length : 0,
       });
     }
@@ -334,8 +316,8 @@ export class ClientService {
     return clients;
   }
 
-  /** Sync servers to a specific client */
-  syncToClient(clientId: ClientId): SyncResult {
+  /** Connect servers to a specific client (add our servers to client config) */
+  connectClient(clientId: ClientId): OperationResult {
     const configPath = this.getClientConfigPath(clientId);
     if (!configPath) {
       return { success: false, error: "Unknown client" };
@@ -355,14 +337,10 @@ export class ClientService {
       clientConfig.mcpServers = {};
     }
 
-    let addedCount = 0;
-    let skippedCount = 0;
-
     // Add local servers
     for (const server of configService.getEnabledLocalServers()) {
       const formatted = this.localServerToClaudeFormat(server);
       clientConfig.mcpServers[server.id] = formatted;
-      addedCount++;
     }
 
     // Add remote servers
@@ -370,9 +348,6 @@ export class ClientService {
       const formatted = this.remoteServerToClaudeFormat(server);
       if (formatted) {
         clientConfig.mcpServers[server.id] = formatted;
-        addedCount++;
-      } else {
-        skippedCount++;
       }
     }
 
@@ -381,63 +356,66 @@ export class ClientService {
 
     return {
       success,
-      addedCount,
-      skippedCount,
-      error: success ? null : "Failed to write config",
+      error: success ? undefined : "Failed to write config",
     };
   }
 
-  /** Sync servers to all enabled clients */
-  syncToAllClients(): ClientSyncResult[] {
-    const state = this.loadState();
-    const results: ClientSyncResult[] = [];
-
-    for (const clientId of state.enabledClients || []) {
-      const result = this.syncToClient(clientId);
-      results.push({
-        clientId,
-        clientName: CLIENT_NAMES[clientId] || clientId,
-        ...result,
-      });
-    }
-
-    return results;
-  }
-
-  /** Enable sync for a client */
-  enableClient(clientId: ClientId): OperationResult {
-    if (!CLIENT_PATHS[clientId]) {
+  /** Disconnect servers from a specific client (remove our servers from client config) */
+  disconnectClient(clientId: ClientId): OperationResult {
+    const configPath = this.getClientConfigPath(clientId);
+    if (!configPath) {
       return { success: false, error: "Unknown client" };
     }
 
-    const state = this.loadState();
-    if (!state.enabledClients) {
-      state.enabledClients = [];
+    const currentConfig = this.readClientConfig(clientId);
+    if (!currentConfig?.mcpServers) {
+      return { success: true }; // Already disconnected
     }
 
-    if (!state.enabledClients.includes(clientId)) {
-      state.enabledClients.push(clientId);
-      this.saveState(state);
+    const configService = getConfigService();
+
+    // Get our server IDs
+    const ourServerIds = [
+      ...configService.getEnabledLocalServers().map((s) => s.id),
+      ...configService.getEnabledRemoteServers().map((s) => s.id),
+    ];
+
+    // Remove our servers from client config
+    for (const serverId of ourServerIds) {
+      delete currentConfig.mcpServers[serverId];
     }
 
-    return { success: true };
+    // Write config
+    const success = this.writeClientConfig(clientId, currentConfig);
+
+    return {
+      success,
+      error: success ? undefined : "Failed to write config",
+    };
   }
 
-  /** Disable sync for a client */
-  disableClient(clientId: ClientId): OperationResult {
-    const state = this.loadState();
-    if (state.enabledClients) {
-      state.enabledClients = state.enabledClients.filter((id) => id !== clientId);
-      this.saveState(state);
+  /** Get connection status for a client */
+  getConnectionStatus(clientId: ClientId): ClientStatus {
+    const installed = this.isClientInstalled(clientId);
+    if (!installed) {
+      return "not-installed";
     }
 
-    return { success: true };
-  }
+    const currentConfig = this.readClientConfig(clientId);
+    const configService = getConfigService();
 
-  /** Get enabled clients */
-  getEnabledClients(): ClientId[] {
-    const state = this.loadState();
-    return state.enabledClients || [];
+    if (currentConfig?.mcpServers) {
+      const ourServerIds = [
+        ...configService.getEnabledLocalServers().map((s) => s.id),
+        ...configService.getEnabledRemoteServers().map((s) => s.id),
+      ];
+      const clientServerIds = Object.keys(currentConfig.mcpServers);
+      const connected =
+        ourServerIds.length > 0 && ourServerIds.every((id) => clientServerIds.includes(id));
+      return connected ? "connected" : "disconnected";
+    }
+
+    return "disconnected";
   }
 
   /** Open client config in editor */

@@ -1,5 +1,5 @@
 /**
- * ClientsScreen - Manage MCP client sync (ink component)
+ * ClientsScreen - Manage MCP client connections (ink component)
  */
 
 import React, { useState, useCallback } from "react";
@@ -13,18 +13,10 @@ interface ClientsScreenProps {
   onBack: () => void;
 }
 
-interface SyncResult {
-  clientName: string;
-  success: boolean;
-  addedCount?: number;
-  error?: string | null;
-}
-
 interface ClientsState {
   clients: DetectedClient[];
   currentIndex: number;
-  syncing: boolean;
-  syncResults: SyncResult[] | null;
+  connecting: boolean;
   message: string | null;
   messageType: "success" | "error" | "info";
 }
@@ -35,13 +27,12 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
   const [state, setState] = useState<ClientsState>({
     clients: clientService.detectClients(),
     currentIndex: 0,
-    syncing: false,
-    syncResults: null,
+    connecting: false,
     message: null,
     messageType: "info",
   });
 
-  // Show temporary message (will be used for error handling)
+  // Show temporary message
   const showMessage = useCallback(
     (msg: string, type: "success" | "error" | "info" = "info") => {
       setState((prev) => ({ ...prev, message: msg, messageType: type }));
@@ -54,32 +45,40 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
   // Keep reference to avoid unused warning
   void showMessage;
 
-  // Handle sync all
-  const handleSyncAll = useCallback(async () => {
-    setState((prev) => ({ ...prev, syncing: true, syncResults: null }));
+  // Handle connect/disconnect toggle
+  const handleToggleConnection = useCallback(async () => {
+    const { clients, currentIndex, connecting } = state;
+    if (connecting || clients.length === 0) return;
 
-    const results = clientService.syncToAllClients();
+    const client = clients[currentIndex];
+    if (client.status === "not-installed") return;
+
+    setState((prev) => ({ ...prev, connecting: true }));
+
+    const result =
+      client.status === "connected"
+        ? clientService.disconnectClient(client.id)
+        : clientService.connectClient(client.id);
 
     setState((prev) => ({
       ...prev,
-      syncing: false,
-      syncResults: results,
+      connecting: false,
       clients: clientService.detectClients(),
+      message: result.success
+        ? client.status === "connected"
+          ? "Disconnected successfully"
+          : "Connected successfully"
+        : `Failed: ${result.error}`,
+      messageType: result.success ? "success" : "error",
     }));
-  }, [clientService]);
+  }, [state, clientService]);
 
   // Handle keyboard input
   useInput((input, key) => {
-    const { clients, currentIndex, syncing, syncResults } = state;
+    const { clients, currentIndex, connecting } = state;
 
-    // If showing sync results, any key clears
-    if (syncResults !== null && !syncing) {
-      setState((prev) => ({ ...prev, syncResults: null }));
-      return;
-    }
-
-    // Don't process input while syncing
-    if (syncing) return;
+    // Don't process input while connecting
+    if (connecting) return;
 
     // Quit
     if (input === "q" || key.escape) {
@@ -105,61 +104,17 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
       return;
     }
 
-    // Toggle sync - Space
-    if (input === " " && clients.length > 0) {
-      const client = clients[currentIndex];
-      if (client.enabled) {
-        clientService.disableClient(client.id);
-      } else {
-        clientService.enableClient(client.id);
-      }
-      setState((prev) => ({
-        ...prev,
-        clients: clientService.detectClients(),
-      }));
-      return;
-    }
-
-    // Sync all - S
-    if (input.toLowerCase() === "s") {
-      handleSyncAll();
+    // Connect/Disconnect - Enter
+    if (key.return && clients.length > 0) {
+      handleToggleConnection();
       return;
     }
   });
 
-  const { clients, currentIndex, syncing, syncResults, message, messageType } = state;
+  const { clients, currentIndex, connecting, message, messageType } = state;
 
-  // Show sync results overlay
-  if (syncResults !== null) {
-    return (
-      <Box flexDirection="column">
-        <Header title="Sync Results" />
-
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
-          {syncResults.length === 0 ? (
-            <Text color="yellow">No clients enabled for sync.</Text>
-          ) : (
-            syncResults.map((result, idx) => (
-              <Box key={idx} gap={1}>
-                <Text color={result.success ? "green" : "red"}>{result.success ? "✓" : "✗"}</Text>
-                <Text>{result.clientName}:</Text>
-                <Text color={result.success ? "green" : "red"}>
-                  {result.success ? `${result.addedCount} servers` : result.error}
-                </Text>
-              </Box>
-            ))
-          )}
-        </Box>
-
-        <Box paddingX={1} marginTop={2}>
-          <Text dimColor>Press any key to continue...</Text>
-        </Box>
-      </Box>
-    );
-  }
-
-  // Show syncing spinner
-  if (syncing) {
+  // Show connecting spinner
+  if (connecting) {
     return (
       <Box flexDirection="column">
         <Header title="MCP Clients" />
@@ -168,7 +123,7 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
           <Text color="cyan">
             <Spinner type="dots" />
           </Text>
-          <Text>Syncing to clients...</Text>
+          <Text>Updating client connection...</Text>
         </Box>
       </Box>
     );
@@ -196,36 +151,23 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
           clients.map((client, idx) => {
             const isCurrent = idx === currentIndex;
 
-            // Status icon
+            // Status icon and color based on connection status
             let statusIcon: string;
             let statusColor: "green" | "yellow" | "gray";
-            if (client.installed) {
-              if (client.synced) {
-                statusIcon = "✔";
-                statusColor = "green";
-              } else {
-                statusIcon = "○";
-                statusColor = "yellow";
-              }
+            let statusText: string;
+
+            if (client.status === "connected") {
+              statusIcon = "✔";
+              statusColor = "green";
+              statusText = "connected";
+            } else if (client.status === "disconnected") {
+              statusIcon = "○";
+              statusColor = "yellow";
+              statusText = "disconnected";
             } else {
               statusIcon = "✗";
               statusColor = "gray";
-            }
-
-            // Install status
-            let installStatus: string;
-            let installColor: "green" | "yellow" | "gray";
-            if (client.installed) {
-              if (client.hasConfig) {
-                installStatus = "configured";
-                installColor = "green";
-              } else {
-                installStatus = "installed";
-                installColor = "yellow";
-              }
-            } else {
-              installStatus = "not installed";
-              installColor = "gray";
+              statusText = "not installed";
             }
 
             return (
@@ -239,17 +181,14 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
                   <Text dimColor>[{client.id}]</Text>
                 </Box>
                 <Box marginLeft={5} gap={1}>
-                  <Text color={installColor}>{installStatus}</Text>
-                  <Text dimColor>|</Text>
-                  <Text color={client.enabled ? "green" : "gray"}>
-                    sync {client.enabled ? "ON" : "OFF"}
-                  </Text>
+                  <Text color={statusColor}>{statusText}</Text>
+                  {client.serverCount > 0 && (
+                    <>
+                      <Text dimColor>|</Text>
+                      <Text dimColor>{client.serverCount} servers</Text>
+                    </>
+                  )}
                 </Box>
-                {client.hasConfig && (
-                  <Box marginLeft={5}>
-                    <Text dimColor>{client.serverCount} servers</Text>
-                  </Box>
-                )}
               </Box>
             );
           })
@@ -257,7 +196,7 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
       </Box>
 
       <Box paddingX={1} marginTop={1}>
-        <Text dimColor>↑/↓ Navigate SPACE Toggle sync S Sync all Q Back</Text>
+        <Text dimColor>↑/↓ Navigate ENTER Connect/Disconnect Q Back</Text>
       </Box>
     </Box>
   );
