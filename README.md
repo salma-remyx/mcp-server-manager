@@ -9,53 +9,59 @@
 [![Node.js](https://img.shields.io/badge/Node.js->=18-green)](https://nodejs.org)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/MateusTorquato/mcp-server-manager/pulls)
 
-[📖 Docs](https://mateustorquato.github.io/mcp-server-manager/docs/) •
-[🚀 Quick Start](#quick-start) •
-[⚙️ Installation](#installation) •
-[🌐 Website](https://mateustorquato.github.io/mcp-server-manager/)
+**[Documentation](https://mateustorquato.github.io/mcp-server-manager/docs/) • [Quick Start](#quick-start) • [GitHub](https://github.com/MateusTorquato/mcp-server-manager)**
 
 </div>
 
 ---
 
-## Why MCP Server Manager?
+## The Problem
 
-Managing MCP servers across multiple AI clients (Claude Desktop, Cursor, Windsurf, etc.) is painful:
+Managing MCP servers across multiple AI clients (Claude Desktop, Cursor, Windsurf, VS Code) is fragmented and tedious:
 
-- **Scattered configs** - Each client has its own config file in different locations
-- **Manual sync** - Adding a server means editing multiple JSON files
-- **No visibility** - Hard to know which servers are working or failing
-- **No testing** - Can't easily verify servers before using them
+- 🔧 **Scattered configs** - Each client has its own config file in different locations
+- 🔄 **Manual sync** - Adding a server means manually editing multiple JSON files
+- 👁️ **No visibility** - Hard to know which servers are working or failing
+- 🧪 **No testing** - Can't easily verify servers before using them in your workflow
 
-**MCP Server Manager** solves all of this with a single CLI tool.
+This friction slows down development and makes server management error-prone.
+
+## The Solution
+
+**MCP Server Manager** is a unified CLI tool that centralizes MCP server management with a single gateway pattern. Add servers once, connect your clients, and everything stays in sync automatically.
 
 ---
 
-## Features
+## Key Features
 
-| Feature               | Description                                               |
-| --------------------- | --------------------------------------------------------- |
-| **Interactive TUI**   | Beautiful terminal UI for managing servers                |
-| **Client gateway**    | Single mcpsm gateway server proxies to all MCP servers    |
-| **Auto port sync**    | Automatically updates all clients when port changes       |
-| **Real-time loading** | Clients like Cursor/Windsurf load configs without restart |
-| **Server testing**    | Test servers in parallel before using them                |
-| **Import/Export**     | Migrate configs between machines or clients               |
-| **Profiles**          | Group servers by project or context                       |
-| **Daemon mode**       | Run gateway in background with auto-start                 |
-| **OAuth support**     | Built-in OAuth flow with PKCE for remote servers          |
-| **Token counting**    | Track context usage per server and tool                   |
+### Core Functionality
+
+- **🎯 Gateway Pattern** - Single `mcpsm` gateway server proxies to all MCP servers across all clients
+- **🎨 Interactive TUI** - Beautiful, intuitive terminal UI with keyboard shortcuts for all operations
+- **⚡ Automatic Sync** - Connected clients stay in sync automatically; change port once, update everywhere
+- **🧪 Built-in Testing** - Test servers in parallel before using them in your workflow
+- **📊 Token Tracking** - Monitor context usage per server and per tool
+
+### Advanced Features
+
+- **🔌 Real-time Loading** - Clients like Cursor/Windsurf load new configs without restart
+- **📦 Import/Export** - Migrate configurations between machines and clients
+- **📋 Profiles** - Group servers by project or development context
+- **🛠️ Daemon Mode** - Run the gateway in the background with auto-start support
+- **🔐 OAuth Support** - Built-in OAuth flow with PKCE for secure remote server authentication
 
 ---
 
 ## 📚 Documentation
 
-Complete guides and references available at **[mateustorquato.github.io/mcp-server-manager/docs/](https://mateustorquato.github.io/mcp-server-manager/docs/)**
+Full documentation is available at **[mateustorquato.github.io/mcp-server-manager/docs/](https://mateustorquato.github.io/mcp-server-manager/docs/)**
 
-- **[Getting Started](https://mateustorquato.github.io/mcp-server-manager/docs/#/getting-started/installation)** - Installation and setup guide
-- **[TUI Guide](https://mateustorquato.github.io/mcp-server-manager/docs/#/tui/main-menu)** - Complete guide to the terminal user interface
-- **[CLI Commands](https://mateustorquato.github.io/mcp-server-manager/docs/#/cli/servers)** - Detailed command reference
-- **[Troubleshooting](https://mateustorquato.github.io/mcp-server-manager/docs/#/guides/troubleshooting)** - Common issues and solutions
+- **[Getting Started](https://mateustorquato.github.io/mcp-server-manager/docs/)** - Installation, setup, and first steps
+- **[Architecture](https://mateustorquato.github.io/mcp-server-manager/docs/)** - How the gateway pattern works
+- **[TUI Guide](https://mateustorquato.github.io/mcp-server-manager/docs/)** - Terminal UI navigation and shortcuts
+- **[CLI Reference](https://mateustorquato.github.io/mcp-server-manager/docs/)** - All available commands and options
+- **[Client Setup](https://mateustorquato.github.io/mcp-server-manager/docs/)** - Connect Claude, Cursor, Windsurf, VS Code
+- **[Troubleshooting](https://mateustorquato.github.io/mcp-server-manager/docs/)** - Common issues and solutions
 
 ---
 
@@ -151,24 +157,28 @@ mcpsm clients connect cursor
 
 For the complete list of commands and options, see the [full documentation](https://mateustorquato.github.io/mcp-server-manager/docs/).
 
-### How Client Connection Works
+### How the Gateway Pattern Works
 
-Instead of syncing individual servers to each client, MCP Server Manager uses a **gateway pattern**:
+Instead of syncing individual servers to each client config, MCP Server Manager uses an elegant **gateway pattern**:
 
-1. **Connect a client**: `mcpsm clients connect <client-name>`
-   - A single `mcpsm` server is added to the client's config
-   - This server uses `supergateway` to proxy requests to the daemon
+```
+┌─ Claude Desktop
+├─ Cursor           } All connect to a single "mcpsm" gateway server
+├─ Windsurf         } The gateway proxies requests to your MCP servers
+└─ VS Code
+```
 
-2. **Add your servers normally**: `mcpsm add myserver`
-   - Add servers in the usual way through the TUI or CLI
-   - All connected clients automatically have access through the gateway
+**One-time setup:**
 
-3. **Change port automatically**: Update port in Settings (TUI) or `mcpsm port <number>`
-   - All connected clients are automatically updated
-   - No need to manually edit client configs
+1. Connect each client: `mcpsm clients connect claude` (adds mcpsm server to their config)
+2. Add your servers normally: `mcpsm add myserver` (just like before)
 
-4. **Disconnect when needed**: `mcpsm clients disconnect <client-name>`
-   - Removes the mcpsm gateway server from the client's config
+**Benefits:**
+
+- ✅ All clients have access to all servers automatically
+- ✅ Change the port once, all clients update instantly
+- ✅ Add new servers once, they appear in all clients
+- ✅ No manual syncing needed
 
 ---
 
