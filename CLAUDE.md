@@ -6,6 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MCP Server Manager (`mcpsm`) is a CLI tool for managing MCP (Model Context Protocol) servers across multiple AI clients (Claude Desktop, Cursor, Windsurf, VS Code, etc.). It provides both an interactive TUI and CLI commands for server management, testing, client syncing, and daemon control.
 
+### Client Connection Model
+
+The system uses a **gateway pattern** for client connections:
+
+- A single `mcpsm` server is added to each connected client's configuration
+- This server uses `mcp-proxy` to proxy all MCP requests to the daemon on `localhost:{port}/mcp`
+- When the port setting is changed, all connected clients are automatically updated
+- Supports real-time config loading for clients without restart (Cursor, Windsurf, VS Code)
+
 ## Development Commands
 
 ```bash
@@ -104,9 +113,20 @@ All business logic is encapsulated in singleton services:
 
 - `config.json` - Server configurations (local STDIO + remote HTTP/SSE)
 - `tool-filters.json` - Per-server tool enable/disable settings
-- `settings.json` - App settings
+- `settings.json` - App settings (includes port configuration)
 - `profiles.json` - Profile definitions
-- `clients.json` - Client sync state
+
+### Client Configuration Files
+
+Each client has its own config location where the `mcpsm` gateway server is registered:
+
+- **Claude Desktop**: `~/.claude/claude_desktop_config.json`
+- **Cursor**: `~/.cursor/globalStorage/cursor.mcp/config.json` (with real-time: `~/.cursor/mcp.json`)
+- **Windsurf**: `~/.config/Windsurf/User/globalStorage/windsurf.mcp/config.json` (with real-time: `~/.windsurf/mcp.json`)
+- **VS Code (Continue)**: `~/.continue/config.json` (with real-time: `~/.continue/mcp.json`)
+- **Claude Code**: `~/.claude/claude_code_config.json`
+- **Codex CLI**: `~/.codex/config.toml`
+- **Gemini CLI**: `~/.gemini/settings.json`
 
 ## Important: TUI + CLI Parity
 
@@ -171,7 +191,7 @@ mcpsm edit <server>                Edit server
 mcpsm test [server]                Test server(s)
 mcpsm enable <server>              Enable server
 mcpsm disable <server>             Disable server
-mcpsm clients [list|sync|enable|disable|open]
+mcpsm clients [list|connect|disconnect|open]
 mcpsm profile [list|create|delete|use|add|remove]
 mcpsm settings [list|get|set|reset]
 mcpsm tools [list|discover|enable|disable]
@@ -180,3 +200,48 @@ mcpsm config [--path|--dir]        Open/show config
 mcpsm tokens [-d] [--json]         Token usage
 mcpsm port [number]                Get/set port
 ```
+
+### Client Commands Details
+
+- `mcpsm clients list` - Show all detected clients and their connection status (connected/disconnected/not-installed)
+- `mcpsm clients connect <client>` - Connect a client by adding the mcpsm gateway server to its config
+- `mcpsm clients disconnect <client>` - Disconnect a client by removing the mcpsm gateway server
+- `mcpsm clients open <client>` - Open client config file in default editor
+
+## TUI Keybindings
+
+Main screen keyboard shortcuts:
+
+### Navigation
+
+- `↑/↓` - Move between servers
+- `Space` - Select/deselect server
+- `Enter` - Manage selected servers (open Daemon Management screen)
+- `Q` - Quit
+
+### Server Operations
+
+- `A` - Add new server
+- `E` - Edit server (remote servers only)
+- `D` - Delete server
+- `N` - Toggle server enabled/disabled
+- `X` - Test all servers
+
+### Views/Screens
+
+- `T` - Tools screen (manage tool filters)
+- `C` - Clients screen (connect/disconnect clients)
+- `F` - Profiles screen (manage server profiles)
+- `G` - Settings screen (configure port, theme, etc.)
+- `I` - Import/Export screen
+
+### System
+
+- `H` - Doctor screen (health check)
+- `K` - Tokens screen (view token usage)
+
+### Important Notes on Port Changes
+
+- When port is changed in Settings (G), all connected clients are **automatically updated**
+- The system reconnects each client to ensure the new port is used
+- No client restart required for real-time loading clients (Cursor, Windsurf, VS Code)

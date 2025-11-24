@@ -33,16 +33,18 @@ Managing MCP servers across multiple AI clients (Claude Desktop, Cursor, Windsur
 
 ## Features
 
-| Feature               | Description                                                 |
-| --------------------- | ----------------------------------------------------------- |
-| **Interactive TUI**   | Beautiful terminal UI for managing servers                  |
-| **Multi-client sync** | Sync servers to Claude, Cursor, Windsurf, VS Code, and more |
-| **Server testing**    | Test servers in parallel before using them                  |
-| **Import/Export**     | Migrate configs between machines or clients                 |
-| **Profiles**          | Group servers by project or context                         |
-| **Daemon mode**       | Run gateway in background with auto-start                   |
-| **OAuth support**     | Built-in OAuth flow with PKCE for remote servers            |
-| **Token counting**    | Track context usage per server and tool                     |
+| Feature               | Description                                               |
+| --------------------- | --------------------------------------------------------- |
+| **Interactive TUI**   | Beautiful terminal UI for managing servers                |
+| **Client gateway**    | Single mcpsm gateway server proxies to all MCP servers    |
+| **Auto port sync**    | Automatically updates all clients when port changes       |
+| **Real-time loading** | Clients like Cursor/Windsurf load configs without restart |
+| **Server testing**    | Test servers in parallel before using them                |
+| **Import/Export**     | Migrate configs between machines or clients               |
+| **Profiles**          | Group servers by project or context                       |
+| **Daemon mode**       | Run gateway in background with auto-start                 |
+| **OAuth support**     | Built-in OAuth flow with PKCE for remote servers          |
+| **Token counting**    | Track context usage per server and tool                   |
 
 ---
 
@@ -80,11 +82,31 @@ mcpsm add myserver
 # Test all servers
 mcpsm test
 
-# Sync to clients
-mcpsm clients sync
+# Connect clients (automatic gateway setup)
+mcpsm clients connect claude
+mcpsm clients connect cursor
 ```
 
 For the complete list of commands and options, see the [full documentation](https://mateustorquato.github.io/mcp-server-manager/docs/).
+
+### How Client Connection Works
+
+Instead of syncing individual servers to each client, MCP Server Manager uses a **gateway pattern**:
+
+1. **Connect a client**: `mcpsm clients connect <client-name>`
+   - A single `mcpsm` server is added to the client's config
+   - This server uses `mcp-proxy` to proxy requests to the daemon
+
+2. **Add your servers normally**: `mcpsm add myserver`
+   - Add servers in the usual way through the TUI or CLI
+   - All connected clients automatically have access through the gateway
+
+3. **Change port automatically**: Update port in Settings (TUI) or `mcpsm port <number>`
+   - All connected clients are automatically updated
+   - No need to manually edit client configs
+
+4. **Disconnect when needed**: `mcpsm clients disconnect <client-name>`
+   - Removes the mcpsm gateway server from the client's config
 
 ---
 
