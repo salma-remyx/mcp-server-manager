@@ -17,8 +17,6 @@ import type {
   ClientMcpConfig,
   ClaudeServerConfig,
   OperationResult,
-  LocalServer,
-  RemoteServer,
 } from "../types/index.js";
 import { getConfigService } from "./config.service.js";
 import { createLogger } from "../shared/logger.js";
@@ -278,33 +276,8 @@ export class ClientService {
     }
   }
 
-  /** Convert local server to Claude format */
-  private localServerToClaudeFormat(server: LocalServer): ClaudeServerConfig {
-    const config: ClaudeServerConfig = {
-      command: server.command,
-      args: server.args || [],
-    };
-    if (server.env) {
-      config.env = server.env;
-    }
-    return config;
-  }
-
-  /** Convert remote server to Claude format */
-  private remoteServerToClaudeFormat(server: RemoteServer): ClaudeServerConfig | null {
-    if (server.type === "http" || server.type === "sse") {
-      return {
-        command: "npx",
-        args: ["-y", "mcp-remote", server.url],
-        env: server.bearerToken ? { MCP_AUTH_TOKEN: server.bearerToken } : undefined,
-      };
-    }
-    return null;
-  }
-
   /** Detect all installed clients */
   detectClients(): DetectedClient[] {
-    const configService = getConfigService();
     const clients: DetectedClient[] = [];
 
     for (const clientId of this.getSupportedClients()) {
@@ -317,17 +290,8 @@ export class ClientService {
       if (!installed) {
         status = "not-installed";
       } else {
-        // Check if connected (has our servers)
-        let connected = false;
-        if (currentConfig?.mcpServers) {
-          const ourServerIds = [
-            ...configService.getEnabledLocalServers().map((s) => s.id),
-            ...configService.getEnabledRemoteServers().map((s) => s.id),
-          ];
-          const clientServerIds = Object.keys(currentConfig.mcpServers);
-          connected =
-            ourServerIds.length > 0 && ourServerIds.every((id) => clientServerIds.includes(id));
-        }
+        // Check if connected (has mcpsm gateway)
+        const connected = !!currentConfig?.mcpServers?.mcpsm;
         status = connected ? "connected" : "disconnected";
       }
 
@@ -345,7 +309,7 @@ export class ClientService {
     return clients;
   }
 
-  /** Connect servers to a specific client (add our servers to client config) */
+  /** Connect servers to a specific client (add mcpsm gateway to client config) */
   connectClient(clientId: ClientId): OperationResult {
     const configPath = this.getClientConfigPath(clientId);
     if (!configPath) {
@@ -357,6 +321,7 @@ export class ClientService {
     }
 
     const configService = getConfigService();
+    const port = configService.getPort();
 
     // Read current client config
     const clientConfig: ClientMcpConfig = this.readClientConfig(clientId) || {};
@@ -366,19 +331,11 @@ export class ClientService {
       clientConfig.mcpServers = {};
     }
 
-    // Add local servers
-    for (const server of configService.getEnabledLocalServers()) {
-      const formatted = this.localServerToClaudeFormat(server);
-      clientConfig.mcpServers[server.id] = formatted;
-    }
-
-    // Add remote servers
-    for (const server of configService.getEnabledRemoteServers()) {
-      const formatted = this.remoteServerToClaudeFormat(server);
-      if (formatted) {
-        clientConfig.mcpServers[server.id] = formatted;
-      }
-    }
+    // Add mcpsm gateway server that proxies to our daemon
+    clientConfig.mcpServers.mcpsm = {
+      command: "npx",
+      args: ["-y", "mcp-proxy", "--transport", "stdio", `http://localhost:${port}/mcp`],
+    };
 
     // Write config
     const success = this.writeClientConfig(clientId, clientConfig);
@@ -417,22 +374,12 @@ export class ClientService {
       return { success: true }; // No config to disconnect from
     }
 
-    if (!currentConfig.mcpServers || Object.keys(currentConfig.mcpServers).length === 0) {
+    if (!currentConfig.mcpServers || !currentConfig.mcpServers.mcpsm) {
       return { success: true }; // Already disconnected
     }
 
-    const configService = getConfigService();
-
-    // Get our server IDs
-    const ourServerIds = [
-      ...configService.getEnabledLocalServers().map((s) => s.id),
-      ...configService.getEnabledRemoteServers().map((s) => s.id),
-    ];
-
-    // Remove our servers from client config
-    for (const serverId of ourServerIds) {
-      delete currentConfig.mcpServers[serverId];
-    }
+    // Remove mcpsm gateway from client config
+    delete currentConfig.mcpServers.mcpsm;
 
     // Write config to primary location
     const success = this.writeClientConfig(clientId, currentConfig);
@@ -468,17 +415,9 @@ export class ClientService {
     }
 
     const currentConfig = this.readClientConfig(clientId);
-    const configService = getConfigService();
 
-    if (currentConfig?.mcpServers) {
-      const ourServerIds = [
-        ...configService.getEnabledLocalServers().map((s) => s.id),
-        ...configService.getEnabledRemoteServers().map((s) => s.id),
-      ];
-      const clientServerIds = Object.keys(currentConfig.mcpServers);
-      const connected =
-        ourServerIds.length > 0 && ourServerIds.every((id) => clientServerIds.includes(id));
-      return connected ? "connected" : "disconnected";
+    if (currentConfig?.mcpServers?.mcpsm) {
+      return "connected";
     }
 
     return "disconnected";
