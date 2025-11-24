@@ -124,7 +124,25 @@ export class ClientService {
     if (fs.existsSync(configPath)) return true;
 
     const parentDir = path.dirname(configPath);
-    return fs.existsSync(parentDir);
+    if (fs.existsSync(parentDir)) return true;
+
+    // For macOS, also check if the Application bundle exists
+    if (process.platform === "darwin") {
+      const appBundles: Record<ClientId, string> = {
+        claude: "/Applications/Claude.app",
+        cursor: "/Applications/Cursor.app",
+        windsurf: "/Applications/Windsurf.app",
+        vscode: "/Applications/Visual Studio Code.app",
+        "claude-code": "/Applications/Claude.app",
+        codex: "/usr/local/bin/codex",
+        gemini: "/usr/local/bin/gemini",
+      };
+
+      const appPath = appBundles[clientId];
+      if (appPath && fs.existsSync(appPath)) return true;
+    }
+
+    return false;
   }
 
   /** Read Codex TOML config and convert to standard format */
