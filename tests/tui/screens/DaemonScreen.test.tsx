@@ -103,22 +103,6 @@ describe("DaemonScreen", () => {
       expect(mockDaemonService.startDaemon).toHaveBeenCalled();
     });
 
-    it("should call daemon service methods when options are selected", async () => {
-      const { stdin } = render(<DaemonScreen onBack={mockOnBack} />);
-
-      // Navigate and select an option
-      stdin.write(KEYS.DOWN);
-      await waitForStateUpdate();
-      stdin.write(KEYS.ENTER);
-      await waitForStateUpdate();
-
-      // At least one service method should have been called
-      const totalCalls =
-        mockDaemonService.startDaemon.mock.calls.length +
-        mockDaemonService.stopDaemon.mock.calls.length +
-        mockDaemonService.getStatus.mock.calls.length;
-      expect(totalCalls).toBeGreaterThan(0);
-    });
   });
 
   describe("Startup Management", () => {

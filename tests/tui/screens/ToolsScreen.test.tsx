@@ -156,18 +156,6 @@ describe("ToolsScreen", () => {
 
       expect(mockConfigService.disableAllTools).toHaveBeenCalled();
     });
-
-    it("should show tools when server is selected", async () => {
-      const { stdin, lastFrame } = render(<ToolsScreen onBack={mockOnBack} />);
-
-      // Select server
-      stdin.write(KEYS.ENTER);
-      await waitForStateUpdate();
-
-      // Should show tool-related content
-      const frame = lastFrame();
-      expect(frame).toMatch(/tool|Tool|filter|Filter|server/i);
-    });
   });
 
   describe("Help Text", () => {

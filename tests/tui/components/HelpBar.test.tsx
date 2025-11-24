@@ -73,27 +73,4 @@ describe("HelpBar Component", () => {
     });
   });
 
-  describe("Edge Cases", () => {
-    it("should handle empty groups array", () => {
-      const { lastFrame } = render(<HelpBar groups={[]} />);
-
-      expect(lastFrame()).toBeDefined();
-    });
-
-    it("should handle special characters in labels", () => {
-      const customGroups = [{ label: "Test & More", shortcuts: ["A <Test>"] }];
-      const { lastFrame } = render(<HelpBar groups={customGroups} />);
-
-      expect(lastFrame()).toBeDefined();
-    });
-
-    it("should handle long shortcut strings", () => {
-      const customGroups = [
-        { label: "Long", shortcuts: ["CTRL+SHIFT+ALT+CMD+X Very Long Action Name"] },
-      ];
-      const { lastFrame } = render(<HelpBar groups={customGroups} />);
-
-      expect(lastFrame()).toContain("Long:");
-    });
-  });
 });

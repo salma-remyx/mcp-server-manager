@@ -92,17 +92,6 @@ describe("ImportExportScreen", () => {
       expect(lastFrame()).toContain("Enter file path");
     });
 
-    it("should show file path input view", async () => {
-      const { stdin, lastFrame } = render(<ImportExportScreen onBack={mockOnBack} />);
-
-      // Select Import from File
-      stdin.write(KEYS.ENTER);
-      await waitForStateUpdate();
-
-      // Should show file path prompt
-      expect(lastFrame()).toContain("Enter file path");
-    });
-
     it("should cancel import with ESC", async () => {
       const { stdin, lastFrame } = render(<ImportExportScreen onBack={mockOnBack} />);
 

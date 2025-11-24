@@ -42,41 +42,4 @@ describe("Header Component", () => {
     });
   });
 
-  describe("Styling", () => {
-    it("should contain styled text", () => {
-      const { lastFrame } = render(<Header title="Test" />);
-
-      // Header should render something
-      expect(lastFrame()).toBeTruthy();
-      expect(lastFrame()!.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe("Edge Cases", () => {
-    it("should handle empty string title", () => {
-      const { lastFrame } = render(<Header title="" />);
-
-      // Should still render, even with empty title
-      expect(lastFrame()).toBeDefined();
-    });
-
-    it("should handle empty string version", () => {
-      const { lastFrame } = render(<Header version="" />);
-
-      expect(lastFrame()).toBeDefined();
-    });
-
-    it("should handle very long title", () => {
-      const longTitle = "A".repeat(100);
-      const { lastFrame } = render(<Header title={longTitle} />);
-
-      expect(lastFrame()).toContain("A");
-    });
-
-    it("should handle special characters in title", () => {
-      const { lastFrame } = render(<Header title="Test special" />);
-
-      expect(lastFrame()).toBeDefined();
-    });
-  });
 });

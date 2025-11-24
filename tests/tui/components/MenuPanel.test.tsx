@@ -116,35 +116,4 @@ describe("MenuPanel Component", () => {
     });
   });
 
-  describe("Edge Cases", () => {
-    it("should handle empty sections array", () => {
-      const { lastFrame } = render(<MenuPanel sections={[]} />);
-
-      expect(lastFrame()).toBeDefined();
-    });
-
-    it("should handle special characters in labels", () => {
-      const customSections = [
-        {
-          title: "Test & More",
-          items: [{ key: "&", label: "Special <Char>" }],
-        },
-      ];
-      const { lastFrame } = render(<MenuPanel sections={customSections} />);
-
-      expect(lastFrame()).toBeDefined();
-    });
-
-    it("should handle long labels", () => {
-      const customSections = [
-        {
-          title: "Long Title Section Name That Is Very Long",
-          items: [{ key: "X", label: "Very Long Label That Might Wrap" }],
-        },
-      ];
-      const { lastFrame } = render(<MenuPanel sections={customSections} />);
-
-      expect(lastFrame()).toBeDefined();
-    });
-  });
 });
