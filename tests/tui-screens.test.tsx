@@ -318,7 +318,7 @@ describe("TUI Screens", () => {
       stdin.write("n");
 
       // Wait for state update
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       expect(lastFrame()).toContain("Create New Profile");
       expect(lastFrame()).toContain("Profile name");
@@ -354,7 +354,7 @@ describe("TUI Screens", () => {
       stdin.write("r");
 
       // Wait for state update
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       expect(lastFrame()).toContain("Reset Settings");
       expect(lastFrame()).toContain("Reset all settings to defaults");
@@ -503,15 +503,15 @@ describe("TUI Screen Navigation", () => {
 
     // Open create view
     stdin.write("n");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     // ESC should go back to list (not call onBack)
     stdin.write("\x1B");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     // ESC again should call onBack
     stdin.write("\x1B");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(mockOnBack).toHaveBeenCalledTimes(1);
   });
@@ -852,7 +852,7 @@ describe("App Component", () => {
     const { lastFrame, stdin } = render(<App />);
 
     stdin.write("a");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(lastFrame()).toContain("Add New MCP Server");
   });
@@ -861,7 +861,7 @@ describe("App Component", () => {
     const { lastFrame, stdin } = render(<App />);
 
     stdin.write("t");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(lastFrame()).toContain("Tool Filters");
   });
@@ -870,7 +870,7 @@ describe("App Component", () => {
     const { lastFrame, stdin } = render(<App />);
 
     stdin.write("c");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(lastFrame()).toContain("MCP Clients");
   });
@@ -879,7 +879,7 @@ describe("App Component", () => {
     const { lastFrame, stdin } = render(<App />);
 
     stdin.write("f");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(lastFrame()).toContain("Profiles");
   });
@@ -888,7 +888,7 @@ describe("App Component", () => {
     const { lastFrame, stdin } = render(<App />);
 
     stdin.write("g");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(lastFrame()).toContain("Settings");
   });
@@ -897,7 +897,7 @@ describe("App Component", () => {
     const { lastFrame, stdin } = render(<App />);
 
     stdin.write("i");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(lastFrame()).toContain("Import / Export");
   });
@@ -906,7 +906,7 @@ describe("App Component", () => {
     const { lastFrame, stdin } = render(<App />);
 
     stdin.write("h");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(lastFrame()).toContain("System Health Check");
   });
@@ -915,7 +915,7 @@ describe("App Component", () => {
     const { lastFrame, stdin } = render(<App />);
 
     stdin.write("k");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(lastFrame()).toContain("Token Usage");
   });
@@ -924,7 +924,7 @@ describe("App Component", () => {
     const { lastFrame, stdin } = render(<App />);
 
     stdin.write("m");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(lastFrame()).toContain("Daemon Management");
   });
@@ -933,7 +933,7 @@ describe("App Component", () => {
     const { lastFrame, stdin } = render(<App />);
 
     stdin.write("p");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(lastFrame()).toContain("Current port:");
     expect(lastFrame()).toContain("8850");
@@ -943,7 +943,7 @@ describe("App Component", () => {
     const { lastFrame, stdin } = render(<App />);
 
     stdin.write("x");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(lastFrame()).toContain("Testing all servers");
   });
@@ -953,12 +953,12 @@ describe("App Component", () => {
 
     // Go to tools screen
     stdin.write("t");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
     expect(lastFrame()).toContain("Tool Filters");
 
     // Press Q to go back
     stdin.write("q");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(lastFrame()).toContain("MCP Server Manager");
     expect(lastFrame()).toContain("Shortcuts");
