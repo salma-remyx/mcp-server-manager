@@ -6,6 +6,7 @@ import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { Header, MenuPanel } from "../components/index.js";
+import { createMenuSections } from "../utils/menu.js";
 import { getClientService } from "../../services/client.service.js";
 import type { DetectedClient } from "../../types/index.js";
 
@@ -145,44 +146,10 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
     );
   }
 
-  const clientsMenuSections = [
-    {
-      title: "Navigation",
-      items: [
-        { key: "↑↓", label: "Move" },
-        { key: "Q", label: "Back" },
-      ],
-    },
-    {
-      title: "Actions",
-      items: [
-        { key: "Enter", label: "Connect/Disconnect" },
-        { key: "R", label: "Refresh" },
-      ],
-    },
-    {
-      title: "Data",
-      items: [
-        { key: "T", label: "Tools" },
-        { key: "F", label: "Profiles" },
-        { key: "I", label: "Import/Export" },
-      ],
-    },
-    {
-      title: "Config",
-      items: [
-        { key: "C", label: "Clients" },
-        { key: "G", label: "Settings" },
-      ],
-    },
-    {
-      title: "System",
-      items: [
-        { key: "H", label: "Doctor" },
-        { key: "K", label: "Tokens" },
-      ],
-    },
-  ];
+  const clientsMenuSections = createMenuSections([
+    { key: "Enter", label: "Connect/Disconnect" },
+    { key: "R", label: "Refresh" },
+  ]);
 
   return (
     <Box flexDirection="column">

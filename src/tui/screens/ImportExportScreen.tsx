@@ -7,6 +7,7 @@ import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import SelectInput from "ink-select-input";
 import { Header, MenuPanel } from "../components/index.js";
+import { createMenuSections } from "../utils/menu.js";
 import { getImportExportService } from "../../services/import-export.service.js";
 import type { ExportFormat, ImportedServer } from "../../services/import-export.service.js";
 import { getClientService } from "../../services/client.service.js";
@@ -471,43 +472,9 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
   }
 
   // Menu view
-  const importExportMenuSections = [
-    {
-      title: "Navigation",
-      items: [
-        { key: "↑↓", label: "Move" },
-        { key: "Q", label: "Back" },
-      ],
-    },
-    {
-      title: "Actions",
-      items: [
-        { key: "Enter", label: "Select" },
-      ],
-    },
-    {
-      title: "Data",
-      items: [
-        { key: "T", label: "Tools" },
-        { key: "F", label: "Profiles" },
-        { key: "I", label: "Import/Export" },
-      ],
-    },
-    {
-      title: "Config",
-      items: [
-        { key: "C", label: "Clients" },
-        { key: "G", label: "Settings" },
-      ],
-    },
-    {
-      title: "System",
-      items: [
-        { key: "H", label: "Doctor" },
-        { key: "K", label: "Tokens" },
-      ],
-    },
-  ];
+  const importExportMenuSections = createMenuSections([
+    { key: "Enter", label: "Select" },
+  ]);
 
   return (
     <Box flexDirection="column">

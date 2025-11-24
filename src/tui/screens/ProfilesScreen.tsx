@@ -6,6 +6,7 @@ import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { Header, MenuPanel } from "../components/index.js";
+import { createMenuSections } from "../utils/menu.js";
 import { getProfileService } from "../../services/profile.service.js";
 import type { ProfileListItem } from "../../types/index.js";
 
@@ -231,45 +232,11 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
   }
 
   // List view
-  const profilesMenuSections = [
-    {
-      title: "Navigation",
-      items: [
-        { key: "↑↓", label: "Move" },
-        { key: "Q", label: "Back" },
-      ],
-    },
-    {
-      title: "Actions",
-      items: [
-        { key: "Enter", label: "Use" },
-        { key: "N", label: "New" },
-        { key: "D", label: "Delete" },
-      ],
-    },
-    {
-      title: "Data",
-      items: [
-        { key: "T", label: "Tools" },
-        { key: "F", label: "Profiles" },
-        { key: "I", label: "Import/Export" },
-      ],
-    },
-    {
-      title: "Config",
-      items: [
-        { key: "C", label: "Clients" },
-        { key: "G", label: "Settings" },
-      ],
-    },
-    {
-      title: "System",
-      items: [
-        { key: "H", label: "Doctor" },
-        { key: "K", label: "Tokens" },
-      ],
-    },
-  ];
+  const profilesMenuSections = createMenuSections([
+    { key: "Enter", label: "Use" },
+    { key: "N", label: "New" },
+    { key: "D", label: "Delete" },
+  ]);
 
   return (
     <Box flexDirection="column">

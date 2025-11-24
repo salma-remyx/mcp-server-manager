@@ -7,6 +7,7 @@ import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import fs from "fs";
 import { Header, MenuPanel } from "../components/index.js";
+import { createMenuSections } from "../utils/menu.js";
 import { getDaemonService } from "../../services/daemon.service.js";
 
 type View = "menu" | "logs" | "action";
@@ -252,43 +253,9 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
   }
 
   // Menu view
-  const daemonMenuSections = [
-    {
-      title: "Navigation",
-      items: [
-        { key: "↑↓", label: "Move" },
-        { key: "Q", label: "Back" },
-      ],
-    },
-    {
-      title: "Actions",
-      items: [
-        { key: "Enter", label: "Select" },
-      ],
-    },
-    {
-      title: "Data",
-      items: [
-        { key: "T", label: "Tools" },
-        { key: "F", label: "Profiles" },
-        { key: "I", label: "Import/Export" },
-      ],
-    },
-    {
-      title: "Config",
-      items: [
-        { key: "C", label: "Clients" },
-        { key: "G", label: "Settings" },
-      ],
-    },
-    {
-      title: "System",
-      items: [
-        { key: "H", label: "Doctor" },
-        { key: "K", label: "Tokens" },
-      ],
-    },
-  ];
+  const daemonMenuSections = createMenuSections([
+    { key: "Enter", label: "Select" },
+  ]);
 
   return (
     <Box flexDirection="column">

@@ -5,6 +5,7 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import { Header, MenuPanel } from "../components/index.js";
+import { createMenuSections } from "../utils/menu.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getDaemonService } from "../../services/daemon.service.js";
 import type { ServerToolFilter } from "../../types/index.js";
@@ -192,46 +193,12 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     );
   }
 
-  const toolsMenuSections = [
-    {
-      title: "Navigation",
-      items: [
-        { key: "↑↓", label: "Move" },
-        { key: "Q", label: "Back" },
-      ],
-    },
-    {
-      title: "Actions",
-      items: [
-        { key: "Space", label: "Toggle" },
-        { key: "A", label: "Enable all" },
-        { key: "N", label: "Disable all" },
-        { key: "R", label: "Reset" },
-      ],
-    },
-    {
-      title: "Data",
-      items: [
-        { key: "T", label: "Tools" },
-        { key: "F", label: "Profiles" },
-        { key: "I", label: "Import/Export" },
-      ],
-    },
-    {
-      title: "Config",
-      items: [
-        { key: "C", label: "Clients" },
-        { key: "G", label: "Settings" },
-      ],
-    },
-    {
-      title: "System",
-      items: [
-        { key: "H", label: "Doctor" },
-        { key: "K", label: "Tokens" },
-      ],
-    },
-  ];
+  const toolsMenuSections = createMenuSections([
+    { key: "Space", label: "Toggle" },
+    { key: "A", label: "Enable all" },
+    { key: "N", label: "Disable all" },
+    { key: "R", label: "Reset" },
+  ]);
 
   return (
     <Box flexDirection="column">
