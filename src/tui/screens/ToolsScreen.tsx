@@ -6,6 +6,7 @@ import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import { Header } from "../components/index.js";
 import { getConfigService } from "../../services/config.service.js";
+import { getDaemonService } from "../../services/daemon.service.js";
 import type { ServerToolFilter } from "../../types/index.js";
 
 interface ToolsScreenProps {
@@ -91,6 +92,15 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     []
   );
 
+  // Restart daemon if running (for auto-sync tool changes)
+  const restartDaemonIfRunning = useCallback(() => {
+    const daemonService = getDaemonService();
+    const daemonStatus = daemonService.isDaemonRunning();
+    if (daemonStatus.running) {
+      daemonService.stopDaemon();
+    }
+  }, []);
+
   // Handle keyboard input
   useInput((input, key) => {
     const { serverId, tools, currentToolIndex } = state;
@@ -123,6 +133,7 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     if (input === " " && tools.length > 0 && serverId) {
       const tool = tools[currentToolIndex];
       configService.toggleTool(serverId, tool);
+      restartDaemonIfRunning();
       reloadTools(true);
       return;
     }
@@ -130,6 +141,7 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     // Enable all - A
     if (input.toLowerCase() === "a" && tools.length > 0 && serverId) {
       configService.enableAllTools(serverId);
+      restartDaemonIfRunning();
       reloadTools();
       showMessage("All tools enabled", "success");
       return;
@@ -138,6 +150,7 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     // Disable all - N
     if (input.toLowerCase() === "n" && tools.length > 0 && serverId) {
       configService.disableAllTools(serverId);
+      restartDaemonIfRunning();
       reloadTools();
       showMessage("All tools disabled", "success");
       return;
@@ -147,6 +160,7 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     if (input.toLowerCase() === "r" && serverId) {
       const result = configService.resetToolFilters(serverId);
       if (result.success) {
+        restartDaemonIfRunning();
         showMessage("Filters reset", "success");
         reloadTools();
       } else {

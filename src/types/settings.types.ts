@@ -8,10 +8,6 @@ export interface Settings {
   port: number;
   /** Preferred editor for config files */
   editor: string;
-  /** Auto-sync servers to enabled clients on changes */
-  autoSync: boolean;
-  /** Auto-test new servers on startup */
-  autoTest: boolean;
   /** TUI theme */
   theme: ThemeOption;
   /** Default profile to use on startup */

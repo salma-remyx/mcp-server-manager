@@ -13,8 +13,6 @@ const log = createLogger("SettingsService");
 const DEFAULT_SETTINGS: Settings = {
   port: 8850,
   editor: process.env.EDITOR || process.env.VISUAL || "vi",
-  autoSync: false,
-  autoTest: true,
   theme: "default",
   defaultProfile: "default",
 };
@@ -30,16 +28,6 @@ const SETTINGS_INFO: SettingsInfo = {
     description: "Preferred editor for config files",
     type: "string",
     default: "vi",
-  },
-  autoSync: {
-    description: "Auto-sync servers to enabled clients on changes",
-    type: "boolean",
-    default: false,
-  },
-  autoTest: {
-    description: "Auto-test new servers on startup",
-    type: "boolean",
-    default: true,
   },
   theme: {
     description: "TUI theme (default, minimal, colorful)",
@@ -110,8 +98,6 @@ export class SettingsService {
         return { success: false, error: `Invalid number: ${value}` };
       }
       parsedValue = num as Settings[K];
-    } else if (info.type === "boolean") {
-      parsedValue = (value === "true" || value === "1" || value === true) as Settings[K];
     } else {
       parsedValue = String(value) as Settings[K];
     }
