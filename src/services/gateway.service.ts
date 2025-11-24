@@ -252,14 +252,33 @@ export async function startGateway(
     let localServers = configService.getEnabledLocalServers();
     let remoteServers = configService.getEnabledRemoteServers();
 
-    // Filter by selected server IDs if provided
+    // Determine which servers to actually start
+    // Priority: explicit selectedServerIds > TUI selection state > all enabled servers
+    let serverIdsToStart: Set<string> = new Set();
+
     if (selectedServerIds && selectedServerIds.length > 0) {
-      const selectedSet = new Set(selectedServerIds);
-      localServers = localServers.filter((s) => selectedSet.has(s.id));
-      remoteServers = remoteServers.filter(
-        (s) => selectedSet.has(s.id) || selectedSet.has(`remote:${s.id}`)
-      );
+      // Explicit server IDs provided (from CLI or profile)
+      serverIdsToStart = new Set(selectedServerIds);
+    } else {
+      // Use TUI selection state if available
+      const selectionState = configService.getSelectionState();
+      if (selectionState.local.length > 0 || selectionState.remote.length > 0) {
+        serverIdsToStart = new Set([...selectionState.local, ...selectionState.remote]);
+      } else {
+        // Fall back to all enabled servers if selection state is empty
+        serverIdsToStart = new Set([
+          ...localServers.map((s) => s.id),
+          ...remoteServers.map((s) => `remote:${s.id}`),
+        ]);
+      }
     }
+
+    // Filter servers to only those in the start set
+    const selectedSet = serverIdsToStart;
+    localServers = localServers.filter((s) => selectedSet.has(s.id));
+    remoteServers = remoteServers.filter(
+      (s) => selectedSet.has(s.id) || selectedSet.has(`remote:${s.id}`)
+    );
 
     if (localServers.length === 0 && remoteServers.length === 0) {
       return { success: false, error: "No servers to start" };
