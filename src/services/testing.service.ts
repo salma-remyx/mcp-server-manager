@@ -279,24 +279,32 @@ export class TestingService {
 
       if (contentType.includes("text/event-stream")) {
         // Parse SSE response - extract JSON from data: field
+        // Following MCP SDK pattern: event-source automatically handles SSE format
         const text = await toolsResponse.text();
-        const lines = text.split("\n");
-        let jsonStr = "";
+        let jsonStr: string | null = null;
 
+        // Process lines to find first data line with JSON object
+        const lines = text.split("\n");
         for (const line of lines) {
           if (line.startsWith("data: {")) {
-            jsonStr = line.substring(6); // Remove "data: "
+            jsonStr = line.slice(6); // Remove "data: " prefix
             break;
           }
         }
 
         if (!jsonStr) {
-          const error = "No data in SSE response";
+          const error = "No JSON data in SSE response";
           this.updateToolFilter(filterId, [], error);
           return { success: false, error, toolCount: 0 };
         }
 
-        result = JSON.parse(jsonStr);
+        try {
+          result = JSON.parse(jsonStr);
+        } catch (parseError) {
+          const error = `Failed to parse SSE data: ${parseError instanceof Error ? parseError.message : "unknown error"}`;
+          this.updateToolFilter(filterId, [], error);
+          return { success: false, error, toolCount: 0 };
+        }
       } else {
         // Parse JSON response
         result = (await toolsResponse.json()) as McpToolsResponse;
