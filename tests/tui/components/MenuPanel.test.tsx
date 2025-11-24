@@ -44,8 +44,8 @@ describe("MenuPanel Component", () => {
       const { lastFrame } = render(<MenuPanel />);
 
       expect(lastFrame()).toContain("System");
-      expect(lastFrame()).toContain("Daemon");
       expect(lastFrame()).toContain("Doctor");
+      expect(lastFrame()).toContain("Tokens");
     });
   });
 

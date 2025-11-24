@@ -204,15 +204,6 @@ describe("App Component", () => {
       expect(lastFrame()).toContain("Token Usage");
     });
 
-    it("should navigate to daemon screen on M key", async () => {
-      const { lastFrame, stdin } = render(<App />);
-
-      stdin.write("m");
-      await waitForStateUpdate();
-
-      expect(lastFrame()).toContain("Daemon Management");
-    });
-
     it("should return to main screen from sub-screen", async () => {
       const { lastFrame, stdin } = render(<App />);
 
@@ -319,18 +310,6 @@ describe("App Component", () => {
     });
   });
 
-  describe("Port Display", () => {
-    it("should show port message on P key", async () => {
-      const { lastFrame, stdin } = render(<App />);
-
-      stdin.write("p");
-      await waitForStateUpdate();
-
-      expect(lastFrame()).toContain("Current port:");
-      expect(lastFrame()).toContain("8850");
-    });
-  });
-
   describe("Message Display", () => {
     beforeEach(() => {
       mockConfigService.getLocalServers.mockReturnValue(sampleLocalServers);
@@ -427,7 +406,7 @@ describe("App Component", () => {
     });
   });
 
-  describe("Enter Key - Start Gateway", () => {
+  describe("Enter Key - Manage Servers", () => {
     it("should show message when no servers selected", async () => {
       const { lastFrame, stdin } = render(<App />);
 
@@ -437,8 +416,9 @@ describe("App Component", () => {
       expect(lastFrame()).toMatch(/No servers selected|SPACE to select/i);
     });
 
-    it("should show daemon message when servers are selected", async () => {
+    it("should navigate to daemon management when servers are selected", async () => {
       mockConfigService.getLocalServers.mockReturnValue(sampleLocalServers);
+      // Mock selection state to return server1 as already selected
       mockConfigService.getSelectionState.mockReturnValue({
         local: ["server1"],
         remote: [],
@@ -446,14 +426,11 @@ describe("App Component", () => {
 
       const { lastFrame, stdin } = render(<App />);
 
-      // Select a server first
-      stdin.write(KEYS.SPACE);
-      await waitForStateUpdate();
-
+      // Press Enter - should go to daemon since server1 is pre-selected
       stdin.write(KEYS.ENTER);
       await waitForStateUpdate();
 
-      expect(lastFrame()).toMatch(/daemon|mcpsm/i);
+      expect(lastFrame()).toContain("Daemon Management");
     });
   });
 });

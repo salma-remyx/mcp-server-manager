@@ -20,7 +20,7 @@ const defaultSections: MenuSection[] = [
     items: [
       { key: "↑↓", label: "Move" },
       { key: "Space", label: "Select" },
-      { key: "Enter", label: "Start" },
+      { key: "Enter", label: "Manage" },
       { key: "Q", label: "Quit" },
     ],
   },
@@ -47,10 +47,8 @@ const defaultSections: MenuSection[] = [
   {
     title: "System",
     items: [
-      { key: "M", label: "Daemon" },
       { key: "H", label: "Doctor" },
       { key: "K", label: "Tokens" },
-      { key: "P", label: "Port" },
     ],
   },
 ];

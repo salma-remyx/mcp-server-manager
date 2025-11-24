@@ -7,7 +7,8 @@ import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { Header } from "../components/index.js";
 import { getSettingsService } from "../../services/settings.service.js";
-import type { Settings } from "../../types/index.js";
+import { getClientService } from "../../services/client.service.js";
+import type { Settings, ClientId } from "../../types/index.js";
 
 type View = "list" | "edit" | "confirmReset";
 
@@ -62,6 +63,26 @@ export function SettingsScreen({ onBack }: SettingsScreenProps): React.ReactElem
         const result = settingsService.set(key, value.trim());
         if (result.success) {
           showMessage(`Setting '${key}' updated`, "success");
+
+          // If port was changed, update all connected clients
+          if (key === "port") {
+            const clientService = getClientService();
+            const detectedClients = clientService.detectClients();
+            const connectedClients = detectedClients.filter((c) => c.status === "connected");
+
+            // Reconnect all clients to update the port in their configs
+            for (const client of connectedClients) {
+              clientService.disconnectClient(client.id as ClientId);
+              clientService.connectClient(client.id as ClientId);
+            }
+
+            if (connectedClients.length > 0) {
+              showMessage(
+                `Updated port for ${connectedClients.length} client${connectedClients.length === 1 ? "" : "s"}`,
+                "success"
+              );
+            }
+          }
         } else {
           showMessage(result.error || "Failed to update setting", "error");
         }
