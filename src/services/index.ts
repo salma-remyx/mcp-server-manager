@@ -27,6 +27,14 @@ export {
   resetImportExportService,
 } from "./import-export.service.js";
 
+// Gateway service
+export {
+  startGateway,
+  stopGateway,
+  getGatewayStatus,
+  runGatewayForeground,
+} from "./gateway.service.js";
+
 // Re-export types used by services
 export type {
   AppConfig,

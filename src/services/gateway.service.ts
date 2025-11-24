@@ -349,13 +349,23 @@ export async function startGateway(
 
         if (!transport) {
           // Create new transport for new sessions
+          let currentSessionId: string | undefined;
           transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: () => randomUUID(),
             enableJsonResponse: true,
             onsessioninitialized: (newSessionId) => {
+              currentSessionId = newSessionId;
               activeSessions.set(newSessionId, transport!);
             },
           });
+
+          // Clean up session when transport closes
+          transport.onclose = () => {
+            if (currentSessionId) {
+              activeSessions.delete(currentSessionId);
+              logger.debug(`Session ${currentSessionId} closed and cleaned up`);
+            }
+          };
 
           await mcpServer.server.connect(transport);
         }

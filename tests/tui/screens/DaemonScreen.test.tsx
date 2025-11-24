@@ -113,17 +113,14 @@ describe("DaemonScreen", () => {
       // Navigate to startup option (Enable Auto-start is 4th option, index 3)
       for (let i = 0; i < 3; i++) {
         stdin.write(KEYS.DOWN);
+        await waitForStateUpdate();
       }
-      await waitForStateUpdate();
 
       stdin.write(KEYS.ENTER);
       await waitForStateUpdate();
 
-      // Should have called enableStartup (since startupEnabled is false)
-      expect(
-        mockDaemonService.enableStartup.mock.calls.length +
-          mockDaemonService.disableStartup.mock.calls.length
-      ).toBeGreaterThanOrEqual(0);
+      // Should have called enableStartup (since startupEnabled is false in mock)
+      expect(mockDaemonService.enableStartup).toHaveBeenCalled();
     });
   });
 
