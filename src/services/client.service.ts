@@ -242,15 +242,44 @@ export class ClientService {
     const configPath = this.getClientConfigPath(clientId);
     if (!configPath) return null;
 
+    let config: ClientMcpConfig | null = null;
+
     try {
       if (fs.existsSync(configPath)) {
         const data = fs.readFileSync(configPath, "utf8");
-        return JSON.parse(data) as ClientMcpConfig;
+        config = JSON.parse(data) as ClientMcpConfig;
       }
     } catch (error) {
       log.debug(`Failed to read ${clientId} config:`, error);
     }
-    return null;
+
+    // Also read from additional MCP path if available (for real-time loading)
+    const additionalMcpPath = ADDITIONAL_MCP_PATHS[clientId];
+    if (additionalMcpPath && fs.existsSync(additionalMcpPath)) {
+      try {
+        const data = fs.readFileSync(additionalMcpPath, "utf8");
+        const additionalConfig = JSON.parse(data) as ClientMcpConfig;
+        if (additionalConfig.mcpServers) {
+          // Initialize config if not already loaded from primary path
+          if (!config) {
+            config = {};
+          }
+          // Merge servers from additional path, preserving those in primary
+          if (!config.mcpServers) {
+            config.mcpServers = {};
+          }
+          for (const [name, server] of Object.entries(additionalConfig.mcpServers)) {
+            if (!config.mcpServers[name]) {
+              config.mcpServers[name] = server;
+            }
+          }
+        }
+      } catch (error) {
+        log.debug(`Failed to read additional MCP config from ${additionalMcpPath}:`, error);
+      }
+    }
+
+    return config;
   }
 
   /** Write client's config */
@@ -295,6 +324,15 @@ export class ClientService {
         status = connected ? "connected" : "disconnected";
       }
 
+      // Count servers: only count when connected and exclude mcpsm gateway
+      let serverCount = 0;
+      if (status === "connected" && currentConfig?.mcpServers) {
+        // Count all servers except the mcpsm gateway
+        serverCount = Object.keys(currentConfig.mcpServers).filter(
+          (name) => name !== "mcpsm"
+        ).length;
+      }
+
       clients.push({
         id: clientId,
         name: CLIENT_NAMES[clientId] || clientId,
@@ -302,7 +340,7 @@ export class ClientService {
         installed,
         hasConfig: !!currentConfig,
         status,
-        serverCount: currentConfig?.mcpServers ? Object.keys(currentConfig.mcpServers).length : 0,
+        serverCount,
       });
     }
 
