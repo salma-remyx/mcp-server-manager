@@ -273,7 +273,24 @@ export class TestingService {
         return { success: false, error, toolCount: 0 };
       }
 
-      const result = (await toolsResponse.json()) as McpToolsResponse;
+      // Parse response - handle both JSON and SSE
+      let result: McpToolsResponse;
+      const contentType = toolsResponse.headers.get("content-type") || "";
+
+      if (contentType.includes("text/event-stream")) {
+        // Parse SSE response
+        const text = await toolsResponse.text();
+        const jsonMatch = text.match(/data: ({.*?})/);
+        if (!jsonMatch) {
+          const error = "No data in SSE response";
+          this.updateToolFilter(filterId, [], error);
+          return { success: false, error, toolCount: 0 };
+        }
+        result = JSON.parse(jsonMatch[1]);
+      } else {
+        // Parse JSON response
+        result = (await toolsResponse.json()) as McpToolsResponse;
+      }
 
       if (result.result?.tools) {
         const tools = result.result.tools;
