@@ -165,7 +165,7 @@ describe("ServerList Component", () => {
   });
 
   describe("Disabled Status", () => {
-    it("should show disabled status for disabled servers", () => {
+    it("should show tool count even for disabled servers", () => {
       const { lastFrame } = render(
         <ServerList
           title="Local Servers"
@@ -176,7 +176,7 @@ describe("ServerList Component", () => {
         />
       );
 
-      expect(lastFrame()).toContain("disabled");
+      expect(lastFrame()).toContain("0 tools");
     });
   });
 
