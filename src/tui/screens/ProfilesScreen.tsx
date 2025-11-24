@@ -5,7 +5,7 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { Header } from "../components/index.js";
+import { Header, MenuPanel } from "../components/index.js";
 import { getProfileService } from "../../services/profile.service.js";
 import type { ProfileListItem } from "../../types/index.js";
 
@@ -231,6 +231,46 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
   }
 
   // List view
+  const profilesMenuSections = [
+    {
+      title: "Navigation",
+      items: [
+        { key: "↑↓", label: "Move" },
+        { key: "Q", label: "Back" },
+      ],
+    },
+    {
+      title: "Actions",
+      items: [
+        { key: "Enter", label: "Use" },
+        { key: "N", label: "New" },
+        { key: "D", label: "Delete" },
+      ],
+    },
+    {
+      title: "Data",
+      items: [
+        { key: "T", label: "Tools" },
+        { key: "F", label: "Profiles" },
+        { key: "I", label: "Import/Export" },
+      ],
+    },
+    {
+      title: "Config",
+      items: [
+        { key: "C", label: "Clients" },
+        { key: "G", label: "Settings" },
+      ],
+    },
+    {
+      title: "System",
+      items: [
+        { key: "H", label: "Doctor" },
+        { key: "K", label: "Tokens" },
+      ],
+    },
+  ];
+
   return (
     <Box flexDirection="column">
       <Header title="Profiles" />
@@ -246,37 +286,40 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
         </Box>
       )}
 
-      <Box flexDirection="column" paddingX={1} marginTop={1}>
-        {profiles.length === 0 ? (
-          <Text dimColor>No profiles configured.</Text>
-        ) : (
-          profiles.map((profile, idx) => {
-            const isCurrent = idx === currentIndex;
-            const serverInfo = profile.includesAll
-              ? "all servers"
-              : `${profile.serverCount} server(s)`;
+      {/* Main content: Profiles + Menu side by side */}
+      <Box marginTop={1} gap={2}>
+        {/* Left panel: Profiles list */}
+        <Box flexDirection="column" flexGrow={1} paddingX={1}>
+          {profiles.length === 0 ? (
+            <Text dimColor>No profiles configured.</Text>
+          ) : (
+            profiles.map((profile, idx) => {
+              const isCurrent = idx === currentIndex;
+              const serverInfo = profile.includesAll
+                ? "all servers"
+                : `${profile.serverCount} server(s)`;
 
-            return (
-              <Box key={profile.id} flexDirection="column" marginBottom={1}>
-                <Box gap={1}>
-                  <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                  <Text color={isCurrent ? "cyan" : undefined} bold={isCurrent}>
-                    {profile.name}
-                  </Text>
-                  <Text dimColor>[{profile.id}]</Text>
-                  {profile.isActive && <Text color="green">(active)</Text>}
+              return (
+                <Box key={profile.id} flexDirection="column" marginBottom={1}>
+                  <Box gap={1}>
+                    <Text color="cyan">{isCurrent ? "→" : " "}</Text>
+                    <Text color={isCurrent ? "cyan" : undefined} bold={isCurrent}>
+                      {profile.name}
+                    </Text>
+                    <Text dimColor>[{profile.id}]</Text>
+                    {profile.isActive && <Text color="green">(active)</Text>}
+                  </Box>
+                  <Box marginLeft={4}>
+                    <Text dimColor>{serverInfo}</Text>
+                  </Box>
                 </Box>
-                <Box marginLeft={4}>
-                  <Text dimColor>{serverInfo}</Text>
-                </Box>
-              </Box>
-            );
-          })
-        )}
-      </Box>
+              );
+            })
+          )}
+        </Box>
 
-      <Box paddingX={1} marginTop={1}>
-        <Text dimColor>↑/↓ Navigate ENTER Use N New D Delete Q Back</Text>
+        {/* Right panel: Menu */}
+        <MenuPanel sections={profilesMenuSections} highlightedView="F" />
       </Box>
     </Box>
   );

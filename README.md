@@ -48,6 +48,36 @@ Managing MCP servers across multiple AI clients (Claude Desktop, Cursor, Windsur
 
 ---
 
+## TUI vs CLI
+
+MCP Server Manager offers two interfaces to suit your workflow:
+
+### Terminal User Interface (TUI)
+
+Perfect for **interactive management** and **visual navigation**:
+
+- Browse and manage servers with keyboard shortcuts
+- See real-time status and tool counts for each server
+- Organized menu system with consistent navigation across all screens
+- Ideal for discovering features and visual learners
+
+**Launch with:** `mcpsm` (no arguments)
+
+### Command Line Interface (CLI)
+
+Perfect for **scripting**, **automation**, and **batch operations**:
+
+- Direct commands for adding, testing, and managing servers
+- Easy integration with scripts and workflows
+- Detailed error messages and structured output
+- Works great with pipes and shell scripting
+
+**Example:** `mcpsm test` or `mcpsm list --json`
+
+Both interfaces provide the same powerful functionality - choose what works best for your workflow!
+
+---
+
 ## Installation
 
 ```bash
@@ -129,8 +159,8 @@ Instead of syncing individual servers to each client, MCP Server Manager uses a 
 Full documentation is available at **[mateustorquato.github.io/mcp-server-manager/docs/](https://mateustorquato.github.io/mcp-server-manager/docs/)**
 
 - [Getting Started](https://mateustorquato.github.io/mcp-server-manager/docs/#/getting-started/installation)
+- [TUI Guide](https://mateustorquato.github.io/mcp-server-manager/docs/#/tui/main-menu) - Complete guide to the terminal user interface
 - [CLI Commands](https://mateustorquato.github.io/mcp-server-manager/docs/#/cli/servers)
-- [TUI Guide](https://mateustorquato.github.io/mcp-server-manager/docs/#/tui/main-menu)
 - [Troubleshooting](https://mateustorquato.github.io/mcp-server-manager/docs/#/guides/troubleshooting)
 
 ---

@@ -6,7 +6,7 @@ import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import fs from "fs";
-import { Header } from "../components/index.js";
+import { Header, MenuPanel } from "../components/index.js";
 import { getDaemonService } from "../../services/daemon.service.js";
 
 type View = "menu" | "logs" | "action";
@@ -252,57 +252,98 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
   }
 
   // Menu view
+  const daemonMenuSections = [
+    {
+      title: "Navigation",
+      items: [
+        { key: "↑↓", label: "Move" },
+        { key: "Q", label: "Back" },
+      ],
+    },
+    {
+      title: "Actions",
+      items: [
+        { key: "Enter", label: "Select" },
+      ],
+    },
+    {
+      title: "Data",
+      items: [
+        { key: "T", label: "Tools" },
+        { key: "F", label: "Profiles" },
+        { key: "I", label: "Import/Export" },
+      ],
+    },
+    {
+      title: "Config",
+      items: [
+        { key: "C", label: "Clients" },
+        { key: "G", label: "Settings" },
+      ],
+    },
+    {
+      title: "System",
+      items: [
+        { key: "H", label: "Doctor" },
+        { key: "K", label: "Tokens" },
+      ],
+    },
+  ];
+
   return (
     <Box flexDirection="column">
       <Header title="Daemon Management" />
 
-      {/* Status summary */}
-      <Box flexDirection="column" paddingX={1} marginTop={1}>
-        <Box gap={1}>
-          <Text>Status:</Text>
-          <Text color={status.running ? "green" : "red"}>
-            {status.running ? "●" : "●"} {status.running ? `Running (PID: ${status.pid})` : "Stopped"}
-          </Text>
-        </Box>
-        <Box gap={1}>
-          <Text>Port:</Text>
-          <Text color="cyan">{status.port}</Text>
-        </Box>
-        <Box gap={1}>
-          <Text>Auto-start:</Text>
-          <Text color={status.startupEnabled ? "green" : "gray"}>
-            {status.startupEnabled ? "enabled" : "disabled"}
-          </Text>
-        </Box>
-        <Box gap={1}>
-          <Text>Log file:</Text>
-          <Text dimColor>{status.logFile}</Text>
-        </Box>
-      </Box>
-
-      {/* Menu options */}
-      <Box flexDirection="column" paddingX={1} marginTop={1}>
-        {MENU_OPTIONS.map((option, idx) => {
-          const isCurrent = idx === currentIndex;
-
-          return (
-            <Box key={option.id} flexDirection="column" marginBottom={1}>
-              <Box gap={1}>
-                <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                <Text color={isCurrent ? "white" : undefined} bold={isCurrent}>
-                  {option.label}
-                </Text>
-              </Box>
-              <Box marginLeft={4}>
-                <Text dimColor>{option.description}</Text>
-              </Box>
+      {/* Main content: Status + Options + Menu side by side */}
+      <Box marginTop={1} gap={2}>
+        {/* Left panel: Status and options */}
+        <Box flexDirection="column" flexGrow={1} paddingX={1}>
+          {/* Status summary */}
+          <Box flexDirection="column" marginBottom={2}>
+            <Box gap={1} marginBottom={1}>
+              <Text>Status:</Text>
+              <Text color={status.running ? "green" : "red"}>
+                {status.running ? "●" : "●"} {status.running ? `Running (PID: ${status.pid})` : "Stopped"}
+              </Text>
             </Box>
-          );
-        })}
-      </Box>
+            <Box gap={1} marginBottom={1}>
+              <Text>Port:</Text>
+              <Text color="cyan">{status.port}</Text>
+            </Box>
+            <Box gap={1} marginBottom={1}>
+              <Text>Auto-start:</Text>
+              <Text color={status.startupEnabled ? "green" : "gray"}>
+                {status.startupEnabled ? "enabled" : "disabled"}
+              </Text>
+            </Box>
+            <Box gap={1}>
+              <Text>Log file:</Text>
+              <Text dimColor>{status.logFile}</Text>
+            </Box>
+          </Box>
 
-      <Box paddingX={1} marginTop={1}>
-        <Text dimColor>↑/↓ Navigate ENTER Select Q Back</Text>
+          {/* Menu options */}
+          {MENU_OPTIONS.map((option, idx) => {
+            const isCurrent = idx === currentIndex;
+
+            return (
+              <Box key={option.id} flexDirection="column" marginBottom={1}>
+                <Box gap={1}>
+                  <Text color="cyan">{isCurrent ? "→" : " "}</Text>
+                  <Text color={isCurrent ? "white" : undefined} bold={isCurrent}>
+                    {option.label}
+                  </Text>
+                </Box>
+                <Box marginLeft={4}>
+                  <Text dimColor>{option.description}</Text>
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+
+        {/* Right panel: Menu */}
+        <MenuPanel sections={daemonMenuSections} highlightedView="H" />
       </Box>
     </Box>
   );

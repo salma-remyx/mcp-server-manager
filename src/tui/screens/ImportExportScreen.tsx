@@ -6,7 +6,7 @@ import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import SelectInput from "ink-select-input";
-import { Header } from "../components/index.js";
+import { Header, MenuPanel } from "../components/index.js";
 import { getImportExportService } from "../../services/import-export.service.js";
 import type { ExportFormat, ImportedServer } from "../../services/import-export.service.js";
 import { getClientService } from "../../services/client.service.js";
@@ -471,32 +471,73 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
   }
 
   // Menu view
+  const importExportMenuSections = [
+    {
+      title: "Navigation",
+      items: [
+        { key: "↑↓", label: "Move" },
+        { key: "Q", label: "Back" },
+      ],
+    },
+    {
+      title: "Actions",
+      items: [
+        { key: "Enter", label: "Select" },
+      ],
+    },
+    {
+      title: "Data",
+      items: [
+        { key: "T", label: "Tools" },
+        { key: "F", label: "Profiles" },
+        { key: "I", label: "Import/Export" },
+      ],
+    },
+    {
+      title: "Config",
+      items: [
+        { key: "C", label: "Clients" },
+        { key: "G", label: "Settings" },
+      ],
+    },
+    {
+      title: "System",
+      items: [
+        { key: "H", label: "Doctor" },
+        { key: "K", label: "Tokens" },
+      ],
+    },
+  ];
+
   return (
     <Box flexDirection="column">
       <Header title="Import / Export" />
 
-      <Box flexDirection="column" paddingX={1} marginTop={1}>
-        {menuOptions.map((option, idx) => {
-          const isCurrent = idx === currentIndex;
+      {/* Main content: Options + Menu side by side */}
+      <Box marginTop={1} gap={2}>
+        {/* Left panel: Menu options */}
+        <Box flexDirection="column" flexGrow={1} paddingX={1}>
+          {menuOptions.map((option, idx) => {
+            const isCurrent = idx === currentIndex;
 
-          return (
-            <Box key={option.id} flexDirection="column" marginBottom={1}>
-              <Box gap={1}>
-                <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                <Text color={isCurrent ? "white" : undefined} bold={isCurrent}>
-                  {option.label}
-                </Text>
+            return (
+              <Box key={option.id} flexDirection="column" marginBottom={1}>
+                <Box gap={1}>
+                  <Text color="cyan">{isCurrent ? "→" : " "}</Text>
+                  <Text color={isCurrent ? "white" : undefined} bold={isCurrent}>
+                    {option.label}
+                  </Text>
+                </Box>
+                <Box marginLeft={4}>
+                  <Text dimColor>{option.description}</Text>
+                </Box>
               </Box>
-              <Box marginLeft={4}>
-                <Text dimColor>{option.description}</Text>
-              </Box>
-            </Box>
-          );
-        })}
-      </Box>
+            );
+          })}
+        </Box>
 
-      <Box paddingX={1} marginTop={1}>
-        <Text dimColor>↑/↓ Navigate ENTER Select Q Back</Text>
+        {/* Right panel: Menu */}
+        <MenuPanel sections={importExportMenuSections} highlightedView="I" />
       </Box>
     </Box>
   );

@@ -5,7 +5,7 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
-import { Header } from "../components/index.js";
+import { Header, MenuPanel } from "../components/index.js";
 import { getClientService } from "../../services/client.service.js";
 import type { DetectedClient } from "../../types/index.js";
 
@@ -145,6 +145,45 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
     );
   }
 
+  const clientsMenuSections = [
+    {
+      title: "Navigation",
+      items: [
+        { key: "↑↓", label: "Move" },
+        { key: "Q", label: "Back" },
+      ],
+    },
+    {
+      title: "Actions",
+      items: [
+        { key: "Enter", label: "Connect/Disconnect" },
+        { key: "R", label: "Refresh" },
+      ],
+    },
+    {
+      title: "Data",
+      items: [
+        { key: "T", label: "Tools" },
+        { key: "F", label: "Profiles" },
+        { key: "I", label: "Import/Export" },
+      ],
+    },
+    {
+      title: "Config",
+      items: [
+        { key: "C", label: "Clients" },
+        { key: "G", label: "Settings" },
+      ],
+    },
+    {
+      title: "System",
+      items: [
+        { key: "H", label: "Doctor" },
+        { key: "K", label: "Tokens" },
+      ],
+    },
+  ];
+
   return (
     <Box flexDirection="column">
       <Header title="MCP Clients" />
@@ -160,62 +199,65 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
         </Box>
       )}
 
-      <Box flexDirection="column" paddingX={1} marginTop={1}>
-        {clients.length === 0 ? (
-          <Text dimColor>No clients detected.</Text>
-        ) : (
-          clients.map((client, idx) => {
-            const isCurrent = idx === currentIndex;
+      {/* Main content: Clients + Menu side by side */}
+      <Box marginTop={1} gap={2}>
+        {/* Left panel: Clients list */}
+        <Box flexDirection="column" flexGrow={1} paddingX={1}>
+          {clients.length === 0 ? (
+            <Text dimColor>No clients detected.</Text>
+          ) : (
+            clients.map((client, idx) => {
+              const isCurrent = idx === currentIndex;
 
-            // Status icon and color based on connection status
-            let statusIcon: string;
-            let statusColor: "green" | "yellow" | "gray";
-            let statusText: string;
+              // Status icon and color based on connection status
+              let statusIcon: string;
+              let statusColor: "green" | "yellow" | "gray";
+              let statusText: string;
 
-            if (client.status === "connected") {
-              statusIcon = "✔";
-              statusColor = "green";
-              statusText = "connected";
-            } else if (client.status === "disconnected") {
-              statusIcon = "○";
-              statusColor = "yellow";
-              statusText = "disconnected";
-            } else {
-              statusIcon = "✗";
-              statusColor = "gray";
-              statusText = "not installed";
-            }
+              if (client.status === "connected") {
+                statusIcon = "✔";
+                statusColor = "green";
+                statusText = "connected";
+              } else if (client.status === "disconnected") {
+                statusIcon = "○";
+                statusColor = "yellow";
+                statusText = "disconnected";
+              } else {
+                statusIcon = "✗";
+                statusColor = "gray";
+                statusText = "not installed";
+              }
 
-            return (
-              <Box key={client.id} flexDirection="column" marginBottom={1}>
-                <Box gap={1}>
-                  <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                  <Text color={statusColor}>{statusIcon}</Text>
-                  <Text color={isCurrent ? "cyan" : undefined} bold={isCurrent}>
-                    {client.name}
-                  </Text>
-                  <Text dimColor>[{client.id}]</Text>
-                </Box>
-                <Box marginLeft={5} gap={1}>
-                  <Text color={statusColor}>{statusText}</Text>
-                  <Text dimColor>|</Text>
-                  <Text dimColor>
-                    {client.serverCount} {client.serverCount === 1 ? "server" : "servers"}
-                  </Text>
-                </Box>
-                {client.mcpConfigPath && (
-                  <Box marginLeft={5}>
-                    <Text dimColor>{client.mcpConfigPath}</Text>
+              return (
+                <Box key={client.id} flexDirection="column" marginBottom={1}>
+                  <Box gap={1}>
+                    <Text color="cyan">{isCurrent ? "→" : " "}</Text>
+                    <Text color={statusColor}>{statusIcon}</Text>
+                    <Text color={isCurrent ? "cyan" : undefined} bold={isCurrent}>
+                      {client.name}
+                    </Text>
+                    <Text dimColor>[{client.id}]</Text>
                   </Box>
-                )}
-              </Box>
-            );
-          })
-        )}
-      </Box>
+                  <Box marginLeft={5} gap={1}>
+                    <Text color={statusColor}>{statusText}</Text>
+                    <Text dimColor>|</Text>
+                    <Text dimColor>
+                      {client.serverCount} {client.serverCount === 1 ? "server" : "servers"}
+                    </Text>
+                  </Box>
+                  {client.mcpConfigPath && (
+                    <Box marginLeft={5}>
+                      <Text dimColor>{client.mcpConfigPath}</Text>
+                    </Box>
+                  )}
+                </Box>
+              );
+            })
+          )}
+        </Box>
 
-      <Box paddingX={1} marginTop={1}>
-        <Text dimColor>↑/↓ Navigate ENTER Connect/Disconnect R Refresh Q Back</Text>
+        {/* Right panel: Menu */}
+        <MenuPanel sections={clientsMenuSections} highlightedView="C" />
       </Box>
     </Box>
   );

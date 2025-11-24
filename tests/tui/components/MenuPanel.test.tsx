@@ -20,7 +20,7 @@ describe("MenuPanel Component", () => {
 
       expect(lastFrame()).toContain("Navigation");
       expect(lastFrame()).toContain("Move");
-      expect(lastFrame()).toContain("Quit");
+      expect(lastFrame()).toContain("Back");
     });
 
     it("should display server section", () => {
@@ -34,7 +34,8 @@ describe("MenuPanel Component", () => {
     it("should display views section", () => {
       const { lastFrame } = render(<MenuPanel />);
 
-      expect(lastFrame()).toContain("Views");
+      expect(lastFrame()).toContain("Data");
+      expect(lastFrame()).toContain("Config");
       expect(lastFrame()).toContain("Tools");
       expect(lastFrame()).toContain("Clients");
       expect(lastFrame()).toContain("Profiles");

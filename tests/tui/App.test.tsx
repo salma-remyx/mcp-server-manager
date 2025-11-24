@@ -81,7 +81,7 @@ describe("App Component", () => {
 
       expect(lastFrame()).toContain("Shortcuts");
       expect(lastFrame()).toContain("Navigation");
-      expect(lastFrame()).toContain("Quit");
+      expect(lastFrame()).toContain("Back");
     });
 
     it("should show empty state when no servers configured", () => {
