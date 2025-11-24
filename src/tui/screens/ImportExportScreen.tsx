@@ -246,7 +246,7 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
       } else if (currentOption?.id === "export-show") {
         setState((prev) => ({ ...prev, selectedFormat: format }));
         // Call showExportResult after state update
-        setTimeout(() => showExportResult(format), 0);
+        queueMicrotask(() => showExportResult(format));
       }
     },
     [state.menuOptions, state.currentIndex, importExportService, showExportResult]

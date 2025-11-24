@@ -34,7 +34,7 @@ function commandExists(cmd: string): boolean {
 function getVersion(cmd: string): string | null {
   try {
     const result = execSync(`${cmd} --version`, { encoding: "utf8" });
-    return result.trim().split("\n")[0] ?? null;
+    return result.trim().split("\n")[0];
   } catch {
     return null;
   }

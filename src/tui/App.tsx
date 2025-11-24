@@ -10,6 +10,7 @@ import { getConfigService } from "../services/config.service.js";
 import { getTestingService } from "../services/testing.service.js";
 import { getProfileService } from "../services/profile.service.js";
 import type { LocalServer, RemoteServer } from "../types/index.js";
+import { VERSION } from "../shared/version.js";
 
 // Screen components
 import { AddServerScreen } from "./screens/AddServerScreen.js";
@@ -119,18 +120,34 @@ export function App({ onExit }: AppProps): React.ReactElement {
   );
 
   // Show temporary message
+  const [messageTimeoutId, setMessageTimeoutId] = useState<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+
   const showMessage = useCallback(
     (msg: string, type: "success" | "error" | "info" = "info") => {
       setState((prev) => ({ ...prev, message: msg, messageType: type }));
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         setState((prev) => ({ ...prev, message: null }));
       }, 2000);
+      setMessageTimeoutId(timeoutId);
     },
     []
   );
 
+  // Cleanup message timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (messageTimeoutId) {
+        clearTimeout(messageTimeoutId);
+      }
+    };
+  }, [messageTimeoutId]);
+
   // Load tool counts on mount
   useEffect(() => {
+    let isMounted = true;
+
     const loadToolCounts = async (): Promise<void> => {
       const testingService = getTestingService();
 
@@ -152,10 +169,13 @@ export function App({ onExit }: AppProps): React.ReactElement {
         }
       }
 
+      if (!isMounted) return;
       setState((prev) => ({ ...prev, toolCounts: newToolCounts }));
 
       // Auto-test unknown servers in background
       await testingService.autoTestUnknownServers();
+
+      if (!isMounted) return;
 
       // Reload tool counts after testing
       const updatedFilters = configService.getToolFilters();
@@ -175,10 +195,15 @@ export function App({ onExit }: AppProps): React.ReactElement {
         }
       }
 
+      if (!isMounted) return;
       setState((prev) => ({ ...prev, toolCounts: finalToolCounts }));
     };
 
     loadToolCounts();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Get current server
@@ -522,7 +547,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
   if (screen === "testing") {
     return (
       <Box flexDirection="column">
-        <Header title="MCP Server Manager" version="2.0.0" />
+        <Header title="MCP Server Manager" version={VERSION} />
 
         <Box flexDirection="column" paddingX={1} marginTop={1}>
           <Text bold>Testing all servers...</Text>
@@ -577,7 +602,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
   return (
     <Box flexDirection="column">
-      <Header title="MCP Server Manager" version="2.0.0" />
+      <Header title="MCP Server Manager" version={VERSION} />
 
       {/* Status bar */}
       <Box paddingX={1}>
