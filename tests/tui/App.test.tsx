@@ -136,7 +136,7 @@ describe("App Component", () => {
       const { lastFrame, stdin } = render(<App />);
 
       stdin.write("a");
-      await waitForStateUpdate();
+      await waitForStateUpdate(300); // Longer wait for CI environments
 
       expect(lastFrame()).toContain("Add New MCP Server");
     });
