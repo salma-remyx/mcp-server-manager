@@ -189,6 +189,11 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
                     </>
                   )}
                 </Box>
+                {client.mcpConfigPath && (
+                  <Box marginLeft={5}>
+                    <Text dimColor>{client.mcpConfigPath}</Text>
+                  </Box>
+                )}
               </Box>
             );
           })

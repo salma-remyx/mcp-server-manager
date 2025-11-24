@@ -239,47 +239,35 @@ export class ClientService {
       return this.readCodexConfig();
     }
 
+    // For clients with real-time MCP loading, read from the additional MCP path only
+    // This is the source of truth for connection status
+    const additionalMcpPath = ADDITIONAL_MCP_PATHS[clientId];
+    if (additionalMcpPath) {
+      try {
+        if (fs.existsSync(additionalMcpPath)) {
+          const data = fs.readFileSync(additionalMcpPath, "utf8");
+          return JSON.parse(data) as ClientMcpConfig;
+        }
+      } catch (error) {
+        log.debug(`Failed to read additional MCP config from ${additionalMcpPath}:`, error);
+      }
+      return null;
+    }
+
+    // For clients without real-time loading, fall back to primary config
     const configPath = this.getClientConfigPath(clientId);
     if (!configPath) return null;
-
-    let config: ClientMcpConfig | null = null;
 
     try {
       if (fs.existsSync(configPath)) {
         const data = fs.readFileSync(configPath, "utf8");
-        config = JSON.parse(data) as ClientMcpConfig;
+        return JSON.parse(data) as ClientMcpConfig;
       }
     } catch (error) {
       log.debug(`Failed to read ${clientId} config:`, error);
     }
 
-    // Also read from additional MCP path if available (for real-time loading)
-    const additionalMcpPath = ADDITIONAL_MCP_PATHS[clientId];
-    if (additionalMcpPath && fs.existsSync(additionalMcpPath)) {
-      try {
-        const data = fs.readFileSync(additionalMcpPath, "utf8");
-        const additionalConfig = JSON.parse(data) as ClientMcpConfig;
-        if (additionalConfig.mcpServers) {
-          // Initialize config if not already loaded from primary path
-          if (!config) {
-            config = {};
-          }
-          // Merge servers from additional path, preserving those in primary
-          if (!config.mcpServers) {
-            config.mcpServers = {};
-          }
-          for (const [name, server] of Object.entries(additionalConfig.mcpServers)) {
-            if (!config.mcpServers[name]) {
-              config.mcpServers[name] = server;
-            }
-          }
-        }
-      } catch (error) {
-        log.debug(`Failed to read additional MCP config from ${additionalMcpPath}:`, error);
-      }
-    }
-
-    return config;
+    return null;
   }
 
   /** Write client's config */
@@ -337,6 +325,7 @@ export class ClientService {
         id: clientId,
         name: CLIENT_NAMES[clientId] || clientId,
         configPath,
+        mcpConfigPath: ADDITIONAL_MCP_PATHS[clientId] || null,
         installed,
         hasConfig: !!currentConfig,
         status,
@@ -349,11 +338,6 @@ export class ClientService {
 
   /** Connect servers to a specific client (add mcpsm gateway to client config) */
   connectClient(clientId: ClientId): OperationResult {
-    const configPath = this.getClientConfigPath(clientId);
-    if (!configPath) {
-      return { success: false, error: "Unknown client" };
-    }
-
     if (!this.isClientInstalled(clientId)) {
       return { success: false, error: "Client not installed" };
     }
@@ -361,137 +345,144 @@ export class ClientService {
     const configService = getConfigService();
     const port = configService.getPort();
 
-    // Read current client config from primary path
-    const clientConfig: ClientMcpConfig = this.readClientConfig(clientId) || {};
-
-    // Also read from additional MCP path if available (for real-time loading)
-    // and merge any servers found there
+    // For clients with real-time MCP loading, use the additional MCP path as source of truth
     const additionalMcpPath = ADDITIONAL_MCP_PATHS[clientId];
-    if (additionalMcpPath && fs.existsSync(additionalMcpPath)) {
+    if (additionalMcpPath) {
       try {
-        const data = fs.readFileSync(additionalMcpPath, "utf8");
-        const additionalConfig = JSON.parse(data) as ClientMcpConfig;
-        if (additionalConfig.mcpServers) {
-          // Merge servers from additional path, preserving those not in primary
-          if (!clientConfig.mcpServers) {
-            clientConfig.mcpServers = {};
-          }
-          for (const [name, server] of Object.entries(additionalConfig.mcpServers)) {
-            if (name !== "mcpsm" && !clientConfig.mcpServers[name]) {
-              clientConfig.mcpServers[name] = server;
-            }
+        // Read current config from additional MCP path
+        let clientConfig: ClientMcpConfig = {};
+        if (fs.existsSync(additionalMcpPath)) {
+          try {
+            const data = fs.readFileSync(additionalMcpPath, "utf8");
+            clientConfig = JSON.parse(data) as ClientMcpConfig;
+          } catch (error) {
+            log.debug(`Failed to read additional MCP config from ${additionalMcpPath}:`, error);
           }
         }
-      } catch (error) {
-        log.debug(`Failed to read additional MCP config from ${additionalMcpPath}:`, error);
-      }
-    }
 
-    // Initialize mcpServers if not present
-    if (!clientConfig.mcpServers) {
-      clientConfig.mcpServers = {};
-    }
+        // Initialize mcpServers if not present
+        if (!clientConfig.mcpServers) {
+          clientConfig.mcpServers = {};
+        }
 
-    // Add mcpsm gateway server that proxies to our daemon
-    clientConfig.mcpServers.mcpsm = {
-      command: "npx",
-      args: ["-y", "mcp-proxy", "--transport", "stdio", `http://localhost:${port}/mcp`],
-    };
+        // Add mcpsm gateway server
+        clientConfig.mcpServers.mcpsm = {
+          command: "npx",
+          args: ["-y", "mcp-proxy", "--transport", "stdio", `http://localhost:${port}/mcp`],
+        };
 
-    // Write config to primary location
-    const success = this.writeClientConfig(clientId, clientConfig);
-
-    // Also write to additional MCP path if available (for real-time loading)
-    if (additionalMcpPath && success) {
-      try {
+        // Write to additional MCP path only (the source of truth)
         const dir = path.dirname(additionalMcpPath);
         if (!fs.existsSync(dir)) {
           fs.mkdirSync(dir, { recursive: true });
         }
-        // Write simplified format with just mcpServers
-        const mcpConfig = { mcpServers: clientConfig.mcpServers };
-        fs.writeFileSync(additionalMcpPath, JSON.stringify(mcpConfig, null, 2));
+        fs.writeFileSync(additionalMcpPath, JSON.stringify(clientConfig, null, 2));
+        return { success: true };
       } catch (error) {
-        log.debug(`Failed to write additional MCP config to ${additionalMcpPath}:`, error);
+        const errorMsg = error instanceof Error ? error.message : "Unknown error";
+        return { success: false, error: `Failed to write config: ${errorMsg}` };
       }
     }
 
-    return {
-      success,
-      error: success ? undefined : "Failed to write config",
-    };
-  }
-
-  /** Disconnect servers from a specific client (remove our servers from client config) */
-  disconnectClient(clientId: ClientId): OperationResult {
+    // For clients without real-time loading, use primary config
     const configPath = this.getClientConfigPath(clientId);
     if (!configPath) {
       return { success: false, error: "Unknown client" };
     }
 
-    // Read current client config from primary path
-    let currentConfig = this.readClientConfig(clientId);
-
-    // Also read from additional MCP path if available (for real-time loading)
-    // and merge any servers found there
-    const additionalMcpPath = ADDITIONAL_MCP_PATHS[clientId];
-    if (additionalMcpPath && fs.existsSync(additionalMcpPath)) {
-      try {
-        const data = fs.readFileSync(additionalMcpPath, "utf8");
-        const additionalConfig = JSON.parse(data) as ClientMcpConfig;
-        if (additionalConfig.mcpServers) {
-          if (!currentConfig) {
-            currentConfig = {};
-          }
-          // Merge servers from additional path
-          if (!currentConfig.mcpServers) {
-            currentConfig.mcpServers = {};
-          }
-          for (const [name, server] of Object.entries(additionalConfig.mcpServers)) {
-            if (name !== "mcpsm" && !currentConfig.mcpServers[name]) {
-              currentConfig.mcpServers[name] = server;
-            }
-          }
-        }
-      } catch (error) {
-        log.debug(`Failed to read additional MCP config from ${additionalMcpPath}:`, error);
+    try {
+      let clientConfig: ClientMcpConfig = {};
+      if (fs.existsSync(configPath)) {
+        const data = fs.readFileSync(configPath, "utf8");
+        clientConfig = JSON.parse(data) as ClientMcpConfig;
       }
+
+      if (!clientConfig.mcpServers) {
+        clientConfig.mcpServers = {};
+      }
+
+      clientConfig.mcpServers.mcpsm = {
+        command: "npx",
+        args: ["-y", "mcp-proxy", "--transport", "stdio", `http://localhost:${port}/mcp`],
+      };
+
+      const success = this.writeClientConfig(clientId, clientConfig);
+      return {
+        success,
+        error: success ? undefined : "Failed to write config",
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      return { success: false, error: `Failed to connect: ${errorMsg}` };
     }
+  }
 
-    if (!currentConfig) {
-      return { success: true }; // No config to disconnect from
-    }
-
-    if (!currentConfig.mcpServers || !currentConfig.mcpServers.mcpsm) {
-      return { success: true }; // Already disconnected
-    }
-
-    // Remove mcpsm gateway from client config
-    delete currentConfig.mcpServers.mcpsm;
-
-    // Write config to primary location
-    const success = this.writeClientConfig(clientId, currentConfig);
-
-    // Also write to additional MCP path if available (for real-time loading)
+  /** Disconnect servers from a specific client (remove our servers from client config) */
+  disconnectClient(clientId: ClientId): OperationResult {
+    // For clients with real-time MCP loading, use the additional MCP path as source of truth
+    const additionalMcpPath = ADDITIONAL_MCP_PATHS[clientId];
     if (additionalMcpPath) {
       try {
+        // Read current config from additional MCP path
+        let currentConfig: ClientMcpConfig | null = null;
+        if (fs.existsSync(additionalMcpPath)) {
+          try {
+            const data = fs.readFileSync(additionalMcpPath, "utf8");
+            currentConfig = JSON.parse(data) as ClientMcpConfig;
+          } catch (error) {
+            log.debug(`Failed to read additional MCP config from ${additionalMcpPath}:`, error);
+          }
+        }
+
+        // If no config or no mcpsm, already disconnected
+        if (!currentConfig || !currentConfig.mcpServers || !currentConfig.mcpServers.mcpsm) {
+          return { success: true };
+        }
+
+        // Remove mcpsm gateway
+        delete currentConfig.mcpServers.mcpsm;
+
+        // Write to additional MCP path only (the source of truth)
         const dir = path.dirname(additionalMcpPath);
         if (!fs.existsSync(dir)) {
           fs.mkdirSync(dir, { recursive: true });
         }
-        // Write updated config to additional MCP path
-        const mcpConfig = { mcpServers: currentConfig.mcpServers };
-        fs.writeFileSync(additionalMcpPath, JSON.stringify(mcpConfig, null, 2));
+        fs.writeFileSync(additionalMcpPath, JSON.stringify(currentConfig, null, 2));
+        return { success: true };
       } catch (error) {
-        log.debug(`Failed to write additional MCP config to ${additionalMcpPath}:`, error);
-        // Don't fail if additional path write fails, primary write is more important
+        const errorMsg = error instanceof Error ? error.message : "Unknown error";
+        return { success: false, error: `Failed to write config: ${errorMsg}` };
       }
     }
 
-    return {
-      success,
-      error: success ? undefined : "Failed to write config",
-    };
+    // For clients without real-time loading, use primary config
+    const configPath = this.getClientConfigPath(clientId);
+    if (!configPath) {
+      return { success: false, error: "Unknown client" };
+    }
+
+    try {
+      let currentConfig: ClientMcpConfig | null = null;
+      if (fs.existsSync(configPath)) {
+        const data = fs.readFileSync(configPath, "utf8");
+        currentConfig = JSON.parse(data) as ClientMcpConfig;
+      }
+
+      if (!currentConfig || !currentConfig.mcpServers || !currentConfig.mcpServers.mcpsm) {
+        return { success: true };
+      }
+
+      delete currentConfig.mcpServers.mcpsm;
+
+      const success = this.writeClientConfig(clientId, currentConfig);
+      return {
+        success,
+        error: success ? undefined : "Failed to write config",
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      return { success: false, error: `Failed to disconnect: ${errorMsg}` };
+    }
   }
 
   /** Get connection status for a client */

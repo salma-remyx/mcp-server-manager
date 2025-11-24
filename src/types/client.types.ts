@@ -35,6 +35,8 @@ export interface DetectedClient {
   name: string;
   /** Config file path for current platform */
   configPath: string | null;
+  /** MCP configuration file path (real-time loading path) */
+  mcpConfigPath: string | null;
   /** Whether client is installed */
   installed: boolean;
   /** Whether client has config file */
