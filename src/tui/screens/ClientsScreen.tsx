@@ -73,6 +73,16 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
     }));
   }, [state, clientService]);
 
+  // Handle refresh
+  const handleRefresh = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      clients: clientService.detectClients(),
+      message: "Refreshed",
+      messageType: "info",
+    }));
+  }, [clientService]);
+
   // Handle keyboard input
   useInput((input, key) => {
     const { clients, currentIndex, connecting } = state;
@@ -107,6 +117,12 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
     // Connect/Disconnect - Enter
     if (key.return && clients.length > 0) {
       handleToggleConnection();
+      return;
+    }
+
+    // Refresh - R
+    if (input === "r" || input === "R") {
+      handleRefresh();
       return;
     }
   });
@@ -182,12 +198,10 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
                 </Box>
                 <Box marginLeft={5} gap={1}>
                   <Text color={statusColor}>{statusText}</Text>
-                  {client.serverCount > 0 && (
-                    <>
-                      <Text dimColor>|</Text>
-                      <Text dimColor>{client.serverCount} servers</Text>
-                    </>
-                  )}
+                  <Text dimColor>|</Text>
+                  <Text dimColor>
+                    {client.serverCount} {client.serverCount === 1 ? "server" : "servers"}
+                  </Text>
                 </Box>
                 {client.mcpConfigPath && (
                   <Box marginLeft={5}>
@@ -201,7 +215,7 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
       </Box>
 
       <Box paddingX={1} marginTop={1}>
-        <Text dimColor>↑/↓ Navigate ENTER Connect/Disconnect Q Back</Text>
+        <Text dimColor>↑/↓ Navigate ENTER Connect/Disconnect R Refresh Q Back</Text>
       </Box>
     </Box>
   );
