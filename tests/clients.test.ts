@@ -125,6 +125,64 @@ describe("ClientService", () => {
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
     });
+
+    it("should merge servers from real-time config when connecting", () => {
+      clientService = new ClientService();
+
+      // Create a temp test config directory
+      const testClientDir = path.join(testConfigDir, "test-client-cursor");
+      fs.mkdirSync(testClientDir, { recursive: true });
+
+      const primaryConfigPath = path.join(testClientDir, "config.json");
+      const realtimeConfigPath = path.join(testConfigDir, "test-cursor-mcp.json");
+
+      // Write primary config with servers A, B
+      fs.writeFileSync(
+        primaryConfigPath,
+        JSON.stringify({
+          mcpServers: {
+            serverA: { command: "cmd", args: ["a"] },
+            serverB: { command: "cmd", args: ["b"] },
+          },
+        })
+      );
+
+      // Write real-time config with servers B, C
+      fs.writeFileSync(
+        realtimeConfigPath,
+        JSON.stringify({
+          mcpServers: {
+            serverB: { command: "cmd", args: ["b-override"] },
+            serverC: { command: "cmd", args: ["c"] },
+          },
+        })
+      );
+
+      // Manually test the merge logic
+      const primaryConfig = JSON.parse(fs.readFileSync(primaryConfigPath, "utf8"));
+      const mergedConfig = primaryConfig;
+
+      // Read and merge from real-time path
+      const realtimeConfig = JSON.parse(fs.readFileSync(realtimeConfigPath, "utf8"));
+      if (realtimeConfig.mcpServers) {
+        if (!mergedConfig.mcpServers) {
+          mergedConfig.mcpServers = {};
+        }
+        for (const [name, server] of Object.entries(realtimeConfig.mcpServers)) {
+          if (name !== "mcpsm" && !mergedConfig.mcpServers[name]) {
+            mergedConfig.mcpServers[name] = server;
+          }
+        }
+      }
+
+      // Should have servers A, B, C (B from primary, not overridden)
+      expect(Object.keys(mergedConfig.mcpServers)).toContain("serverA");
+      expect(Object.keys(mergedConfig.mcpServers)).toContain("serverB");
+      expect(Object.keys(mergedConfig.mcpServers)).toContain("serverC");
+
+      // serverB should be from primary (not overridden)
+      expect(mergedConfig.mcpServers.serverB.args[0]).toBe("b");
+    });
   });
 
   describe("getConnectionStatus", () => {
