@@ -76,6 +76,17 @@ const CLIENT_PATHS: ClientPathsConfig = {
   },
 };
 
+/** Additional MCP config paths for real-time loading (per client) */
+const ADDITIONAL_MCP_PATHS: Record<ClientId, string | null> = {
+  cursor: path.join(os.homedir(), ".cursor/mcp.json"),
+  windsurf: path.join(os.homedir(), ".windsurf/mcp.json"),
+  vscode: path.join(os.homedir(), ".continue/mcp.json"),
+  claude: path.join(os.homedir(), ".claude/mcp.json"),
+  "claude-code": null,
+  codex: null,
+  gemini: null,
+};
+
 /** Client display names */
 const CLIENT_NAMES: ClientNames = {
   claude: "Claude Desktop",
@@ -372,6 +383,22 @@ export class ClientService {
     // Write config
     const success = this.writeClientConfig(clientId, clientConfig);
 
+    // Also write to additional MCP path if available (for real-time loading)
+    const additionalMcpPath = ADDITIONAL_MCP_PATHS[clientId];
+    if (additionalMcpPath && success) {
+      try {
+        const dir = path.dirname(additionalMcpPath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        // Write simplified format with just mcpServers
+        const mcpConfig = { mcpServers: clientConfig.mcpServers };
+        fs.writeFileSync(additionalMcpPath, JSON.stringify(mcpConfig, null, 2));
+      } catch (error) {
+        log.debug(`Failed to write additional MCP config to ${additionalMcpPath}:`, error);
+      }
+    }
+
     return {
       success,
       error: success ? undefined : "Failed to write config",
@@ -386,7 +413,11 @@ export class ClientService {
     }
 
     const currentConfig = this.readClientConfig(clientId);
-    if (!currentConfig?.mcpServers) {
+    if (!currentConfig) {
+      return { success: true }; // No config to disconnect from
+    }
+
+    if (!currentConfig.mcpServers || Object.keys(currentConfig.mcpServers).length === 0) {
       return { success: true }; // Already disconnected
     }
 
@@ -403,8 +434,25 @@ export class ClientService {
       delete currentConfig.mcpServers[serverId];
     }
 
-    // Write config
+    // Write config to primary location
     const success = this.writeClientConfig(clientId, currentConfig);
+
+    // Also write to additional MCP path if available (for real-time loading)
+    const additionalMcpPath = ADDITIONAL_MCP_PATHS[clientId];
+    if (additionalMcpPath) {
+      try {
+        const dir = path.dirname(additionalMcpPath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        // Write updated config to additional MCP path
+        const mcpConfig = { mcpServers: currentConfig.mcpServers };
+        fs.writeFileSync(additionalMcpPath, JSON.stringify(mcpConfig, null, 2));
+      } catch (error) {
+        log.debug(`Failed to write additional MCP config to ${additionalMcpPath}:`, error);
+        // Don't fail if additional path write fails, primary write is more important
+      }
+    }
 
     return {
       success,
