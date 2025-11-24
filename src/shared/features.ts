@@ -50,7 +50,7 @@ export const FEATURES: Feature[] = [
     name: "Add server",
     category: "servers",
     cliCommands: ["add"],
-    tuiImplementation: "add-server.screen.ts",
+    tuiImplementation: "AddServerScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -92,7 +92,7 @@ export const FEATURES: Feature[] = [
     name: "List tools",
     category: "tools",
     cliCommands: ["tools list"],
-    tuiImplementation: "tools.screen.ts",
+    tuiImplementation: "ToolsScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -100,7 +100,7 @@ export const FEATURES: Feature[] = [
     name: "Discover tools",
     category: "tools",
     cliCommands: ["tools discover"],
-    tuiImplementation: "tools.screen.ts",
+    tuiImplementation: "ToolsScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -108,7 +108,7 @@ export const FEATURES: Feature[] = [
     name: "Enable/disable tool",
     category: "tools",
     cliCommands: ["tools enable", "tools disable"],
-    tuiImplementation: "tools.screen.ts",
+    tuiImplementation: "ToolsScreen.tsx",
     requiredInTui: true,
   },
 
@@ -118,7 +118,7 @@ export const FEATURES: Feature[] = [
     name: "List clients",
     category: "clients",
     cliCommands: ["clients list"],
-    tuiImplementation: "clients.screen.ts",
+    tuiImplementation: "ClientsScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -126,7 +126,7 @@ export const FEATURES: Feature[] = [
     name: "Sync to clients",
     category: "clients",
     cliCommands: ["clients sync"],
-    tuiImplementation: "clients.screen.ts",
+    tuiImplementation: "ClientsScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -134,7 +134,7 @@ export const FEATURES: Feature[] = [
     name: "Enable/disable client sync",
     category: "clients",
     cliCommands: ["clients enable", "clients disable"],
-    tuiImplementation: "clients.screen.ts",
+    tuiImplementation: "ClientsScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -152,7 +152,7 @@ export const FEATURES: Feature[] = [
     name: "List profiles",
     category: "profiles",
     cliCommands: ["profile list"],
-    tuiImplementation: "profiles.screen.ts",
+    tuiImplementation: "ProfilesScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -160,7 +160,7 @@ export const FEATURES: Feature[] = [
     name: "Create profile",
     category: "profiles",
     cliCommands: ["profile create"],
-    tuiImplementation: "profiles.screen.ts",
+    tuiImplementation: "ProfilesScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -168,7 +168,7 @@ export const FEATURES: Feature[] = [
     name: "Delete profile",
     category: "profiles",
     cliCommands: ["profile delete"],
-    tuiImplementation: "profiles.screen.ts",
+    tuiImplementation: "ProfilesScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -176,7 +176,7 @@ export const FEATURES: Feature[] = [
     name: "Switch profile",
     category: "profiles",
     cliCommands: ["profile use"],
-    tuiImplementation: "profiles.screen.ts",
+    tuiImplementation: "ProfilesScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -184,7 +184,7 @@ export const FEATURES: Feature[] = [
     name: "Add server to profile",
     category: "profiles",
     cliCommands: ["profile add"],
-    tuiImplementation: "profiles.screen.ts",
+    tuiImplementation: "ProfilesScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -192,7 +192,7 @@ export const FEATURES: Feature[] = [
     name: "Remove server from profile",
     category: "profiles",
     cliCommands: ["profile remove"],
-    tuiImplementation: "profiles.screen.ts",
+    tuiImplementation: "ProfilesScreen.tsx",
     requiredInTui: true,
   },
 
@@ -202,7 +202,7 @@ export const FEATURES: Feature[] = [
     name: "List settings",
     category: "settings",
     cliCommands: ["settings list"],
-    tuiImplementation: "settings.screen.ts",
+    tuiImplementation: "SettingsScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -210,7 +210,7 @@ export const FEATURES: Feature[] = [
     name: "Get/set setting",
     category: "settings",
     cliCommands: ["settings get", "settings set"],
-    tuiImplementation: "settings.screen.ts",
+    tuiImplementation: "SettingsScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -228,7 +228,7 @@ export const FEATURES: Feature[] = [
     name: "Start/stop daemon",
     category: "daemon",
     cliCommands: ["daemon start", "daemon stop"],
-    tuiImplementation: "daemon.screen.ts",
+    tuiImplementation: "DaemonScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -236,7 +236,7 @@ export const FEATURES: Feature[] = [
     name: "Daemon status",
     category: "daemon",
     cliCommands: ["daemon status"],
-    tuiImplementation: "daemon.screen.ts",
+    tuiImplementation: "DaemonScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -244,7 +244,7 @@ export const FEATURES: Feature[] = [
     name: "View daemon logs",
     category: "daemon",
     cliCommands: ["daemon logs"],
-    tuiImplementation: "daemon.screen.ts",
+    tuiImplementation: "DaemonScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -252,7 +252,7 @@ export const FEATURES: Feature[] = [
     name: "Configure auto-start",
     category: "daemon",
     cliCommands: ["daemon startup enable", "daemon startup disable"],
-    tuiImplementation: "daemon.screen.ts",
+    tuiImplementation: "DaemonScreen.tsx",
     requiredInTui: true,
   },
 
@@ -262,7 +262,7 @@ export const FEATURES: Feature[] = [
     name: "Import servers",
     category: "import-export",
     cliCommands: ["import"],
-    tuiImplementation: "import-export.screen.ts",
+    tuiImplementation: "ImportExportScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -270,7 +270,7 @@ export const FEATURES: Feature[] = [
     name: "Export servers",
     category: "import-export",
     cliCommands: ["export"],
-    tuiImplementation: "import-export.screen.ts",
+    tuiImplementation: "ImportExportScreen.tsx",
     requiredInTui: true,
   },
 
@@ -280,7 +280,7 @@ export const FEATURES: Feature[] = [
     name: "Health check",
     category: "utilities",
     cliCommands: ["doctor"],
-    tuiImplementation: "utilities.screen.ts",
+    tuiImplementation: "DoctorScreen.tsx",
     requiredInTui: true,
   },
   {
@@ -296,7 +296,7 @@ export const FEATURES: Feature[] = [
     name: "Token usage report",
     category: "utilities",
     cliCommands: ["tokens"],
-    tuiImplementation: "utilities.screen.ts",
+    tuiImplementation: "TokensScreen.tsx",
     requiredInTui: true,
   },
 ];
