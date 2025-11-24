@@ -130,31 +130,8 @@ async function handleStart(
     console.log(`${colors.cyan}Starting gateway in foreground mode...${colors.reset}`);
     console.log(`${colors.gray}Press Ctrl+C to stop${colors.reset}\n`);
 
-    // TODO: Implement actual gateway start with FastMCP
-    // For now, just show what would be started
-    const localServers = configService.getEnabledLocalServers();
-    const remoteServers = configService.getEnabledRemoteServers();
-
-    const filteredLocal =
-      selectedServers.length > 0
-        ? localServers.filter((s) => selectedServers.includes(s.id))
-        : localServers;
-    const filteredRemote =
-      selectedServers.length > 0
-        ? remoteServers.filter((s) => selectedServers.includes(s.id))
-        : remoteServers;
-
-    if (filteredLocal.length === 0 && filteredRemote.length === 0) {
-      console.error(`${colors.red}Error: No servers to start${colors.reset}`);
-      process.exit(1);
-    }
-
-    console.log(`${colors.bright}Would start:${colors.reset}`);
-    filteredLocal.forEach((s) => console.log(`  - ${s.name} (local)`));
-    filteredRemote.forEach((s) => console.log(`  - ${s.name} (${s.type})`));
-    console.log(
-      `\n${colors.yellow}Gateway foreground mode not yet implemented in TypeScript migration.${colors.reset}`
-    );
+    const { runGatewayForeground } = await import("../../services/gateway.service.js");
+    await runGatewayForeground(selectedServers.length > 0 ? selectedServers : undefined);
     return;
   }
 

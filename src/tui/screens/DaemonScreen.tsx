@@ -53,26 +53,49 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
     (optionId: string) => {
       switch (optionId) {
         case "start": {
-          setState((prev) => ({
-            ...prev,
-            view: "action",
-            actionResult: {
-              success: false,
-              message: "Gateway daemon not yet implemented",
-            },
-          }));
+          const runningStatus = daemonService.isDaemonRunning();
+          if (runningStatus.running) {
+            setState((prev) => ({
+              ...prev,
+              view: "action",
+              actionResult: {
+                success: false,
+                message: `Daemon already running (PID: ${runningStatus.pid})`,
+              },
+            }));
+          } else {
+            setState((prev) => ({ ...prev, isLoading: true }));
+            const result = daemonService.startDaemon([]);
+            setState((prev) => ({
+              ...prev,
+              isLoading: false,
+              view: "action",
+              actionResult: result.success
+                ? { success: true, message: `Daemon started (PID: ${result.pid})` }
+                : { success: false, message: `Failed: ${result.error}` },
+            }));
+          }
           break;
         }
 
         case "stop": {
-          setState((prev) => ({
-            ...prev,
-            view: "action",
-            actionResult: {
-              success: false,
-              message: "Gateway daemon not yet implemented",
-            },
-          }));
+          const runningStatus = daemonService.isDaemonRunning();
+          if (!runningStatus.running) {
+            setState((prev) => ({
+              ...prev,
+              view: "action",
+              actionResult: { success: false, message: "Daemon is not running" },
+            }));
+          } else {
+            const result = daemonService.stopDaemon();
+            setState((prev) => ({
+              ...prev,
+              view: "action",
+              actionResult: result.success
+                ? { success: true, message: "Daemon stopped" }
+                : { success: false, message: `Failed: ${result.error}` },
+            }));
+          }
           break;
         }
 
