@@ -87,6 +87,27 @@ Perfect for **scripting**, **automation**, and **batch operations**:
 
 Both interfaces provide the same powerful functionality - choose what works best for your workflow!
 
+### TUI Display
+
+```
+MCP Server Manager v1.1.0
+Profile: default | Port: 8850
+
+Local Servers (STDIO):
+→ ☑ filesystem ✔ 11 tools · 4.2k tokens
+  ☑ github ✔ 8 tools · 3.1k tokens
+  ☑ postgres ✔ 5 tools · 2.8k tokens
+
+Remote Servers (HTTP/SSE):
+  ☐ stripe - 0 tools
+  ☑ deepwiki ✔ 3 tools · 1.5k tokens
+
+↑/↓ Navigate SPACE Select A Add D Delete E Edit N Enable/Disable
+X Test T Tools C Clients F Profiles G Settings M Daemon Q Quit
+```
+
+See all available keyboard shortcuts at a glance, with tool counts and token estimates for each server.
+
 ---
 
 ## Installation

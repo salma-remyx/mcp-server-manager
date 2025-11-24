@@ -12,25 +12,22 @@ mcpsm
 
 ```
 MCP Server Manager v1.1.0
-
 Profile: default | Port: 8850
 
-┌─ Local Servers (STDIO) ────────────────────┐  ┌─ Shortcuts ────┐
-│ → [✓] notion      - 19/19 tools           │  │ Navigation     │
-│   [ ] metamcp     - 11/14 tools           │  │  ↑↓  Move      │
-│                                            │  │ Spc  Select    │
-└────────────────────────────────────────────┘  │ Ent  Manage    │
-┌─ Remote Servers (HTTP/SSE) ────────────────┐  │ Q    Back      │
-│   [ ] stripe      - 0/0 tools             │  │                │
-│   [✓] deepwiki    - 3/3 tools             │  │ Server         │
-│                                            │  │ A    Add       │
-└────────────────────────────────────────────┘  │ E    Edit      │
-                                                │ D    Delete    │
-                                                │ N    Toggle    │
-                                                │ X    Test      │
+Local Servers (STDIO):
+→ ☑ filesystem ✔ 11 tools · 4.2k tokens
+  ☑ github ✔ 8 tools · 3.1k tokens
+  ☑ postgres ✔ 5 tools · 2.8k tokens
+
+Remote Servers (HTTP/SSE):
+  ☐ stripe - 0 tools
+  ☑ deepwiki ✔ 3 tools · 1.5k tokens
+
+↑/↓ Navigate SPACE Select A Add D Delete E Edit N Enable/Disable
+X Test T Tools C Clients F Profiles G Settings M Daemon Q Quit
 ```
 
-The main screen shows all configured servers with a consistent menu system for navigation and actions.
+The main screen shows all configured servers with their tool counts and token usage at a glance. A single-line keyboard shortcut bar at the bottom provides quick access to all features.
 
 ## Header
 
@@ -52,33 +49,34 @@ Remote servers connect over HTTP or Server-Sent Events (SSE).
 
 ## Server Status Indicators
 
-| Indicator     | Meaning                           |
-| ------------- | --------------------------------- |
-| `→`           | Currently selected (cursor)       |
-| `[✓]`         | Server selected                   |
-| `[ ]`         | Server not selected               |
-| `19/19 tools` | Enabled/total tools for server    |
-| `disabled`    | Server is disabled                |
-| Gray text     | Server disabled or not yet tested |
+| Indicator           | Meaning                           |
+| ------------------- | --------------------------------- |
+| `→`                 | Currently selected (cursor)       |
+| `☑`                 | Server selected/enabled           |
+| `☐`                 | Server not selected/disabled      |
+| `✔`                 | Server tested and working         |
+| `11 tools`          | Number of available tools         |
+| `4.2k tokens`       | Estimated token usage             |
+| Gray text           | Server disabled or not yet tested |
 
 ## Navigation
 
-| Key     | Action           |
-| ------- | ---------------- |
-| `↑` / ↓ | Move cursor      |
-| `Space` | Toggle selection |
-| `Enter` | Manage daemon    |
-| `Q`     | Quit             |
+| Key        | Action                |
+| ---------- | --------------------- |
+| `↑` / `↓`  | Move between servers  |
+| `Space`    | Toggle selection      |
+| `Enter`    | Manage selected daemon|
+| `Q`        | Quit / Go back        |
 
 ## Server Actions
 
-| Key | Action                            |
-| --- | --------------------------------- |
-| `A` | Add new server                    |
-| `D` | Delete current server             |
-| `E` | Edit current server (remote only) |
-| `N` | Toggle server enabled/disabled    |
-| `X` | Test all servers                  |
+| Key | Action                          |
+| --- | ------------------------------- |
+| `A` | Add new server                  |
+| `D` | Delete selected server          |
+| `E` | Edit server configuration       |
+| `N` | Toggle server enabled/disabled  |
+| `X` | Test all servers                |
 
 ## Screen Navigation
 
@@ -88,21 +86,40 @@ Remote servers connect over HTTP or Server-Sent Events (SSE).
 | `C` | Clients         |
 | `F` | Profiles        |
 | `G` | Settings        |
+| `M` | Daemon          |
 | `I` | Import/Export   |
 | `H` | Doctor (health) |
 | `K` | Tokens (usage)  |
 
 ## Menu System
 
-Each screen features a consistent right-side menu panel with:
+The main screen displays a comprehensive keyboard shortcut bar at the bottom organized by function:
 
-- **Navigation** - Movement and exit controls (↑/↓, Q)
-- **Actions** - Screen-specific operations (varies per screen)
-- **Data** - Access Tools, Profiles, Import/Export (T, F, I)
-- **Config** - Access Clients, Settings (C, G)
-- **System** - Access Doctor, Tokens (H, K)
+**Navigation & Selection:**
+- `↑/↓` - Navigate between servers
+- `SPACE` - Select/deselect server
 
-The current screen is highlighted in the menu for easy reference.
+**Server Operations:**
+- `A` - Add new server
+- `D` - Delete server
+- `E` - Edit server
+- `N` - Toggle enabled/disabled
+- `X` - Test all servers
+
+**Screen Navigation:**
+- `T` - Tools
+- `C` - Clients
+- `F` - Profiles
+- `G` - Settings
+- `M` - Daemon
+- `I` - Import/Export
+- `H` - Doctor (health check)
+- `K` - Tokens (usage statistics)
+
+**Exit:**
+- `Q` - Quit
+
+Each sub-screen features its own action-specific shortcuts while maintaining consistent navigation keys (`↑/↓`, `Q`).
 
 ## Selection Persistence
 
