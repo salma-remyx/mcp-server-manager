@@ -260,7 +260,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
       // Don't process other keys while testing
       if (state.screen === "testing") return;
 
-      const { localServers, remoteServers, selectedServers } = state;
+      const { localServers, remoteServers } = state;
       const totalLocal = localServers.length;
       const totalRemote = remoteServers.length;
 
@@ -473,17 +473,9 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return;
       }
 
-      // Enter - Manage selected servers on daemon (enable/disable them)
+      // Enter - Open daemon management screen
       if (key.return) {
-        const selectedLocal = localServers.filter((s) => selectedServers.has(s.id));
-        const selectedRemote = remoteServers.filter((s) => selectedServers.has(`remote:${s.id}`));
-
-        if (selectedLocal.length === 0 && selectedRemote.length === 0) {
-          showMessage("No servers selected. Use SPACE to select.", "info");
-          return;
-        }
-
-        // Go to daemon management screen to enable/disable selected servers
+        // Go to daemon management screen to start/stop daemon
         setState((prev) => ({ ...prev, screen: "daemon" }));
         return;
       }

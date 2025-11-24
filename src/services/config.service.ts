@@ -86,9 +86,28 @@ export class ConfigService {
         const data = fs.readFileSync(this.paths.configPath, "utf8");
         const parsed = JSON.parse(data) as Partial<AppConfig>;
 
+        // Normalize servers to ensure disabled property defaults to false
+        const normalizeServers = (servers: unknown[]): LocalServer[] => {
+          return Array.isArray(servers)
+            ? servers.map((s: unknown) => ({
+                ...(s as LocalServer),
+                disabled: (s as LocalServer).disabled ?? false,
+              }))
+            : [];
+        };
+
+        const normalizeRemoteServers = (servers: unknown[]): RemoteServer[] => {
+          return Array.isArray(servers)
+            ? servers.map((s: unknown) => ({
+                ...(s as RemoteServer),
+                disabled: (s as RemoteServer).disabled ?? false,
+              }))
+            : [];
+        };
+
         this.config = {
-          servers: Array.isArray(parsed.servers) ? parsed.servers : [],
-          remoteServers: Array.isArray(parsed.remoteServers) ? parsed.remoteServers : [],
+          servers: normalizeServers(parsed.servers || []),
+          remoteServers: normalizeRemoteServers(parsed.remoteServers || []),
           port: typeof parsed.port === "number" ? parsed.port : 8850,
         };
       } else {

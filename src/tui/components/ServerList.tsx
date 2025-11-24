@@ -49,8 +49,8 @@ export function ServerList({
         // Determine name style
         const nameColor = isDisabled ? "gray" : isCurrent ? "white" : undefined;
 
-        // Tool count or disabled label
-        const statusText = isDisabled ? "disabled" : `${toolCount} tools`;
+        // Always show tool count, regardless of disabled state
+        const statusText = `${toolCount} tools`;
         const statusColor = isDisabled ? "yellow" : "gray";
 
         return (
