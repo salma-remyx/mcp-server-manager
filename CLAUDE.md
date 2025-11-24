@@ -11,7 +11,7 @@ MCP Server Manager (`mcpsm`) is a CLI tool for managing MCP (Model Context Proto
 The system uses a **gateway pattern** for client connections:
 
 - A single `mcpsm` server is added to each connected client's configuration
-- This server uses `mcp-proxy` to proxy all MCP requests to the daemon on `localhost:{port}/mcp`
+- This server uses `supergateway` to proxy all MCP requests to the daemon on `localhost:{port}/mcp`
 - When the port setting is changed, all connected clients are automatically updated
 - Supports real-time config loading for clients without restart (Cursor, Windsurf, VS Code)
 

@@ -258,7 +258,7 @@ When you connect clients using `mcpsm clients connect`, each client gets a gatew
 {
   "mcpsm": {
     "command": "npx",
-    "args": ["-y", "mcp-proxy", "--transport", "stdio", "http://localhost:8850/mcp"]
+    "args": ["-y", "supergateway", "--streamableHttp", "http://localhost:8850/mcp"]
   }
 }
 ```

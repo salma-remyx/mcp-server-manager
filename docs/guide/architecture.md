@@ -37,7 +37,7 @@ Instead of syncing individual servers to each client, mcpsm operates as a **gate
 
 1. **Daemon**: Runs a central `mcpsm` server that listens on `localhost:{port}/mcp`
 2. **Client Connection**: Each client connects to the daemon through a single `mcpsm` server entry
-3. **Proxy**: The `mcpsm` server uses `mcp-proxy` to forward all requests to the daemon
+3. **Proxy**: The `mcpsm` server uses `supergateway` to forward all requests to the daemon
 4. **All Servers Accessible**: All configured servers are accessible through this single gateway
 
 ### Benefits
@@ -152,7 +152,7 @@ When you run `mcpsm clients connect <client>`:
    {
      "mcpsm": {
        "command": "npx",
-       "args": ["-y", "mcp-proxy", "--transport", "stdio", "http://localhost:PORT/mcp"]
+       "args": ["-y", "supergateway", "--streamableHttp", "http://localhost:PORT/mcp"]
      }
    }
    ```
@@ -213,12 +213,12 @@ The **gateway server** in each client configuration is what connects them:
 {
   "mcpsm": {
     "command": "npx",
-    "args": ["-y", "mcp-proxy", "--transport", "stdio", "http://localhost:PORT/mcp"]
+    "args": ["-y", "supergateway", "--streamableHttp", "http://localhost:PORT/mcp"]
   }
 }
 ```
 
-This uses `mcp-proxy` to forward all MCP protocol messages to the daemon's gateway endpoint.
+This uses `supergateway` to forward all MCP protocol messages to the daemon's gateway endpoint.
 
 ## Configuration Files
 
@@ -315,11 +315,11 @@ User opens Claude Desktop / Cursor / etc.
         ↓
 Client loads mcpsm gateway server config
         ↓
-mcp-proxy connects to http://localhost:PORT/mcp
+supergateway connects to http://localhost:PORT/mcp
         ↓
 User selects a tool from any server
         ↓
-Tool request flows: Client → mcp-proxy → mcpsm daemon → actual server
+Tool request flows: Client → supergateway → mcpsm daemon → actual server
         ↓
 Response flows back through the same path
 ```

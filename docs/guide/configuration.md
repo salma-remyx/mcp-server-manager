@@ -175,7 +175,7 @@ When you connect a client, mcpsm adds this gateway server entry:
 {
   "mcpsm": {
     "command": "npx",
-    "args": ["-y", "mcp-proxy", "--transport", "stdio", "http://localhost:PORT/mcp"]
+    "args": ["-y", "supergateway", "--streamableHttp", "http://localhost:PORT/mcp"]
   }
 }
 ```

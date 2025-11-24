@@ -137,7 +137,7 @@ When a client connects, this entry is added to its config:
 {
   "mcpsm": {
     "command": "npx",
-    "args": ["-y", "mcp-proxy", "--transport", "stdio", "http://localhost:PORT/mcp"]
+    "args": ["-y", "supergateway", "--streamableHttp", "http://localhost:PORT/mcp"]
   }
 }
 ```

@@ -95,7 +95,7 @@ Instead of syncing individual servers to each client, MCP Server Manager uses a 
 
 1. **Connect a client**: `mcpsm clients connect <client-name>`
    - A single `mcpsm` server is added to the client's config
-   - This server uses `mcp-proxy` to proxy requests to the daemon
+   - This server uses `supergateway` to proxy requests to the daemon
 
 2. **Add your servers normally**: `mcpsm add myserver`
    - Add servers in the usual way through the TUI or CLI
