@@ -98,6 +98,10 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     const daemonStatus = daemonService.isDaemonRunning();
     if (daemonStatus.running) {
       daemonService.stopDaemon();
+      // Small delay to ensure process exits before restarting
+      setTimeout(() => {
+        daemonService.startDaemon();
+      }, 100);
     }
   }, []);
 

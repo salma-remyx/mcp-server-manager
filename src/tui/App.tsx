@@ -368,6 +368,10 @@ export function App({ onExit }: AppProps): React.ReactElement {
             const daemonStatus = daemonService.isDaemonRunning();
             if (daemonStatus.running) {
               daemonService.stopDaemon();
+              // Small delay to ensure process exits before restarting
+              setTimeout(() => {
+                daemonService.startDaemon();
+              }, 100);
             }
             // Adjust index and refresh
             setState((prev) => {
