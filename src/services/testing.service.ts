@@ -226,6 +226,7 @@ export class TestingService {
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
       };
 
       if (server.bearerToken) {
