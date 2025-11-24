@@ -23,3 +23,6 @@ coverage/
 
 # Build output
 dist/
+
+# TODO file for tracking planned features
+TODO.md
