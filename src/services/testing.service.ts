@@ -250,10 +250,17 @@ export class TestingService {
         return { success: false, error, toolCount: 0 };
       }
 
+      // Capture session ID if provided (for servers like deepwiki)
+      const sessionId = initResponse.headers.get("mcp-session-id");
+      const toolsHeaders = { ...headers };
+      if (sessionId) {
+        toolsHeaders["mcp-session-id"] = sessionId;
+      }
+
       // Get tools
       const toolsResponse = await fetch(url, {
         method: "POST",
-        headers,
+        headers: toolsHeaders,
         body: JSON.stringify(this.createToolsListRequest()),
         signal: controller.signal,
       });
