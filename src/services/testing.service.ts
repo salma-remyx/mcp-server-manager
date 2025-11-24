@@ -278,15 +278,25 @@ export class TestingService {
       const contentType = toolsResponse.headers.get("content-type") || "";
 
       if (contentType.includes("text/event-stream")) {
-        // Parse SSE response
+        // Parse SSE response - extract JSON from data: field
         const text = await toolsResponse.text();
-        const jsonMatch = text.match(/data: ({.*?})/);
-        if (!jsonMatch) {
+        const lines = text.split("\n");
+        let jsonStr = "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: {")) {
+            jsonStr = line.substring(6); // Remove "data: "
+            break;
+          }
+        }
+
+        if (!jsonStr) {
           const error = "No data in SSE response";
           this.updateToolFilter(filterId, [], error);
           return { success: false, error, toolCount: 0 };
         }
-        result = JSON.parse(jsonMatch[1]);
+
+        result = JSON.parse(jsonStr);
       } else {
         // Parse JSON response
         result = (await toolsResponse.json()) as McpToolsResponse;
