@@ -40,29 +40,43 @@ mcpsm test
 
 This discovers all available tools and shows their status.
 
-## Step 4: Sync to Clients
+## Step 4: Connect Your Clients
 
-Press `C` to open the Clients screen, then:
+The gateway pattern automatically makes all your servers available to connected clients through a single `mcpsm` server.
 
-1. Press the number of a client to enable sync
-2. Press `S` to sync all servers
-
-Or via CLI:
-
-```bash
-mcpsm clients enable claude
-mcpsm clients sync
-```
-
-## Step 5: Start the Gateway
-
-Select servers with `SPACE` and press `ENTER` to start.
+Press `C` to open the Clients screen, then press `ENTER` on each client you want to connect.
 
 Or via CLI:
 
 ```bash
-mcpsm start
+# Connect Claude Desktop
+mcpsm clients connect claude
+
+# Connect Cursor
+mcpsm clients connect cursor
+
+# Connect Windsurf
+mcpsm clients connect windsurf
 ```
+
+## What Happens When You Connect
+
+- A single `mcpsm` server is added to the client's configuration
+- This server proxies all requests to your daemon at `localhost:{port}/mcp`
+- All your configured servers become instantly accessible
+- For real-time loading clients (Cursor, Windsurf, VS Code), changes appear without restart
+
+## Step 5: Use Your Servers
+
+Your servers are now available in Claude Desktop, Cursor, and other connected clients. No need to manage individual servers per client!
+
+### To change the port:
+
+```bash
+mcpsm port 9000
+```
+
+All connected clients are automatically updated with the new port.
 
 ## Next Steps
 

@@ -36,11 +36,9 @@ export type {
   ClientPathsConfig,
   ClientNames,
   DetectedClient,
-  ClientsState,
+  ClientStatus,
   ClaudeServerConfig,
   ClientMcpConfig,
-  SyncResult,
-  ClientSyncResult,
   OperationResult,
 } from "./client.types.js";
 

@@ -1,22 +1,35 @@
-# Client Sync
+# Client Connection
 
-Commands for managing MCP client synchronization.
+Commands for managing MCP client connections using the gateway pattern.
 
 ## Supported Clients
 
-| Client         | ID            | Platform              |
-| -------------- | ------------- | --------------------- |
-| Claude Desktop | `claude`      | macOS, Windows        |
-| Cursor         | `cursor`      | macOS, Windows, Linux |
-| Windsurf       | `windsurf`    | macOS, Windows, Linux |
-| VS Code        | `vscode`      | macOS, Windows, Linux |
-| Claude Code    | `claude-code` | CLI                   |
+| Client         | ID            | Platform              | Real-time Loading |
+| -------------- | ------------- | --------------------- | ----------------- |
+| Claude Desktop | `claude`      | macOS, Windows        | No                |
+| Cursor         | `cursor`      | macOS, Windows, Linux | Yes               |
+| Windsurf       | `windsurf`    | macOS, Windows, Linux | Yes               |
+| VS Code        | `vscode`      | macOS, Windows, Linux | Yes               |
+| Claude Code    | `claude-code` | CLI                   | No                |
+| Codex          | `codex`       | macOS, Windows, Linux | No                |
+| Gemini         | `gemini`      | macOS, Windows, Linux | No                |
+
+---
+
+## Gateway Pattern
+
+MCP Server Manager uses a **gateway pattern** for client connections:
+
+- A single `mcpsm` server is added to each connected client's configuration
+- This server uses `supergateway` to proxy all MCP requests to the daemon on `localhost:{port}/mcp`
+- All your configured servers are accessible through this single gateway
+- When the port is changed, all connected clients are automatically updated
 
 ---
 
 ## clients
 
-List detected MCP clients and their sync status.
+List detected MCP clients and their connection status.
 
 ```bash
 mcpsm clients
@@ -27,73 +40,72 @@ mcpsm clients
 ```
 Detected MCP Clients:
 
-  1. Claude Desktop     ✔ Installed   SYNC: ON    (3 servers)
-  2. Cursor            ✔ Installed   SYNC: OFF
-  3. Windsurf          ✘ Not found
-  4. VS Code           ✔ Installed   SYNC: ON    (3 servers)
+  1. Claude Desktop     ✔ Installed   Connected
+  2. Cursor            ✔ Installed   Disconnected
+  3. Windsurf          ✘ Not installed
+  4. VS Code           ✔ Installed   Connected
+  5. Claude Code       ✘ Not installed
 ```
+
+**Status Legend:**
+
+- `✔ Connected` - Client has mcpsm gateway server configured
+- `Disconnected` - Client is installed but not connected
+- `✘ Not installed` - Client application not found
 
 ---
 
-## clients sync
+## clients connect
 
-Sync servers to enabled clients.
+Connect a client by adding the mcpsm gateway server to its configuration.
 
 ```bash
-mcpsm clients sync [client]
+mcpsm clients connect <client>
 ```
 
 ### Examples
 
 ```bash
-# Sync to all enabled clients
-mcpsm clients sync
+# Connect Claude Desktop
+mcpsm clients connect claude
 
-# Sync to specific client
-mcpsm clients sync claude
+# Connect Cursor
+mcpsm clients connect cursor
+
+# Connect multiple clients
+mcpsm clients connect cursor
+mcpsm clients connect windsurf
 ```
 
-### What Gets Synced
+### What Happens
 
-- All enabled servers
-- Active profile servers (if a profile is selected)
-- Tool filter settings
+1. The `mcpsm` gateway server is added to the client's config
+2. The server proxies requests to the daemon at `localhost:{port}/mcp`
+3. All your configured servers become accessible in that client
+4. For real-time loading clients, changes appear without restart
 
 ---
 
-## clients enable
+## clients disconnect
 
-Enable auto-sync for a client.
-
-```bash
-mcpsm clients enable <client>
-```
-
-### Examples
+Disconnect a client by removing the mcpsm gateway server from its configuration.
 
 ```bash
-# Enable Claude Desktop sync
-mcpsm clients enable claude
-
-# Enable Cursor sync
-mcpsm clients enable cursor
-```
-
----
-
-## clients disable
-
-Disable auto-sync for a client.
-
-```bash
-mcpsm clients disable <client>
+mcpsm clients disconnect <client>
 ```
 
 ### Example
 
 ```bash
-mcpsm clients disable cursor
+# Disconnect Cursor
+mcpsm clients disconnect cursor
 ```
+
+### What Happens
+
+- The `mcpsm` gateway server is removed from the client's config
+- The client will no longer have access to your MCP servers
+- Other servers in the client's config are preserved
 
 ---
 
@@ -117,21 +129,58 @@ mcpsm clients open cursor
 
 ---
 
-## Auto-Sync
+## Workflow Example
 
-When `autoSync` is enabled in settings, servers are automatically synced to clients whenever you:
-
-- Add or remove a server
-- Enable or disable a server
-- Change tool filters
-- Switch profiles
-
-To toggle auto-sync:
+### 1. Add your MCP servers
 
 ```bash
-# Enable auto-sync
-mcpsm settings set autoSync true
-
-# Disable auto-sync
-mcpsm settings set autoSync false
+mcpsm add myserver
+mcpsm add anotherserver
 ```
+
+### 2. Connect your clients
+
+```bash
+mcpsm clients connect claude
+mcpsm clients connect cursor
+mcpsm clients connect windsurf
+```
+
+### 3. Use servers in clients
+
+All your servers are now available in Claude Desktop, Cursor, and Windsurf through the `mcpsm` gateway.
+
+### 4. Change port if needed
+
+```bash
+mcpsm port 9000
+```
+
+All connected clients are automatically updated with the new port!
+
+### 5. Disconnect when done
+
+```bash
+mcpsm clients disconnect cursor
+```
+
+---
+
+## Port Changes
+
+When you change the gateway port:
+
+```bash
+# In Settings
+mcpsm settings set port 9000
+
+# Or directly
+mcpsm port 9000
+```
+
+**Automatic Updates:**
+
+- All connected clients are automatically reconnected
+- The new port is written to each client's configuration
+- No manual editing required
+- Real-time loading clients (Cursor, Windsurf, VS Code) see changes without restart

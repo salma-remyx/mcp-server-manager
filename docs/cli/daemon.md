@@ -2,6 +2,34 @@
 
 Commands for running the MCP gateway as a background service.
 
+The **daemon** is the core of MCP Server Manager. It runs a **gateway server** that:
+
+1. Manages all your configured MCP servers
+2. Provides a single proxy endpoint at `localhost:{port}/mcp`
+3. Routes requests from connected clients to your servers
+
+## How the Daemon and Gateway Work Together
+
+```
+┌──────────────────────────────────────────────┐
+│          Your MCP Servers                    │
+│  (filesystem, github, database, etc.)        │
+└──────────────┬───────────────────────────────┘
+               │
+         ┌─────▼─────────┐
+         │  mcpsm Daemon │
+         │  (Gateway)    │
+         └─────┬─────────┘
+               │
+      ┌────────┼────────┐
+      │        │        │
+   ┌──▼──┐  ┌─▼──┐  ┌──▼───┐
+   │Claude│ │Cursor│ │ Windsurf│
+   └──────┘  └──────┘  └────────┘
+```
+
+When you connect clients, they communicate with the daemon's gateway server. The daemon manages all your servers and proxies requests between clients and servers.
+
 ## start
 
 Start the gateway daemon.
@@ -36,9 +64,11 @@ mcpsm start --fg
 ### What Happens
 
 1. Selected servers are spawned
-2. Gateway listens on configured port (default: 8080)
-3. Process runs in background
-4. PID is saved for later management
+2. Gateway server starts on configured port (default: 8850)
+3. Gateway listens on `localhost:{port}/mcp`
+4. Process runs in background
+5. PID is saved for later management
+6. Connected clients can now access all running servers through the gateway
 
 ---
 
@@ -71,7 +101,7 @@ mcpsm status
 Gateway Status: RUNNING
 
   PID: 12345
-  Port: 8080
+  Port: 8850
   Uptime: 2h 15m
 
   Running Servers:
@@ -199,12 +229,14 @@ mcpsm start --fg
 
 ```bash
 # Change port
-mcpsm settings set port 9000
+mcpsm port 9000
 
 # Restart daemon
 mcpsm stop
 mcpsm start
 ```
+
+When you change the port, all connected clients are automatically updated with the new port.
 
 ### Check Process Manually
 
@@ -212,6 +244,37 @@ mcpsm start
 # macOS/Linux
 ps aux | grep mcpsm
 
-# Check port
-lsof -i :8080
+# Check port (default 8850)
+lsof -i :8850
 ```
+
+---
+
+## Daemon and Client Connections
+
+When you connect clients using `mcpsm clients connect`, each client gets a gateway server entry that points to the daemon's gateway:
+
+```json
+{
+  "mcpsm": {
+    "command": "npx",
+    "args": ["-y", "supergateway", "--streamableHttp", "http://localhost:8850/mcp"]
+  }
+}
+```
+
+The `8850` port in client configs **matches the daemon's port**. When you change the port:
+
+1. Daemon restarts on the new port
+2. All connected clients are automatically updated with the new port
+3. Clients can immediately access the daemon on the new port
+
+This ensures all clients always connect to the daemon, no matter how many times you change the port.
+
+---
+
+## Next Steps
+
+- [Client Connections](/guide/client-connections) - How to connect clients
+- [Architecture](/guide/architecture) - Deep dive into daemon and gateway design
+- [Settings](/cli/settings) - Configure daemon port and other settings

@@ -473,20 +473,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return;
       }
 
-      // P - Port
-      if (input === "p" || input === "P") {
-        const currentPort = configService.getPort();
-        showMessage(`Current port: ${currentPort}. Use CLI: mcpsm port <number>`, "info");
-        return;
-      }
-
-      // M - Daemon
-      if (input === "m" || input === "M") {
-        setState((prev) => ({ ...prev, screen: "daemon" }));
-        return;
-      }
-
-      // Enter - Go to daemon screen
+      // Enter - Manage selected servers on daemon (enable/disable them)
       if (key.return) {
         const selectedLocal = localServers.filter((s) => selectedServers.has(s.id));
         const selectedRemote = remoteServers.filter((s) => selectedServers.has(`remote:${s.id}`));
@@ -496,7 +483,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
           return;
         }
 
-        // Go to daemon management screen
+        // Go to daemon management screen to enable/disable selected servers
         setState((prev) => ({ ...prev, screen: "daemon" }));
         return;
       }

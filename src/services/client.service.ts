@@ -13,14 +13,10 @@ import type {
   ClientPathsConfig,
   ClientNames,
   DetectedClient,
-  ClientsState,
+  ClientStatus,
   ClientMcpConfig,
   ClaudeServerConfig,
-  SyncResult,
-  ClientSyncResult,
   OperationResult,
-  LocalServer,
-  RemoteServer,
 } from "../types/index.js";
 import { getConfigService } from "./config.service.js";
 import { createLogger } from "../shared/logger.js";
@@ -78,6 +74,17 @@ const CLIENT_PATHS: ClientPathsConfig = {
   },
 };
 
+/** Additional MCP config paths for real-time loading (per client) */
+const ADDITIONAL_MCP_PATHS: Record<ClientId, string | null> = {
+  cursor: path.join(os.homedir(), ".cursor/mcp.json"),
+  windsurf: path.join(os.homedir(), ".windsurf/mcp.json"),
+  vscode: path.join(os.homedir(), ".continue/mcp.json"),
+  claude: path.join(os.homedir(), ".claude/mcp.json"),
+  "claude-code": null,
+  codex: null,
+  gemini: null,
+};
+
 /** Client display names */
 const CLIENT_NAMES: ClientNames = {
   claude: "Claude Desktop",
@@ -91,34 +98,13 @@ const CLIENT_NAMES: ClientNames = {
 
 /** Client service class */
 export class ClientService {
-  private clientsStatePath: string;
-
   constructor() {
-    const configService = getConfigService();
-    this.clientsStatePath = configService.getPaths().clientsStatePath;
+    // No initialization needed after removing state management
   }
 
   /** Get current platform */
   private getPlatform(): Platform {
     return process.platform as Platform;
-  }
-
-  /** Load clients state */
-  private loadState(): ClientsState {
-    try {
-      if (fs.existsSync(this.clientsStatePath)) {
-        const data = fs.readFileSync(this.clientsStatePath, "utf8");
-        return JSON.parse(data) as ClientsState;
-      }
-    } catch (error) {
-      log.debug("Failed to load clients state:", error);
-    }
-    return { enabledClients: [] };
-  }
-
-  /** Save clients state */
-  private saveState(state: ClientsState): void {
-    fs.writeFileSync(this.clientsStatePath, JSON.stringify(state, null, 2));
   }
 
   /** Get config path for a client on current platform */
@@ -147,7 +133,25 @@ export class ClientService {
     if (fs.existsSync(configPath)) return true;
 
     const parentDir = path.dirname(configPath);
-    return fs.existsSync(parentDir);
+    if (fs.existsSync(parentDir)) return true;
+
+    // For macOS, also check if the Application bundle exists
+    if (process.platform === "darwin") {
+      const appBundles: Record<ClientId, string> = {
+        claude: "/Applications/Claude.app",
+        cursor: "/Applications/Cursor.app",
+        windsurf: "/Applications/Windsurf.app",
+        vscode: "/Applications/Visual Studio Code.app",
+        "claude-code": "/Applications/Claude.app",
+        codex: "/usr/local/bin/codex",
+        gemini: "/usr/local/bin/gemini",
+      };
+
+      const appPath = appBundles[clientId];
+      if (appPath && fs.existsSync(appPath)) return true;
+    }
+
+    return false;
   }
 
   /** Read Codex TOML config and convert to standard format */
@@ -235,6 +239,22 @@ export class ClientService {
       return this.readCodexConfig();
     }
 
+    // For clients with real-time MCP loading, read from the additional MCP path only
+    // This is the source of truth for connection status
+    const additionalMcpPath = ADDITIONAL_MCP_PATHS[clientId];
+    if (additionalMcpPath) {
+      try {
+        if (fs.existsSync(additionalMcpPath)) {
+          const data = fs.readFileSync(additionalMcpPath, "utf8");
+          return JSON.parse(data) as ClientMcpConfig;
+        }
+      } catch (error) {
+        log.debug(`Failed to read additional MCP config from ${additionalMcpPath}:`, error);
+      }
+      return null;
+    }
+
+    // For clients without real-time loading, fall back to primary config
     const configPath = this.getClientConfigPath(clientId);
     if (!configPath) return null;
 
@@ -246,6 +266,7 @@ export class ClientService {
     } catch (error) {
       log.debug(`Failed to read ${clientId} config:`, error);
     }
+
     return null;
   }
 
@@ -272,172 +293,209 @@ export class ClientService {
     }
   }
 
-  /** Convert local server to Claude format */
-  private localServerToClaudeFormat(server: LocalServer): ClaudeServerConfig {
-    const config: ClaudeServerConfig = {
-      command: server.command,
-      args: server.args || [],
-    };
-    if (server.env) {
-      config.env = server.env;
-    }
-    return config;
-  }
-
-  /** Convert remote server to Claude format */
-  private remoteServerToClaudeFormat(server: RemoteServer): ClaudeServerConfig | null {
-    if (server.type === "http" || server.type === "sse") {
-      return {
-        command: "npx",
-        args: ["-y", "mcp-remote", server.url],
-        env: server.bearerToken ? { MCP_AUTH_TOKEN: server.bearerToken } : undefined,
-      };
-    }
-    return null;
-  }
-
   /** Detect all installed clients */
   detectClients(): DetectedClient[] {
-    const configService = getConfigService();
-    const state = this.loadState();
     const clients: DetectedClient[] = [];
 
     for (const clientId of this.getSupportedClients()) {
       const configPath = this.getClientConfigPath(clientId);
       const installed = this.isClientInstalled(clientId);
       const currentConfig = this.readClientConfig(clientId);
-      const enabled = state.enabledClients?.includes(clientId) || false;
 
-      // Check if synced with our servers
-      let synced = false;
+      // Determine connection status
+      let status: ClientStatus;
+      if (!installed) {
+        status = "not-installed";
+      } else {
+        // Check if connected (has mcpsm gateway)
+        const connected = !!currentConfig?.mcpServers?.mcpsm;
+        status = connected ? "connected" : "disconnected";
+      }
+
+      // Count servers: all servers in config (including mcpsm when connected)
+      let serverCount = 0;
       if (currentConfig?.mcpServers) {
-        const ourServerIds = [
-          ...configService.getEnabledLocalServers().map((s) => s.id),
-          ...configService.getEnabledRemoteServers().map((s) => s.id),
-        ];
-        const clientServerIds = Object.keys(currentConfig.mcpServers);
-        synced = ourServerIds.every((id) => clientServerIds.includes(id));
+        serverCount = Object.keys(currentConfig.mcpServers).length;
       }
 
       clients.push({
         id: clientId,
         name: CLIENT_NAMES[clientId] || clientId,
         configPath,
+        mcpConfigPath: ADDITIONAL_MCP_PATHS[clientId] || null,
         installed,
         hasConfig: !!currentConfig,
-        enabled,
-        synced,
-        serverCount: currentConfig?.mcpServers ? Object.keys(currentConfig.mcpServers).length : 0,
+        status,
+        serverCount,
       });
     }
 
     return clients;
   }
 
-  /** Sync servers to a specific client */
-  syncToClient(clientId: ClientId): SyncResult {
-    const configPath = this.getClientConfigPath(clientId);
-    if (!configPath) {
-      return { success: false, error: "Unknown client" };
-    }
-
+  /** Connect servers to a specific client (add mcpsm gateway to client config) */
+  connectClient(clientId: ClientId): OperationResult {
     if (!this.isClientInstalled(clientId)) {
       return { success: false, error: "Client not installed" };
     }
 
     const configService = getConfigService();
+    const port = configService.getPort();
 
-    // Read current client config
-    const clientConfig: ClientMcpConfig = this.readClientConfig(clientId) || {};
+    // For clients with real-time MCP loading, use the additional MCP path as source of truth
+    const additionalMcpPath = ADDITIONAL_MCP_PATHS[clientId];
+    if (additionalMcpPath) {
+      try {
+        // Read current config from additional MCP path
+        let clientConfig: ClientMcpConfig = {};
+        if (fs.existsSync(additionalMcpPath)) {
+          try {
+            const data = fs.readFileSync(additionalMcpPath, "utf8");
+            clientConfig = JSON.parse(data) as ClientMcpConfig;
+          } catch (error) {
+            log.debug(`Failed to read additional MCP config from ${additionalMcpPath}:`, error);
+          }
+        }
 
-    // Initialize mcpServers if not present
-    if (!clientConfig.mcpServers) {
-      clientConfig.mcpServers = {};
-    }
+        // Initialize mcpServers if not present
+        if (!clientConfig.mcpServers) {
+          clientConfig.mcpServers = {};
+        }
 
-    let addedCount = 0;
-    let skippedCount = 0;
+        // Add mcpsm gateway server using supergateway (stdio wrapper for HTTP/SSE)
+        clientConfig.mcpServers.mcpsm = {
+          command: "npx",
+          args: ["-y", "supergateway", "--streamableHttp", `http://localhost:${port}/mcp`],
+        };
 
-    // Add local servers
-    for (const server of configService.getEnabledLocalServers()) {
-      const formatted = this.localServerToClaudeFormat(server);
-      clientConfig.mcpServers[server.id] = formatted;
-      addedCount++;
-    }
-
-    // Add remote servers
-    for (const server of configService.getEnabledRemoteServers()) {
-      const formatted = this.remoteServerToClaudeFormat(server);
-      if (formatted) {
-        clientConfig.mcpServers[server.id] = formatted;
-        addedCount++;
-      } else {
-        skippedCount++;
+        // Write to additional MCP path only (the source of truth)
+        const dir = path.dirname(additionalMcpPath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(additionalMcpPath, JSON.stringify(clientConfig, null, 2));
+        return { success: true };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "Unknown error";
+        return { success: false, error: `Failed to write config: ${errorMsg}` };
       }
     }
 
-    // Write config
-    const success = this.writeClientConfig(clientId, clientConfig);
-
-    return {
-      success,
-      addedCount,
-      skippedCount,
-      error: success ? null : "Failed to write config",
-    };
-  }
-
-  /** Sync servers to all enabled clients */
-  syncToAllClients(): ClientSyncResult[] {
-    const state = this.loadState();
-    const results: ClientSyncResult[] = [];
-
-    for (const clientId of state.enabledClients || []) {
-      const result = this.syncToClient(clientId);
-      results.push({
-        clientId,
-        clientName: CLIENT_NAMES[clientId] || clientId,
-        ...result,
-      });
-    }
-
-    return results;
-  }
-
-  /** Enable sync for a client */
-  enableClient(clientId: ClientId): OperationResult {
-    if (!CLIENT_PATHS[clientId]) {
+    // For clients without real-time loading, use primary config
+    const configPath = this.getClientConfigPath(clientId);
+    if (!configPath) {
       return { success: false, error: "Unknown client" };
     }
 
-    const state = this.loadState();
-    if (!state.enabledClients) {
-      state.enabledClients = [];
-    }
+    try {
+      let clientConfig: ClientMcpConfig = {};
+      if (fs.existsSync(configPath)) {
+        const data = fs.readFileSync(configPath, "utf8");
+        clientConfig = JSON.parse(data) as ClientMcpConfig;
+      }
 
-    if (!state.enabledClients.includes(clientId)) {
-      state.enabledClients.push(clientId);
-      this.saveState(state);
-    }
+      if (!clientConfig.mcpServers) {
+        clientConfig.mcpServers = {};
+      }
 
-    return { success: true };
+      clientConfig.mcpServers.mcpsm = {
+        command: "npx",
+        args: ["-y", "supergateway", "--streamableHttp", `http://localhost:${port}/mcp`],
+      };
+
+      const success = this.writeClientConfig(clientId, clientConfig);
+      return {
+        success,
+        error: success ? undefined : "Failed to write config",
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      return { success: false, error: `Failed to connect: ${errorMsg}` };
+    }
   }
 
-  /** Disable sync for a client */
-  disableClient(clientId: ClientId): OperationResult {
-    const state = this.loadState();
-    if (state.enabledClients) {
-      state.enabledClients = state.enabledClients.filter((id) => id !== clientId);
-      this.saveState(state);
+  /** Disconnect servers from a specific client (remove our servers from client config) */
+  disconnectClient(clientId: ClientId): OperationResult {
+    // For clients with real-time MCP loading, use the additional MCP path as source of truth
+    const additionalMcpPath = ADDITIONAL_MCP_PATHS[clientId];
+    if (additionalMcpPath) {
+      try {
+        // Read current config from additional MCP path
+        let currentConfig: ClientMcpConfig | null = null;
+        if (fs.existsSync(additionalMcpPath)) {
+          try {
+            const data = fs.readFileSync(additionalMcpPath, "utf8");
+            currentConfig = JSON.parse(data) as ClientMcpConfig;
+          } catch (error) {
+            log.debug(`Failed to read additional MCP config from ${additionalMcpPath}:`, error);
+          }
+        }
+
+        // If no config or no mcpsm, already disconnected
+        if (!currentConfig || !currentConfig.mcpServers || !currentConfig.mcpServers.mcpsm) {
+          return { success: true };
+        }
+
+        // Remove mcpsm gateway
+        delete currentConfig.mcpServers.mcpsm;
+
+        // Write to additional MCP path only (the source of truth)
+        const dir = path.dirname(additionalMcpPath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(additionalMcpPath, JSON.stringify(currentConfig, null, 2));
+        return { success: true };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "Unknown error";
+        return { success: false, error: `Failed to write config: ${errorMsg}` };
+      }
     }
 
-    return { success: true };
+    // For clients without real-time loading, use primary config
+    const configPath = this.getClientConfigPath(clientId);
+    if (!configPath) {
+      return { success: false, error: "Unknown client" };
+    }
+
+    try {
+      let currentConfig: ClientMcpConfig | null = null;
+      if (fs.existsSync(configPath)) {
+        const data = fs.readFileSync(configPath, "utf8");
+        currentConfig = JSON.parse(data) as ClientMcpConfig;
+      }
+
+      if (!currentConfig || !currentConfig.mcpServers || !currentConfig.mcpServers.mcpsm) {
+        return { success: true };
+      }
+
+      delete currentConfig.mcpServers.mcpsm;
+
+      const success = this.writeClientConfig(clientId, currentConfig);
+      return {
+        success,
+        error: success ? undefined : "Failed to write config",
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      return { success: false, error: `Failed to disconnect: ${errorMsg}` };
+    }
   }
 
-  /** Get enabled clients */
-  getEnabledClients(): ClientId[] {
-    const state = this.loadState();
-    return state.enabledClients || [];
+  /** Get connection status for a client */
+  getConnectionStatus(clientId: ClientId): ClientStatus {
+    const installed = this.isClientInstalled(clientId);
+    if (!installed) {
+      return "not-installed";
+    }
+
+    const currentConfig = this.readClientConfig(clientId);
+
+    if (currentConfig?.mcpServers?.mcpsm) {
+      return "connected";
+    }
+
+    return "disconnected";
   }
 
   /** Open client config in editor */
