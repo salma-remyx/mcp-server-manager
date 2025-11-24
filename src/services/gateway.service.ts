@@ -253,24 +253,16 @@ export async function startGateway(
     let remoteServers = configService.getEnabledRemoteServers();
 
     // Determine which servers to actually start
-    // Priority: explicit selectedServerIds > TUI selection state > all enabled servers
+    // Priority: explicit selectedServerIds > TUI selection state
     let serverIdsToStart: Set<string> = new Set();
 
     if (selectedServerIds && selectedServerIds.length > 0) {
       // Explicit server IDs provided (from CLI or profile)
       serverIdsToStart = new Set(selectedServerIds);
     } else {
-      // Use TUI selection state if available
+      // Use TUI selection state - respects user's checked/unchecked selections
       const selectionState = configService.getSelectionState();
-      if (selectionState.local.length > 0 || selectionState.remote.length > 0) {
-        serverIdsToStart = new Set([...selectionState.local, ...selectionState.remote]);
-      } else {
-        // Fall back to all enabled servers if selection state is empty
-        serverIdsToStart = new Set([
-          ...localServers.map((s) => s.id),
-          ...remoteServers.map((s) => `remote:${s.id}`),
-        ]);
-      }
+      serverIdsToStart = new Set([...selectionState.local, ...selectionState.remote]);
     }
 
     // Filter servers to only those in the start set

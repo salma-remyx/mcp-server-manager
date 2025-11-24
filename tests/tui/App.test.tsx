@@ -407,13 +407,13 @@ describe("App Component", () => {
   });
 
   describe("Enter Key - Manage Servers", () => {
-    it("should show message when no servers selected", async () => {
+    it("should navigate to daemon screen even when no servers selected", async () => {
       const { lastFrame, stdin } = render(<App />);
 
       stdin.write(KEYS.ENTER);
       await waitForStateUpdate();
 
-      expect(lastFrame()).toMatch(/No servers selected|SPACE to select/i);
+      expect(lastFrame()).toMatch(/Daemon Management|Start|Stop/i);
     });
 
     it("should navigate to daemon management when servers are selected", async () => {
