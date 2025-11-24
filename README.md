@@ -9,10 +9,10 @@
 [![Node.js](https://img.shields.io/badge/Node.js->=18-green)](https://nodejs.org)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/MateusTorquato/mcp-server-manager/pulls)
 
-[Website](https://mateustorquato.github.io/mcp-server-manager/) •
-[Documentation](https://mateustorquato.github.io/mcp-server-manager/docs/) •
-[Installation](#installation) •
-[Quick Start](#quick-start)
+[📖 Docs](https://mateustorquato.github.io/mcp-server-manager/docs/) •
+[🚀 Quick Start](#quick-start) •
+[⚙️ Installation](#installation) •
+[🌐 Website](https://mateustorquato.github.io/mcp-server-manager/)
 
 </div>
 
@@ -45,6 +45,17 @@ Managing MCP servers across multiple AI clients (Claude Desktop, Cursor, Windsur
 | **Daemon mode**       | Run gateway in background with auto-start                 |
 | **OAuth support**     | Built-in OAuth flow with PKCE for remote servers          |
 | **Token counting**    | Track context usage per server and tool                   |
+
+---
+
+## 📚 Documentation
+
+Complete guides and references available at **[mateustorquato.github.io/mcp-server-manager/docs/](https://mateustorquato.github.io/mcp-server-manager/docs/)**
+
+- **[Getting Started](https://mateustorquato.github.io/mcp-server-manager/docs/#/getting-started/installation)** - Installation and setup guide
+- **[TUI Guide](https://mateustorquato.github.io/mcp-server-manager/docs/#/tui/main-menu)** - Complete guide to the terminal user interface
+- **[CLI Commands](https://mateustorquato.github.io/mcp-server-manager/docs/#/cli/servers)** - Detailed command reference
+- **[Troubleshooting](https://mateustorquato.github.io/mcp-server-manager/docs/#/guides/troubleshooting)** - Common issues and solutions
 
 ---
 
@@ -151,17 +162,6 @@ Instead of syncing individual servers to each client, MCP Server Manager uses a 
 | Claude Code    | CLI                     |
 | Codex          | CLI                     |
 | Gemini CLI     | CLI                     |
-
----
-
-## Documentation
-
-Full documentation is available at **[mateustorquato.github.io/mcp-server-manager/docs/](https://mateustorquato.github.io/mcp-server-manager/docs/)**
-
-- [Getting Started](https://mateustorquato.github.io/mcp-server-manager/docs/#/getting-started/installation)
-- [TUI Guide](https://mateustorquato.github.io/mcp-server-manager/docs/#/tui/main-menu) - Complete guide to the terminal user interface
-- [CLI Commands](https://mateustorquato.github.io/mcp-server-manager/docs/#/cli/servers)
-- [Troubleshooting](https://mateustorquato.github.io/mcp-server-manager/docs/#/guides/troubleshooting)
 
 ---
 
