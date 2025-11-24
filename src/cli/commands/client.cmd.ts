@@ -50,9 +50,9 @@ export function registerClientCommands(program: Command): void {
 
         console.log(`  ${statusIcon} ${colors.cyan}${client.name}${colors.reset} [${client.id}]`);
         console.log(`    Status: ${statusText}`);
-        if (client.serverCount > 0) {
-          console.log(`    Servers: ${client.serverCount}`);
-        }
+        console.log(
+          `    Servers: ${client.serverCount} ${client.serverCount === 1 ? "server" : "servers"}`
+        );
         if (client.mcpConfigPath) {
           console.log(`    ${colors.gray}${client.mcpConfigPath}${colors.reset}`);
         } else if (client.configPath) {

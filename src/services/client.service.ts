@@ -312,13 +312,10 @@ export class ClientService {
         status = connected ? "connected" : "disconnected";
       }
 
-      // Count servers: only count when connected and exclude mcpsm gateway
+      // Count servers: all servers in config (including mcpsm when connected)
       let serverCount = 0;
-      if (status === "connected" && currentConfig?.mcpServers) {
-        // Count all servers except the mcpsm gateway
-        serverCount = Object.keys(currentConfig.mcpServers).filter(
-          (name) => name !== "mcpsm"
-        ).length;
+      if (currentConfig?.mcpServers) {
+        serverCount = Object.keys(currentConfig.mcpServers).length;
       }
 
       clients.push({
