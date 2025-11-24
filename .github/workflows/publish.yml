@@ -31,10 +31,8 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Publish to npm
+      - name: Publish to npm (OIDC - no token needed)
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
