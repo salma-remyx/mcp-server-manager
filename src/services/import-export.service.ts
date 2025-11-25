@@ -432,9 +432,11 @@ export class ImportExportService {
             });
             results.updated++;
           } else if (decision === "merge") {
-            const merged = this.mergeServerFields(existing, server) as RemoteServer;
-            configService.updateRemoteServer(server.id, merged);
-            results.merged!++;
+            const mergedServer = this.mergeServerFields(existing, server) as RemoteServer;
+            configService.updateRemoteServer(server.id, mergedServer);
+            if (results.merged !== undefined) {
+              results.merged++;
+            }
           } else {
             results.skipped++;
           }
@@ -467,9 +469,11 @@ export class ImportExportService {
             });
             results.updated++;
           } else if (decision === "merge") {
-            const merged = this.mergeServerFields(existing, server) as LocalServer;
-            configService.updateLocalServer(server.id, merged);
-            results.merged!++;
+            const mergedServer = this.mergeServerFields(existing, server) as LocalServer;
+            configService.updateLocalServer(server.id, mergedServer);
+            if (results.merged !== undefined) {
+              results.merged++;
+            }
           } else {
             results.skipped++;
           }
