@@ -306,13 +306,11 @@ export function App({ onExit }: AppProps): React.ReactElement {
       if (input === " ") {
         const { server, type } = getCurrentServer();
         if (server) {
-          const action = server.disabled ? "enable" : "disable";
           const result = server.disabled
             ? configService.enableServer(server.id)
             : configService.disableServer(server.id);
 
           if (result.success) {
-            showMessage(`Server '${server.name}' ${action}d`, "success");
             // Restart daemon if running (auto-sync)
             const daemonService = getDaemonService();
             const daemonStatus = daemonService.isDaemonRunning();
