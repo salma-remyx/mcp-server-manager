@@ -9,14 +9,15 @@ import SelectInput from "ink-select-input";
 import { Header, MenuPanel } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getImportExportService } from "../../services/import-export.service.js";
-import type { ExportFormat, ImportedServer } from "../../services/import-export.service.js";
+import type { ExportFormat } from "../../services/import-export.service.js";
 import { getClientService } from "../../services/client.service.js";
-import type { ClientId } from "../../types/index.js";
+import type { ClientId, ImportedServer, ServerConflict, ConflictResolution } from "../../types/index.js";
 
 type View =
   | "menu"
   | "import-file-path"
-  | "import-file-confirm"
+  | "import-preview"
+  | "import-conflicts"
   | "import-client-select"
   | "export-format"
   | "export-file-path"
@@ -42,6 +43,9 @@ interface ImportExportState {
   importFormat: string | null;
   result: { success: boolean; message: string; details?: string[] } | null;
   overwrite: boolean;
+  conflicts: ServerConflict[];
+  conflictIndex: number;
+  conflictDecisions: Map<string, ConflictResolution>;
 }
 
 /** Build menu options dynamically based on installed clients */
@@ -96,6 +100,9 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
     importFormat: null,
     result: null,
     overwrite: false,
+    conflicts: [],
+    conflictIndex: 0,
+    conflictDecisions: new Map(),
   });
 
   // Handle import from file
@@ -126,38 +133,50 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
         return;
       }
 
+      // Detect conflicts
+      const conflictDetection = importExportService.detectConflicts(servers);
+
       setState((prev) => ({
         ...prev,
         importedServers: servers,
         importFormat: result.format || "unknown",
-        view: "import-file-confirm",
+        conflicts: conflictDetection.conflicts,
+        conflictIndex: 0,
+        conflictDecisions: new Map(),
+        view: conflictDetection.totalConflicts > 0 ? "import-conflicts" : "import-preview",
       }));
     },
     [importExportService]
   );
 
-  // Handle import confirmation (with overwrite choice)
-  const handleImportConfirm = useCallback(
-    (overwrite: boolean) => {
-      const mergeResult = importExportService.mergeServers(state.importedServers, { overwrite });
+  // Finalize import with per-server decisions
+  const finalizeImport = useCallback((): void => {
+    const mergeResult = importExportService.mergeServersWithDecisions(
+      state.importedServers,
+      state.conflictDecisions
+    );
 
-      setState((prev) => ({
-        ...prev,
-        view: "result",
-        result: {
-          success: true,
-          message: "Import completed",
-          details: [
-            `Added: ${mergeResult.added}`,
-            `Updated: ${mergeResult.updated}`,
-            `Skipped: ${mergeResult.skipped}`,
-          ],
-        },
-        menuOptions: buildMenuOptions(),
-      }));
-    },
-    [state.importedServers, importExportService]
-  );
+    const details: string[] = [];
+    if (mergeResult.added > 0) details.push(`Added: ${mergeResult.added}`);
+    if (mergeResult.updated > 0) details.push(`Updated: ${mergeResult.updated}`);
+    if (mergeResult.merged && mergeResult.merged > 0) details.push(`Merged: ${mergeResult.merged}`);
+    if (mergeResult.skipped > 0) details.push(`Skipped: ${mergeResult.skipped}`);
+
+    setState((prev) => ({
+      ...prev,
+      view: "result",
+      result: {
+        success: true,
+        message: "Import completed",
+        details,
+      },
+      menuOptions: buildMenuOptions(),
+      conflicts: [],
+      conflictIndex: 0,
+      conflictDecisions: new Map(),
+      importedServers: [],
+    }));
+  }, [state.importedServers, state.conflictDecisions, importExportService]);
 
   // Handle import from client
   const handleImportClient = useCallback(
@@ -182,11 +201,17 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
         return;
       }
 
+      // Detect conflicts
+      const conflictDetection = importExportService.detectConflicts(servers);
+
       setState((prev) => ({
         ...prev,
         importedServers: servers,
         importFormat: clientId,
-        view: "import-file-confirm",
+        conflicts: conflictDetection.conflicts,
+        conflictIndex: 0,
+        conflictDecisions: new Map(),
+        view: conflictDetection.totalConflicts > 0 ? "import-conflicts" : "import-preview",
       }));
     },
     [importExportService]
@@ -255,7 +280,7 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
 
   // Handle keyboard input
   useInput((input, key) => {
-    const { view, currentIndex, menuOptions } = state;
+    const { view, currentIndex, menuOptions, conflicts, conflictIndex, conflictDecisions } = state;
 
     // Handle result view - any key goes back
     if (view === "result") {
@@ -269,16 +294,120 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
       return;
     }
 
-    // Handle confirm import view
-    if (view === "import-file-confirm") {
-      if (input === "y" || input === "Y") {
-        handleImportConfirm(true);
-      } else if (input === "n" || input === "N") {
-        handleImportConfirm(false);
-      } else if (key.escape) {
+    // Handle conflict resolution view
+    if (view === "import-conflicts") {
+      if (conflicts.length === 0) return;
+
+      const currentConflict = conflicts[conflictIndex];
+
+      // Navigation
+      if (key.upArrow) {
+        setState((prev) => ({
+          ...prev,
+          conflictIndex: Math.max(0, conflictIndex - 1),
+        }));
+        return;
+      }
+
+      if (key.downArrow) {
+        setState((prev) => ({
+          ...prev,
+          conflictIndex: Math.min(conflicts.length - 1, conflictIndex + 1),
+        }));
+        return;
+      }
+
+      // Resolution options
+      if (input === "s" || input === "S") {
+        // Skip
+        const newDecisions = new Map(conflictDecisions);
+        newDecisions.set(currentConflict.id, "skip");
+
+        if (conflictIndex < conflicts.length - 1) {
+          setState((prev) => ({
+            ...prev,
+            conflictIndex: conflictIndex + 1,
+            conflictDecisions: newDecisions,
+          }));
+        } else {
+          setState((prev) => ({
+            ...prev,
+            conflictDecisions: newDecisions,
+            view: "import-preview",
+          }));
+          queueMicrotask(() => finalizeImport());
+        }
+        return;
+      }
+
+      if (input === "o" || input === "O") {
+        // Overwrite
+        const newDecisions = new Map(conflictDecisions);
+        newDecisions.set(currentConflict.id, "overwrite");
+
+        if (conflictIndex < conflicts.length - 1) {
+          setState((prev) => ({
+            ...prev,
+            conflictIndex: conflictIndex + 1,
+            conflictDecisions: newDecisions,
+          }));
+        } else {
+          setState((prev) => ({
+            ...prev,
+            conflictDecisions: newDecisions,
+            view: "import-preview",
+          }));
+          queueMicrotask(() => finalizeImport());
+        }
+        return;
+      }
+
+      if (input === "m" || input === "M") {
+        // Merge
+        const newDecisions = new Map(conflictDecisions);
+        newDecisions.set(currentConflict.id, "merge");
+
+        if (conflictIndex < conflicts.length - 1) {
+          setState((prev) => ({
+            ...prev,
+            conflictIndex: conflictIndex + 1,
+            conflictDecisions: newDecisions,
+          }));
+        } else {
+          setState((prev) => ({
+            ...prev,
+            conflictDecisions: newDecisions,
+            view: "import-preview",
+          }));
+          queueMicrotask(() => finalizeImport());
+        }
+        return;
+      }
+
+      if (key.escape) {
         setState((prev) => ({
           ...prev,
           view: "menu",
+          conflicts: [],
+          conflictIndex: 0,
+          conflictDecisions: new Map(),
+          importedServers: [],
+        }));
+      }
+      return;
+    }
+
+    // Handle import preview view
+    if (view === "import-preview") {
+      if (key.return || input === "y" || input === "Y") {
+        finalizeImport();
+      } else if (input === "n" || input === "N" || key.escape) {
+        setState((prev) => ({
+          ...prev,
+          view: "menu",
+          conflicts: [],
+          conflictIndex: 0,
+          conflictDecisions: new Map(),
           importedServers: [],
         }));
       }
@@ -345,7 +474,18 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
     }
   });
 
-  const { view, currentIndex, menuOptions, filePath, importedServers, importFormat, result } = state;
+  const {
+    view,
+    currentIndex,
+    menuOptions,
+    filePath,
+    importedServers,
+    importFormat,
+    result,
+    conflicts,
+    conflictIndex,
+    conflictDecisions,
+  } = state;
 
   // Result view
   if (view === "result" && result) {
@@ -402,8 +542,63 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
     );
   }
 
-  // Import confirm view
-  if (view === "import-file-confirm") {
+  // Import conflicts view
+  if (view === "import-conflicts" && conflicts.length > 0) {
+    const currentConflict = conflicts[conflictIndex];
+    const selectedDecision = conflictDecisions.get(currentConflict.id) || "?";
+
+    return (
+      <Box flexDirection="column">
+        <Header title="Import - Resolve Conflicts" />
+
+        <Box flexDirection="column" paddingX={1} marginTop={1}>
+          <Text bold>
+            Conflict {conflictIndex + 1}/{conflicts.length} - {currentConflict.name} ({currentConflict.type})
+          </Text>
+
+          {/* Side-by-side comparison */}
+          <Box marginTop={1} gap={4}>
+            <Box flexDirection="column" flexGrow={1}>
+              <Text bold color="red">Existing</Text>
+              <Text dimColor>{JSON.stringify(currentConflict.existing, null, 2)}</Text>
+            </Box>
+
+            <Box flexDirection="column" flexGrow={1}>
+              <Text bold color="green">Incoming</Text>
+              <Text dimColor>{JSON.stringify(currentConflict.incoming, null, 2)}</Text>
+            </Box>
+          </Box>
+
+          {/* Differences summary */}
+          {currentConflict.differences.length > 0 && (
+            <Box flexDirection="column" marginTop={1}>
+              <Text bold color="yellow">Differences:</Text>
+              {currentConflict.differences.map((diff, idx) => (
+                <Text key={idx} dimColor>
+                  • {diff.field}: {JSON.stringify(diff.existing)} → {JSON.stringify(diff.incoming)}
+                </Text>
+              ))}
+            </Box>
+          )}
+
+          {/* Decision options */}
+          <Box flexDirection="column" marginTop={1}>
+            <Text bold>Decision: {selectedDecision}</Text>
+            <Text dimColor>S: Skip (keep existing)</Text>
+            <Text dimColor>O: Overwrite (use incoming)</Text>
+            <Text dimColor>M: Merge (combine fields)</Text>
+          </Box>
+        </Box>
+
+        <Box paddingX={1} marginTop={2}>
+          <Text dimColor>↑/↓ to navigate, S/O/M to decide, ESC to cancel</Text>
+        </Box>
+      </Box>
+    );
+  }
+
+  // Import preview view
+  if (view === "import-preview") {
     return (
       <Box flexDirection="column">
         <Header title="Import Servers" />
@@ -414,17 +609,26 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
             {importFormat ? ` (${importFormat} format)` : ""}
           </Text>
 
-          <Box marginTop={1}>
-            <Text>Overwrite existing servers with same ID? [y/N]</Text>
+          <Box flexDirection="column" marginTop={1}>
+            <Text dimColor>Servers to import:</Text>
+            {importedServers.slice(0, 5).map((server, idx) => (
+              <Text key={idx} dimColor>
+                • {server.name} ({server.serverType})
+              </Text>
+            ))}
+            {importedServers.length > 5 && (
+              <Text dimColor>... and {importedServers.length - 5} more</Text>
+            )}
           </Box>
         </Box>
 
         <Box paddingX={1} marginTop={2}>
-          <Text dimColor>Y to overwrite, N to skip duplicates, ESC to cancel</Text>
+          <Text dimColor>ENTER or Y to confirm, N to cancel</Text>
         </Box>
       </Box>
     );
   }
+
 
   // Export format selection view
   if (view === "export-format") {

@@ -191,6 +191,8 @@ mcpsm edit <server>                Edit server
 mcpsm test [server]                Test server(s)
 mcpsm enable <server>              Enable server
 mcpsm disable <server>             Disable server
+mcpsm import [file]                Import servers from file or client
+mcpsm export                        Export server configuration
 mcpsm clients [list|connect|disconnect|open]
 mcpsm profile [list|create|delete|use|add|remove]
 mcpsm settings [list|get|set|reset]
@@ -207,6 +209,65 @@ mcpsm port [number]                Get/set port
 - `mcpsm clients connect <client>` - Connect a client by adding the mcpsm gateway server to its config
 - `mcpsm clients disconnect <client>` - Disconnect a client by removing the mcpsm gateway server
 - `mcpsm clients open <client>` - Open client config file in default editor
+
+### Import/Export Commands Details
+
+#### Import Command
+
+Import servers from a JSON file or another client's configuration.
+
+**Usage:**
+
+```bash
+# Import from JSON file
+mcpsm import <file.json>
+
+# Import from another client
+mcpsm import --from <client>    # claude, cursor, windsurf, etc.
+```
+
+**Conflict Resolution (REQUIRED when conflicts exist):**
+When conflicts are detected, you MUST provide one of the following options:
+
+- `--skip` - Skip conflicting servers (keep existing)
+- `--overwrite` - Overwrite conflicting servers (use incoming)
+- `--merge` - Intelligently merge conflicting servers (combine non-conflicting fields)
+
+If you try to import with conflicts without specifying a resolution strategy, the CLI will error and show you which servers conflict, then require you to re-run with one of the flags above.
+
+**Examples:**
+
+```bash
+mcpsm import servers.json --merge        # Merge all conflicts
+mcpsm import --from cursor --overwrite   # Overwrite all conflicts
+mcpsm import --from windsurf --skip      # Skip all conflicts
+```
+
+#### Export Command
+
+Export current server configuration to a file.
+
+**Usage:**
+
+```bash
+mcpsm export --format <format> --output <file>
+```
+
+**Formats:**
+
+- `mcpsm` (default) - MCPSM native format
+- `claude` - Claude Desktop format (compatible for import to Claude Desktop)
+- `cursor` - Cursor format (compatible for import to Cursor)
+
+**Examples:**
+
+```bash
+# Export to file
+mcpsm export --format mcpsm --output backup.json
+
+# Export to stdout
+mcpsm export --format claude
+```
 
 ## TUI Keybindings
 
@@ -239,6 +300,27 @@ Main screen keyboard shortcuts:
 
 - `H` - Doctor screen (health check)
 - `K` - Tokens screen (view token usage)
+
+### Import/Export Screen (`I`)
+
+**Main Menu:**
+
+- `↑/↓` - Navigate between import/export options
+- `Enter` - Select option
+
+**During Import (Conflict Resolution):**
+When conflicts are detected between imported and existing servers:
+
+- `↑/↓` - Navigate between conflicting servers
+- `S` - Skip (keep existing version)
+- `O` - Overwrite (use incoming version)
+- `M` - Merge (intelligently combine non-conflicting fields)
+- `ESC` - Cancel import
+
+**Import Preview:**
+
+- `Enter` or `Y` - Confirm and apply import
+- `N` or `ESC` - Cancel import
 
 ### Important Notes on Port Changes
 

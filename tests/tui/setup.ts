@@ -134,6 +134,12 @@ export const mockImportExportService = {
     servers: [{ id: "from-client", name: "From Client", command: "node", args: [] }],
   })),
   mergeServers: vi.fn(() => ({ added: 1, updated: 0, skipped: 0 })),
+  mergeServersWithDecisions: vi.fn(() => ({ added: 1, updated: 0, skipped: 0, merged: 0 })),
+  detectConflicts: vi.fn(() => ({
+    conflicts: [],
+    noConflicts: [{ id: "from-client", name: "From Client", command: "node", args: [] }],
+    totalConflicts: 0,
+  })),
   exportToFile: vi.fn(() => ({ success: true })),
   export: vi.fn(() => ({ servers: [], remoteServers: [] })),
 };

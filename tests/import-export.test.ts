@@ -415,4 +415,276 @@ describe("ImportExportService", () => {
       expect(content).toHaveProperty("servers");
     });
   });
+
+  describe("detectConflicts", () => {
+    it("should detect local server conflicts by ID", () => {
+      const servers = [
+        {
+          id: "existing-local",
+          name: "Updated Name",
+          command: "python",
+          args: ["new.py"],
+          serverType: "local" as const,
+        },
+      ];
+
+      const result = importExportService.detectConflicts(servers);
+      expect(result.totalConflicts).toBe(1);
+      expect(result.conflicts).toHaveLength(1);
+      expect(result.conflicts[0].id).toBe("existing-local");
+      expect(result.noConflicts).toHaveLength(0);
+    });
+
+    it("should detect remote server conflicts by ID", () => {
+      const servers = [
+        {
+          id: "existing-remote",
+          name: "Updated Remote",
+          url: "http://localhost:5000",
+          type: "http" as const,
+          serverType: "remote" as const,
+        },
+      ];
+
+      const result = importExportService.detectConflicts(servers);
+      expect(result.totalConflicts).toBe(1);
+      expect(result.conflicts[0].id).toBe("existing-remote");
+    });
+
+    it("should identify differences between existing and incoming servers", () => {
+      const servers = [
+        {
+          id: "existing-local",
+          name: "Different Name",
+          command: "python",
+          args: ["different.py"],
+          serverType: "local" as const,
+        },
+      ];
+
+      const result = importExportService.detectConflicts(servers);
+      const conflict = result.conflicts[0];
+
+      // Should have differences
+      expect(conflict.differences.length).toBeGreaterThan(0);
+
+      // Check for specific differences
+      const commandDiff = conflict.differences.find((d) => d.field === "command");
+      expect(commandDiff).toBeDefined();
+      expect(commandDiff?.existing).toBe("node");
+      expect(commandDiff?.incoming).toBe("python");
+    });
+
+    it("should auto-skip when servers are identical", () => {
+      const servers = [
+        {
+          id: "existing-local",
+          name: "Existing Local",
+          command: "node",
+          args: [],
+          serverType: "local" as const,
+        },
+      ];
+
+      const result = importExportService.detectConflicts(servers);
+
+      // Should NOT report as conflict (identical servers auto-skip)
+      expect(result.totalConflicts).toBe(0);
+      expect(result.conflicts).toHaveLength(0);
+      // Should be in noConflicts instead
+      expect(result.noConflicts).toHaveLength(1);
+      expect(result.noConflicts[0].id).toBe("existing-local");
+    });
+
+    it("should separate non-conflicting servers", () => {
+      const servers = [
+        {
+          id: "new-local",
+          name: "New Local",
+          command: "npx",
+          args: ["-y", "test"],
+          serverType: "local" as const,
+        },
+        {
+          id: "existing-local",
+          name: "Conflict",
+          command: "python",
+          args: [],
+          serverType: "local" as const,
+        },
+      ];
+
+      const result = importExportService.detectConflicts(servers);
+      expect(result.totalConflicts).toBe(1);
+      expect(result.noConflicts).toHaveLength(1);
+      expect(result.noConflicts[0].id).toBe("new-local");
+    });
+
+    it("should detect env variable differences", () => {
+      const servers = [
+        {
+          id: "existing-local",
+          name: "Existing Local",
+          command: "node",
+          args: [],
+          env: { NEW_VAR: "value" },
+          serverType: "local" as const,
+        },
+      ];
+
+      const result = importExportService.detectConflicts(servers);
+      const envDiff = result.conflicts[0].differences.find((d) => d.field === "env");
+      expect(envDiff).toBeDefined();
+      expect(envDiff?.isDifferent).toBe(true);
+    });
+  });
+
+  describe("mergeServersWithDecisions", () => {
+    it("should skip servers when decision is skip", () => {
+      const servers = [
+        {
+          id: "existing-local",
+          name: "Updated",
+          command: "python",
+          args: [],
+          serverType: "local" as const,
+        },
+      ];
+
+      const decisions = new Map([["existing-local", "skip" as const]]);
+      const result = importExportService.mergeServersWithDecisions(servers, decisions);
+
+      expect(result.skipped).toBe(1);
+      expect(result.updated).toBe(0);
+      expect(result.merged).toBe(0);
+
+      // Verify server was not updated
+      const server = configService.findLocalServer("existing-local");
+      expect(server?.name).toBe("Existing Local"); // unchanged
+    });
+
+    it("should overwrite servers when decision is overwrite", () => {
+      const servers = [
+        {
+          id: "existing-local",
+          name: "Updated Name",
+          command: "python",
+          args: ["new.py"],
+          serverType: "local" as const,
+        },
+      ];
+
+      const decisions = new Map([["existing-local", "overwrite" as const]]);
+      const result = importExportService.mergeServersWithDecisions(servers, decisions);
+
+      expect(result.updated).toBe(1);
+      expect(result.skipped).toBe(0);
+
+      // Verify server was updated
+      const server = configService.findLocalServer("existing-local");
+      expect(server?.name).toBe("Updated Name");
+      expect(server?.command).toBe("python");
+    });
+
+    it("should merge servers intelligently when decision is merge", () => {
+      const servers = [
+        {
+          id: "existing-local",
+          name: "Existing Local",
+          command: "python",
+          args: ["test.py"],
+          env: { NEW_VAR: "new_value" },
+          serverType: "local" as const,
+        },
+      ];
+
+      const decisions = new Map([["existing-local", "merge" as const]]);
+      const result = importExportService.mergeServersWithDecisions(servers, decisions);
+
+      expect(result.merged).toBe(1);
+      expect(result.updated).toBe(0);
+
+      // Verify server was merged (command updated, env merged)
+      const server = configService.findLocalServer("existing-local");
+      expect(server?.command).toBe("python"); // from incoming
+      expect(server?.env?.NEW_VAR).toBe("new_value"); // from incoming
+    });
+
+    it("should add new servers when they don't conflict", () => {
+      const servers = [
+        {
+          id: "new-local",
+          name: "New Server",
+          command: "npx",
+          args: ["-y", "test"],
+          serverType: "local" as const,
+        },
+      ];
+
+      const result = importExportService.mergeServersWithDecisions(servers, new Map());
+      expect(result.added).toBe(1);
+
+      const server = configService.findLocalServer("new-local");
+      expect(server).toBeDefined();
+      expect(server?.name).toBe("New Server");
+    });
+
+    it("should handle multiple servers with different decisions", () => {
+      const servers = [
+        {
+          id: "existing-local",
+          name: "To Skip",
+          command: "python",
+          args: [],
+          serverType: "local" as const,
+        },
+        {
+          id: "existing-remote",
+          name: "To Overwrite",
+          url: "http://localhost:5000",
+          type: "http" as const,
+          serverType: "remote" as const,
+        },
+        {
+          id: "new-local",
+          name: "To Add",
+          command: "node",
+          args: [],
+          serverType: "local" as const,
+        },
+      ];
+
+      const decisions = new Map([
+        ["existing-local", "skip" as const],
+        ["existing-remote", "overwrite" as const],
+      ]);
+
+      const result = importExportService.mergeServersWithDecisions(servers, decisions);
+      expect(result.skipped).toBe(1);
+      expect(result.updated).toBe(1);
+      expect(result.added).toBe(1);
+    });
+
+    it("should handle remote server merging", () => {
+      const servers = [
+        {
+          id: "existing-remote",
+          name: "Updated Remote",
+          url: "http://localhost:5000",
+          type: "http" as const,
+          bearerToken: "new-token",
+          serverType: "remote" as const,
+        },
+      ];
+
+      const decisions = new Map([["existing-remote", "merge" as const]]);
+      const result = importExportService.mergeServersWithDecisions(servers, decisions);
+
+      expect(result.merged).toBe(1);
+
+      const server = configService.findRemoteServer("existing-remote");
+      expect(server?.url).toBe("http://localhost:5000"); // from incoming
+      expect(server?.bearerToken).toBe("new-token"); // from incoming
+    });
+  });
 });

@@ -7,7 +7,6 @@ import { colors, c } from "../../shared/colors.js";
 import { outputJson } from "../../shared/formatters.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getTestingService } from "../../services/testing.service.js";
-import { promptText, promptConfirm, promptSelect } from "../../shared/prompts.js";
 import type { LocalServer, RemoteServer, TransportType } from "../../types/index.js";
 
 /** Register server commands */
@@ -96,68 +95,46 @@ export function registerServerCommands(program: Command): void {
 
   // Add server
   program
-    .command("add [name]")
+    .command("add <name>")
     .description("Add a new MCP server")
     .option("-t, --type <type>", "Server type: stdio, http, sse")
     .option("-c, --command <command>", "Command to run (for stdio)")
     .option("-a, --args <args>", "Command arguments (for stdio)")
     .option("-u, --url <url>", "Server URL (for http/sse)")
     .option("--token <token>", "Bearer token (for http/sse)")
+    .option("--test", "Test the server after adding")
     .action(async (name, options) => {
       const configService = getConfigService();
-
-      // Interactive mode if no name provided
-      if (!name) {
-        name = await promptText("Server name");
-        if (!name) {
-          console.log(`${c.cross} Name is required`);
-          process.exit(1);
-        }
-      }
 
       const serverId = configService.generateServerId(name);
 
       // Determine type
-      let serverType: "stdio" | "http" | "sse" | undefined =
+      const serverType: "stdio" | "http" | "sse" | undefined =
         options.type === "stdio" || options.type === "http" || options.type === "sse"
           ? options.type
           : undefined;
       if (!serverType) {
-        const typeChoice = await promptSelect<"stdio" | "http" | "sse">("Server type", [
-          {
-            label: "Local (STDIO)",
-            value: "stdio",
-            description: "Run MCP servers on your machine",
-          },
-          { label: "Remote (HTTP)", value: "http", description: "Connect to hosted MCP servers" },
-          { label: "Remote (SSE)", value: "sse", description: "Connect with real-time streaming" },
-        ]);
-        if (!typeChoice) {
-          console.log(`${colors.yellow}Cancelled${colors.reset}`);
-          return;
-        }
-        serverType = typeChoice;
+        console.log(`${c.cross} Server type is required`);
+        console.log(
+          `${colors.gray}Use: mcpsm add <name> -t <stdio|http|sse> [options]${colors.reset}`
+        );
+        process.exit(1);
       }
 
       if (serverType === "stdio") {
         // Local server
-        let command = options.command;
+        const command = options.command;
         if (!command) {
-          command = await promptText("Command (e.g., npx, node, python)");
-          if (!command) {
-            console.log(`${c.cross} Command is required`);
-            process.exit(1);
-          }
+          console.log(`${c.cross} Command is required for stdio servers`);
+          console.log(
+            `${colors.gray}Use: mcpsm add <name> -t stdio -c <command> [-a <args>]${colors.reset}`
+          );
+          process.exit(1);
         }
 
         let args: string[] = [];
         if (options.args) {
           args = options.args.split(/[\s,]+/).filter(Boolean);
-        } else {
-          const argsStr = await promptText("Arguments (space separated)", "");
-          if (argsStr) {
-            args = argsStr.split(/[\s,]+/).filter(Boolean);
-          }
         }
 
         const server: LocalServer = {
@@ -175,9 +152,8 @@ export function registerServerCommands(program: Command): void {
 
         console.log(`${c.checkmark} Server '${name}' added successfully!`);
 
-        // Offer to test
-        const shouldTest = await promptConfirm("Test this server now?");
-        if (shouldTest) {
+        // Test if --test flag provided
+        if (options.test) {
           process.stdout.write(`  Testing ${colors.cyan}${name}${colors.reset}... `);
           const testingService = getTestingService();
           const testResult = await testingService.testLocalServer(server);
@@ -189,13 +165,13 @@ export function registerServerCommands(program: Command): void {
         }
       } else {
         // Remote server
-        let url = options.url;
+        const url = options.url;
         if (!url) {
-          url = await promptText("Server URL");
-          if (!url) {
-            console.log(`${c.cross} URL is required`);
-            process.exit(1);
-          }
+          console.log(`${c.cross} URL is required for remote servers`);
+          console.log(
+            `${colors.gray}Use: mcpsm add <name> -t <http|sse> -u <url> [--token <token>]${colors.reset}`
+          );
+          process.exit(1);
         }
 
         const server: RemoteServer = {
@@ -207,11 +183,6 @@ export function registerServerCommands(program: Command): void {
 
         if (options.token) {
           server.bearerToken = options.token;
-        } else {
-          const token = await promptText("Bearer token (optional)", "");
-          if (token) {
-            server.bearerToken = token;
-          }
         }
 
         const result = configService.addRemoteServer(server);
@@ -222,9 +193,8 @@ export function registerServerCommands(program: Command): void {
 
         console.log(`${c.checkmark} Server '${name}' added successfully!`);
 
-        // Offer to test
-        const shouldTest = await promptConfirm("Test this server now?");
-        if (shouldTest) {
+        // Test if --test flag provided
+        if (options.test) {
           process.stdout.write(`  Testing ${colors.cyan}${name}${colors.reset}... `);
           const testingService = getTestingService();
           const testResult = await testingService.testRemoteServer(server);
@@ -242,9 +212,16 @@ export function registerServerCommands(program: Command): void {
     .command("remove <nameOrId>")
     .aliases(["rm", "delete"])
     .description("Remove a server")
-    .option("-y, --yes", "Skip confirmation")
-    .option("-f, --force", "Skip confirmation (alias for -y)")
+    .option("-y, --yes", "Confirm deletion (required for non-interactive mode)")
     .action(async (nameOrId, options) => {
+      const isInteractive = process.stdin.isTTY;
+      if (!options.yes && !isInteractive) {
+        console.log(`${c.cross} Confirmation required in non-interactive mode`);
+        console.log(`${colors.gray}Please run with --yes or -y to confirm deletion${colors.reset}`);
+        console.log(`${colors.gray}Example: mcpsm remove ${nameOrId} --yes${colors.reset}`);
+        process.exit(1);
+      }
+
       const configService = getConfigService();
       const result = configService.findServer(nameOrId);
 
@@ -254,14 +231,6 @@ export function registerServerCommands(program: Command): void {
       }
 
       const { server } = result;
-
-      if (!options.yes && !options.force) {
-        const confirmed = await promptConfirm(`Delete server '${server.name}'?`, false);
-        if (!confirmed) {
-          console.log(`${colors.yellow}Cancelled${colors.reset}`);
-          return;
-        }
-      }
 
       const deleteResult = configService.deleteServer(server.id);
       if (deleteResult.success) {

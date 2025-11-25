@@ -8,6 +8,7 @@ import { colors } from "../../shared/colors.js";
 import { outputJson } from "../../shared/formatters.js";
 import { getImportExportService } from "../../services/import-export.service.js";
 import type { ExportFormat } from "../../services/import-export.service.js";
+import type { ConflictResolution } from "../../types/index.js";
 
 /** Register import/export commands */
 export function registerImportExportCommands(program: Command): void {
@@ -16,8 +17,10 @@ export function registerImportExportCommands(program: Command): void {
     .command("import [file]")
     .description("Import servers from file or client")
     .option("--from <client>", "Import from a client (claude, cursor, windsurf)")
-    .option("--overwrite", "Overwrite existing servers")
-    .option("--force", "Alias for --overwrite")
+    .option("--overwrite", "Overwrite conflicting servers (non-interactive mode)")
+    .option("--skip", "Skip conflicting servers (non-interactive mode)")
+    .option("--merge", "Intelligently merge conflicting servers (non-interactive mode)")
+    .option("--force", "Alias for --overwrite (deprecated)")
     .action(async (file: string | undefined, options) => {
       await handleImport(file, options);
     });
@@ -36,10 +39,15 @@ export function registerImportExportCommands(program: Command): void {
 /** Handle import command */
 async function handleImport(
   file: string | undefined,
-  options: { from?: string; overwrite?: boolean; force?: boolean }
+  options: {
+    from?: string;
+    overwrite?: boolean;
+    skip?: boolean;
+    merge?: boolean;
+    force?: boolean;
+  }
 ): Promise<void> {
   const importExportService = getImportExportService();
-  const overwrite = options.overwrite || options.force;
 
   let result;
 
@@ -60,8 +68,11 @@ async function handleImport(
     console.log(`  mcpsm import --from claude         Import from Claude Desktop`);
     console.log(`  mcpsm import --from cursor         Import from Cursor`);
     console.log(`  mcpsm import --from windsurf       Import from Windsurf`);
-    console.log(`\nOptions:`);
-    console.log(`  --overwrite                        Overwrite existing servers`);
+    console.log(`\nConflict Resolution Options:`);
+    console.log(`  --overwrite                        Overwrite conflicting servers`);
+    console.log(`  --skip                             Skip conflicting servers (default)`);
+    console.log(`  --merge                            Intelligently merge conflicting servers`);
+    console.log(`\nWhen no conflict option is provided, interactive mode will prompt per-server.`);
 
     // Show available sources
     const sources = importExportService.getAvailableSources();
@@ -91,6 +102,9 @@ async function handleImport(
     return;
   }
 
+  // Detect conflicts
+  const conflicts = importExportService.detectConflicts(servers);
+
   // Show preview
   console.log(`\n${colors.bright}Servers to import:${colors.reset}`);
   for (const server of servers) {
@@ -101,8 +115,60 @@ async function handleImport(
     console.log(`  - ${colors.cyan}${server.name || server.id}${colors.reset} (${type})`);
   }
 
-  // Merge
-  const mergeResult = importExportService.mergeServers(servers, { overwrite });
+  // Handle conflicts
+  const decisions = new Map<string, ConflictResolution>();
+
+  if (conflicts.totalConflicts > 0) {
+    console.log(
+      `\n${colors.yellow}⚠${colors.reset} ${colors.bright}${conflicts.totalConflicts} conflict(s) detected:${colors.reset}`
+    );
+
+    // List conflicting servers
+    for (const conflict of conflicts.conflicts) {
+      console.log(`  - ${colors.cyan}${conflict.name}${colors.reset} (${conflict.type})`);
+    }
+
+    // Check if a conflict strategy flag was provided
+    const hasConflictFlag = options.overwrite || options.skip || options.merge || options.force;
+
+    if (!hasConflictFlag) {
+      // No flag provided - error and require user to specify a strategy
+      console.error(`\n${colors.red}Error: Conflict resolution strategy required.${colors.reset}`);
+      console.log(`\nProvide one of the following options:`);
+      console.log(
+        `  ${colors.cyan}--skip${colors.reset}      Skip conflicting servers (keep existing)`
+      );
+      console.log(
+        `  ${colors.cyan}--overwrite${colors.reset}  Overwrite conflicting servers (use incoming)`
+      );
+      console.log(
+        `  ${colors.cyan}--merge${colors.reset}     Merge conflicting servers (combine fields)`
+      );
+      console.log(`\nExample:`);
+      console.log(`  mcpsm import servers.json --merge`);
+      console.log(`  mcpsm import --from cursor --overwrite`);
+      process.exit(1);
+    }
+
+    // Apply the specified strategy to all conflicts
+    let strategy: ConflictResolution = "skip"; // default
+
+    if (options.overwrite || options.force) {
+      strategy = "overwrite";
+    } else if (options.merge) {
+      strategy = "merge";
+    }
+
+    for (const conflict of conflicts.conflicts) {
+      decisions.set(conflict.id, strategy);
+    }
+
+    // Show which conflicts will be handled
+    console.log(`\n${colors.cyan}Applying "${strategy}" strategy to all conflicts${colors.reset}`);
+  }
+
+  // Merge with decisions
+  const mergeResult = importExportService.mergeServersWithDecisions(servers, decisions);
 
   console.log(`\n${colors.bright}Result:${colors.reset}`);
   if (mergeResult.added > 0) {
@@ -111,8 +177,11 @@ async function handleImport(
   if (mergeResult.updated > 0) {
     console.log(`  ${colors.yellow}Updated: ${mergeResult.updated}${colors.reset}`);
   }
+  if (mergeResult.merged && mergeResult.merged > 0) {
+    console.log(`  ${colors.cyan}Merged: ${mergeResult.merged}${colors.reset}`);
+  }
   if (mergeResult.skipped > 0) {
-    console.log(`  ${colors.gray}Skipped (already exist): ${mergeResult.skipped}${colors.reset}`);
+    console.log(`  ${colors.gray}Skipped: ${mergeResult.skipped}${colors.reset}`);
   }
 }
 

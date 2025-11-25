@@ -23,15 +23,20 @@ export function registerSettingsCommands(program: Command): void {
       const info = settingsService.getInfo();
 
       if (options.json) {
-        outputJson(allSettings);
+        // Only output documented settings
+        const documentedSettings: Record<string, unknown> = {};
+        for (const key of Object.keys(info)) {
+          documentedSettings[key] = allSettings[key as keyof Settings];
+        }
+        outputJson(documentedSettings);
         return;
       }
 
       console.log(`\n${colors.bright}${colors.cyan}Settings${colors.reset}\n`);
 
-      for (const [key, value] of Object.entries(allSettings)) {
-        const settingInfo = info[key as keyof Settings];
-        const desc = settingInfo?.description || "";
+      // Only show documented settings
+      for (const [key, settingInfo] of Object.entries(info)) {
+        const value = allSettings[key as keyof Settings];
         const isDefault = settingsService.isDefault(key as keyof Settings);
 
         const valueStr =
@@ -44,8 +49,8 @@ export function registerSettingsCommands(program: Command): void {
         const defaultMark = isDefault ? ` ${colors.gray}(default)${colors.reset}` : "";
 
         console.log(`  ${colors.bright}${key}${colors.reset}: ${valueStr}${defaultMark}`);
-        if (desc) {
-          console.log(`    ${colors.gray}${desc}${colors.reset}`);
+        if (settingInfo.description) {
+          console.log(`    ${colors.gray}${settingInfo.description}${colors.reset}`);
         }
       }
 
@@ -106,7 +111,16 @@ export function registerSettingsCommands(program: Command): void {
   settings
     .command("reset")
     .description("Reset all settings to defaults")
-    .action(async () => {
+    .option("-y, --yes", "Confirm reset (required for non-interactive mode)")
+    .action(async (options) => {
+      const isInteractive = process.stdin.isTTY;
+      if (!options.yes && !isInteractive) {
+        console.log(`${c.cross} Confirmation required in non-interactive mode`);
+        console.log(`${colors.gray}Please run with --yes or -y to confirm reset${colors.reset}`);
+        console.log(`${colors.gray}Example: mcpsm settings reset --yes${colors.reset}`);
+        process.exit(1);
+      }
+
       const settingsService = getSettingsService();
       settingsService.reset();
       console.log(`${c.checkmark} Settings reset to defaults`);

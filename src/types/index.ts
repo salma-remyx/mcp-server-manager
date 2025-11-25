@@ -105,6 +105,13 @@ export type {
   ExportResult,
   ImportPreviewItem,
   ImportPreview,
+  ConflictResolution,
+  FieldDifference,
+  ServerConflict,
+  ConflictsDetectionResult,
+  ConflictDecision,
+  MergeResults,
+  ImportedServer,
 } from "./import-export.types.js";
 
 // Common types

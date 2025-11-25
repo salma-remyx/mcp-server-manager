@@ -65,7 +65,16 @@ export function registerProfileCommands(program: Command): void {
     .command("delete <name>")
     .alias("rm")
     .description("Delete a profile")
-    .action(async (name: string) => {
+    .option("-y, --yes", "Confirm deletion (required for non-interactive mode)")
+    .action(async (name: string, options) => {
+      const isInteractive = process.stdin.isTTY;
+      if (!options.yes && !isInteractive) {
+        console.log(`${c.cross} Confirmation required in non-interactive mode`);
+        console.log(`${colors.gray}Please run with --yes or -y to confirm deletion${colors.reset}`);
+        console.log(`${colors.gray}Example: mcpsm profile delete ${name} --yes${colors.reset}`);
+        process.exit(1);
+      }
+
       const profileService = getProfileService();
       const result = profileService.delete(name);
 
