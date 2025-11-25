@@ -329,9 +329,11 @@ export function App({ onExit }: AppProps): React.ReactElement {
               const newRemote = configService.getRemoteServers();
               const newSelected = new Set(prev.selectedServers);
 
-              // If disabling, remove from selection
+              // If disabling, remove from selection; if enabling, add to selection
               if (!server.disabled) {
                 newSelected.delete(type === "remote" ? `remote:${server.id}` : server.id);
+              } else {
+                newSelected.add(type === "remote" ? `remote:${server.id}` : server.id);
               }
 
               return {
