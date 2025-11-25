@@ -172,37 +172,3 @@ Testing filesystem... ✔ OK (11 tools)
 Testing github... ✔ OK (8 tools)
 Testing postgres... ✘ Failed (connection refused)
 ```
-
----
-
-## enable
-
-Enable a disabled server.
-
-```bash
-mcpsm enable <name|id>
-```
-
-### Example
-
-```bash
-mcpsm enable postgres
-```
-
----
-
-## disable
-
-Disable an enabled server.
-
-```bash
-mcpsm disable <name|id>
-```
-
-### Example
-
-```bash
-mcpsm disable postgres
-```
-
-!> Disabled servers are not included when starting the gateway or syncing to clients.

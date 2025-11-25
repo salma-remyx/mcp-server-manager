@@ -15,8 +15,8 @@ interface HelpBarProps {
 }
 
 const defaultGroups: ShortcutGroup[] = [
-  { label: "Navigation", shortcuts: ["↑/↓ Move", "Space Select", "Enter Start", "Q Quit"] },
-  { label: "Server", shortcuts: ["A Add", "E Edit", "D Delete", "N Toggle", "X Test", "T Tools"] },
+  { label: "Navigation", shortcuts: ["↑/↓ Move", "Enter Start", "Q Quit"] },
+  { label: "Server", shortcuts: ["A Add", "E Edit", "D Delete", "Space Enable/Disable", "X Test", "T Tools"] },
   {
     label: "Global",
     shortcuts: ["C Clients", "F Profiles", "G Settings", "I Import", "H Doctor", "K Tokens", "P Port", "M Daemon"],

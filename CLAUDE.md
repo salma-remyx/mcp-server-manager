@@ -189,8 +189,6 @@ mcpsm add [name]                   Add server (interactive)
 mcpsm remove <server> [-y]         Remove server
 mcpsm edit <server>                Edit server
 mcpsm test [server]                Test server(s)
-mcpsm enable <server>              Enable server
-mcpsm disable <server>             Disable server
 mcpsm import [file]                Import servers from file or client
 mcpsm export                        Export server configuration
 mcpsm clients [list|connect|disconnect|open]
@@ -276,7 +274,6 @@ Main screen keyboard shortcuts:
 ### Navigation
 
 - `↑/↓` - Move between servers
-- `Space` - Select/deselect server
 - `Enter` - Manage selected servers (open Daemon Management screen)
 - `Q` - Quit
 
@@ -285,7 +282,7 @@ Main screen keyboard shortcuts:
 - `A` - Add new server
 - `E` - Edit server (remote servers only)
 - `D` - Delete server
-- `N` - Toggle server enabled/disabled
+- `Space` - Enable/disable server
 - `X` - Test all servers
 
 ### Views/Screens

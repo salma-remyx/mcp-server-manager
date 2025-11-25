@@ -21,7 +21,7 @@ describe("HelpBar Component", () => {
       const { lastFrame } = render(<HelpBar />);
 
       expect(lastFrame()).toContain("↑/↓ Move");
-      expect(lastFrame()).toContain("Space Select");
+      expect(lastFrame()).toContain("Enter Start");
       expect(lastFrame()).toContain("Q Quit");
     });
 
