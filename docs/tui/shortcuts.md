@@ -18,22 +18,21 @@ Available on all screens:
 
 ### Navigation
 
-| Key        | Action                  |
-| ---------- | ----------------------- |
-| `↑` or `k` | Move cursor up          |
-| `↓` or `j` | Move cursor down        |
-| `SPACE`    | Toggle server selection |
-| `ENTER`    | Manage selected servers |
+| Key        | Action           |
+| ---------- | ---------------- |
+| `↑` or `k` | Move cursor up   |
+| `↓` or `j` | Move cursor down |
+| `ENTER`    | Manage server    |
 
 ### Server Actions
 
-| Key | Action                    |
-| --- | ------------------------- |
-| `A` | Add new server            |
-| `D` | Delete current server     |
-| `E` | Edit server (remote only) |
-| `N` | Toggle enable/disable     |
-| `X` | Test all servers          |
+| Key     | Action                    |
+| ------- | ------------------------- |
+| `A`     | Add new server            |
+| `D`     | Delete current server     |
+| `E`     | Edit server (remote only) |
+| `SPACE` | Enable/disable server     |
+| `X`     | Test all servers          |
 
 ### Screen Navigation
 
@@ -140,14 +139,14 @@ When entering text:
 ╠════════════════════════════════════════════════════╣
 ║  Navigation      │  Server Actions                ║
 ║  ↑↓  Navigate    │  A  Add server                 ║
-║  SPACE  Select   │  D  Delete server              ║
-║  ENTER  Manage   │  E  Edit server                ║
-║                  │  N  Toggle enable/disable      ║
-║  Screens         │  X  Test all                   ║
-║  T  Tools        │                                ║
-║  C  Clients      │  System                        ║
-║  F  Profiles     │  H  Doctor                     ║
-║  I  Import/Exp   │  K  Tokens                     ║
-║  G  Settings     │  Q  Quit                       ║
+║  ENTER  Manage   │  D  Delete server              ║
+║                  │  E  Edit server                ║
+║  Screens         │  SPACE  Enable/Disable         ║
+║  T  Tools        │  X  Test all                   ║
+║  C  Clients      │                                ║
+║  F  Profiles     │  System                        ║
+║  I  Import/Exp   │  H  Doctor                     ║
+║  G  Settings     │  K  Tokens                     ║
+║                  │  Q  Quit                       ║
 ╚════════════════════════════════════════════════════╝
 ```

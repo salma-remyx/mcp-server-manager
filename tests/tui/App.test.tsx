@@ -226,15 +226,15 @@ describe("App Component", () => {
       mockConfigService.getLocalServers.mockReturnValue(sampleLocalServers);
     });
 
-    it("should toggle server selection with Space", async () => {
+    it("should enable/disable server with Space", async () => {
       const { lastFrame, stdin } = render(<App />);
 
-      // Press space to select
+      // Press space to enable/disable
       stdin.write(KEYS.SPACE);
       await waitForStateUpdate();
 
-      // Should show checked box
-      expect(lastFrame()).toContain("[✓]");
+      // Should show success message for enable/disable
+      expect(lastFrame()).toMatch(/enabled|disabled/i);
     });
 
     it("should navigate servers with arrow keys", async () => {
@@ -249,16 +249,6 @@ describe("App Component", () => {
       // Selection should change
       const afterDown = lastFrame();
       expect(afterDown).toContain("→");
-    });
-
-    it("should persist selection state", async () => {
-      const { stdin } = render(<App />);
-
-      // Select a server
-      stdin.write(KEYS.SPACE);
-      await waitForStateUpdate();
-
-      expect(mockConfigService.saveSelectionState).toHaveBeenCalled();
     });
   });
 

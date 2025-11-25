@@ -108,18 +108,6 @@ export function App({ onExit }: AppProps): React.ReactElement {
     }));
   }, []);
 
-  // Save selection state
-  const saveSelectionState = useCallback(
-    (selected: Set<string>) => {
-      const local = state.localServers.filter((s) => selected.has(s.id)).map((s) => s.id);
-      const remote = state.remoteServers
-        .filter((s) => selected.has(`remote:${s.id}`))
-        .map((s) => s.id);
-      configService.saveSelectionState({ local, remote });
-    },
-    [state.localServers, state.remoteServers]
-  );
-
   // Show temporary message
   const [messageTimeoutId, setMessageTimeoutId] = useState<ReturnType<typeof setTimeout> | null>(
     null
@@ -314,37 +302,45 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return;
       }
 
-      // Space - Toggle selection
+      // Space - Enable/Disable server
       if (input === " ") {
         const { server, type } = getCurrentServer();
         if (server) {
-          const serverId = type === "remote" ? `remote:${server.id}` : server.id;
-          setState((prev) => {
-            const newSelected = new Set(prev.selectedServers);
-            if (newSelected.has(serverId)) {
-              newSelected.delete(serverId);
-            } else {
-              newSelected.add(serverId);
-            }
-            saveSelectionState(newSelected);
-            return { ...prev, selectedServers: newSelected };
-          });
-        }
-        return;
-      }
-
-      // N - Enable/Disable
-      if (input === "n" || input === "N") {
-        const { server } = getCurrentServer();
-        if (server) {
-          const action = server.disabled ? "enable" : "disable";
           const result = server.disabled
             ? configService.enableServer(server.id)
             : configService.disableServer(server.id);
 
           if (result.success) {
-            showMessage(`Server '${server.name}' ${action}d`, "success");
-            refreshServers();
+            // Restart daemon if running (auto-sync)
+            const daemonService = getDaemonService();
+            const daemonStatus = daemonService.isDaemonRunning();
+            if (daemonStatus.running) {
+              daemonService.stopDaemon();
+              // Small delay to ensure process exits before restarting
+              setTimeout(() => {
+                daemonService.startDaemon();
+              }, 100);
+            }
+            // Update state with refreshed servers and deselect if disabling
+            setState((prev) => {
+              const newLocal = configService.getLocalServers();
+              const newRemote = configService.getRemoteServers();
+              const newSelected = new Set(prev.selectedServers);
+
+              // If disabling, remove from selection; if enabling, add to selection
+              if (!server.disabled) {
+                newSelected.delete(type === "remote" ? `remote:${server.id}` : server.id);
+              } else {
+                newSelected.add(type === "remote" ? `remote:${server.id}` : server.id);
+              }
+
+              return {
+                ...prev,
+                localServers: newLocal,
+                remoteServers: newRemote,
+                selectedServers: newSelected,
+              };
+            });
           } else {
             showMessage(result.error || "Failed", "error");
           }
@@ -644,7 +640,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                     return (
                       <Box key={server.id} gap={1}>
                         <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                        <Text color={isSelected ? "green" : "gray"}>
+                        <Text color={isDisabled ? "yellow" : isSelected ? "green" : "gray"}>
                           {isSelected ? "[✓]" : "[ ]"}
                         </Text>
                         <Text color={isDisabled ? "gray" : isCurrent ? "white" : undefined} bold={isCurrent}>
@@ -686,7 +682,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                     return (
                       <Box key={server.id} gap={1}>
                         <Text color="magenta">{isCurrent ? "→" : " "}</Text>
-                        <Text color={isSelected ? "green" : "gray"}>
+                        <Text color={isDisabled ? "yellow" : isSelected ? "green" : "gray"}>
                           {isSelected ? "[✓]" : "[ ]"}
                         </Text>
                         <Text color={isDisabled ? "gray" : isCurrent ? "white" : undefined} bold={isCurrent}>

@@ -108,7 +108,7 @@ Remote Servers (HTTP/SSE):
   ☐ stripe - 0 tools
   ☑ deepwiki ✔ 3 tools · 1.5k tokens
 
-↑/↓ Navigate SPACE Select A Add D Delete E Edit N Enable/Disable
+↑/↓ Navigate A Add D Delete E Edit Space Enable/Disable
 X Test T Tools C Clients F Profiles G Settings M Daemon Q Quit
 ```
 

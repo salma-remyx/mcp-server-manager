@@ -1,5 +1,5 @@
 /**
- * Server commands - list, add, remove, edit, test, enable, disable
+ * Server commands - list, add, remove, edit, test
  */
 
 import { Command } from "commander";
@@ -371,38 +371,6 @@ export function registerServerCommands(program: Command): void {
           console.log(`  ${colors.red}Failed: ${failed}${colors.reset}`);
         }
         console.log(`  ${colors.magenta}Total tools: ${totalTools}${colors.reset}`);
-      }
-    });
-
-  // Enable server
-  program
-    .command("enable <nameOrId>")
-    .description("Enable a server")
-    .action(async (nameOrId) => {
-      const configService = getConfigService();
-      const result = configService.enableServer(nameOrId);
-
-      if (result.success) {
-        console.log(`${c.checkmark} Server '${nameOrId}' enabled`);
-      } else {
-        console.log(`${c.cross} ${result.error}`);
-        process.exit(1);
-      }
-    });
-
-  // Disable server
-  program
-    .command("disable <nameOrId>")
-    .description("Disable a server")
-    .action(async (nameOrId) => {
-      const configService = getConfigService();
-      const result = configService.disableServer(nameOrId);
-
-      if (result.success) {
-        console.log(`${c.checkmark} Server '${nameOrId}' disabled`);
-      } else {
-        console.log(`${c.cross} ${result.error}`);
-        process.exit(1);
       }
     });
 }

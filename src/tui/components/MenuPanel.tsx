@@ -20,7 +20,6 @@ const defaultSections: MenuSection[] = [
     title: "Navigation",
     items: [
       { key: "↑↓", label: "Move" },
-      { key: "Space", label: "Select" },
       { key: "Enter", label: "Manage" },
       { key: "Q", label: "Back" },
     ],
@@ -31,7 +30,7 @@ const defaultSections: MenuSection[] = [
       { key: "A", label: "Add" },
       { key: "E", label: "Edit" },
       { key: "D", label: "Delete" },
-      { key: "N", label: "Toggle" },
+      { key: "Space", label: "Enable/Disable" },
       { key: "X", label: "Test" },
     ],
   },
