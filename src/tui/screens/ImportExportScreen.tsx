@@ -83,8 +83,7 @@ function buildMenuOptions(): MenuOption[] {
 
 const FORMAT_OPTIONS = [
   { label: "MCPSM (native)", value: "mcpsm" },
-  { label: "Claude Desktop format", value: "claude" },
-  { label: "Cursor format", value: "cursor" },
+  { label: "JSON format (MCP Standard)", value: "json" },
 ];
 
 export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.ReactElement {

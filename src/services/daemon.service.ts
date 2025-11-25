@@ -116,7 +116,10 @@ export class DaemonService {
     }
 
     try {
-      process.kill(status.pid!, "SIGTERM");
+      if (status.pid === undefined) {
+        return { success: false, error: "Daemon PID not found" };
+      }
+      process.kill(status.pid, "SIGTERM");
       fs.unlinkSync(this.pidFile);
       return { success: true };
     } catch (e) {

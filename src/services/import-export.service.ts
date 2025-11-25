@@ -23,9 +23,9 @@ export interface ParsedImport {
 }
 
 /** Export format */
-export type ExportFormat = "mcpsm" | "claude" | "cursor" | "json";
+export type ExportFormat = "mcpsm" | "json";
 
-/** Claude Desktop format */
+/** MCP Standard JSON format (compatible with Claude Desktop, Cursor, Windsurf, VS Code, etc.) */
 interface ClaudeFormat {
   mcpServers: Record<
     string,
@@ -432,9 +432,11 @@ export class ImportExportService {
             });
             results.updated++;
           } else if (decision === "merge") {
-            const merged = this.mergeServerFields(existing, server) as RemoteServer;
-            configService.updateRemoteServer(server.id, merged);
-            results.merged!++;
+            const mergedServer = this.mergeServerFields(existing, server) as RemoteServer;
+            configService.updateRemoteServer(server.id, mergedServer);
+            if (results.merged !== undefined) {
+              results.merged++;
+            }
           } else {
             results.skipped++;
           }
@@ -467,9 +469,11 @@ export class ImportExportService {
             });
             results.updated++;
           } else if (decision === "merge") {
-            const merged = this.mergeServerFields(existing, server) as LocalServer;
-            configService.updateLocalServer(server.id, merged);
-            results.merged!++;
+            const mergedServer = this.mergeServerFields(existing, server) as LocalServer;
+            configService.updateLocalServer(server.id, mergedServer);
+            if (results.merged !== undefined) {
+              results.merged++;
+            }
           } else {
             results.skipped++;
           }
@@ -497,6 +501,7 @@ export class ImportExportService {
 
     for (const server of servers) {
       if (server.serverType === "remote") {
+        // Validate required fields for remote server
         if (!server.url) {
           console.warn(`Skipping remote server ${server.id}: missing URL`);
           results.skipped++;
@@ -528,12 +533,12 @@ export class ImportExportService {
           results.added++;
         }
       } else {
+        // Validate required fields for local server
         if (!server.command) {
           console.warn(`Skipping local server ${server.id}: missing command`);
           results.skipped++;
           continue;
         }
-
         const existing = configService.findLocalServer(server.id);
 
         if (existing) {
@@ -564,8 +569,8 @@ export class ImportExportService {
     return results;
   }
 
-  /** Export to Claude Desktop format */
-  exportToClaudeFormat(): ClaudeFormat {
+  /** Export to JSON format (Claude Desktop / Cursor compatible) */
+  exportToJsonFormat(): ClaudeFormat {
     const configService = getConfigService();
     const mcpServers: ClaudeFormat["mcpServers"] = {};
 
@@ -624,11 +629,9 @@ export class ImportExportService {
   /** Export configuration */
   export(format: ExportFormat = "mcpsm"): unknown {
     switch (format.toLowerCase()) {
-      case "claude":
-      case "cursor":
-        return this.exportToClaudeFormat();
-      case "mcpsm":
       case "json":
+        return this.exportToJsonFormat();
+      case "mcpsm":
       default:
         return this.exportToMcpsmFormat();
     }

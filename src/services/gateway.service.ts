@@ -361,17 +361,19 @@ export async function startGateway(
         if (!transport) {
           // Create new transport for new sessions
           let currentSessionId: string | undefined;
-          transport = new StreamableHTTPServerTransport({
-            sessionIdGenerator: () => randomUUID(),
+          const newTransport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: (): string => randomUUID(),
             enableJsonResponse: true,
-            onsessioninitialized: (newSessionId) => {
+            onsessioninitialized: (newSessionId): void => {
               currentSessionId = newSessionId;
-              activeSessions.set(newSessionId, transport!);
+              activeSessions.set(newSessionId, newTransport);
             },
           });
 
+          transport = newTransport;
+
           // Clean up session when transport closes
-          transport.onclose = () => {
+          transport.onclose = (): void => {
             if (currentSessionId) {
               activeSessions.delete(currentSessionId);
               logger.debug(`Session ${currentSessionId} closed and cleaned up`);
@@ -433,8 +435,9 @@ export async function stopGateway(): Promise<{ success: boolean; error?: string 
 
     // Close HTTP server
     if (gatewayState.httpServer) {
+      const httpServer = gatewayState.httpServer;
       await new Promise<void>((resolve) => {
-        gatewayState.httpServer!.close(() => resolve());
+        httpServer.close((): void => resolve());
       });
     }
 
@@ -495,7 +498,7 @@ export async function runGatewayForeground(selectedServerIds?: string[]): Promis
   console.log("Press Ctrl+C to stop");
 
   // Handle shutdown signals
-  const shutdown = async () => {
+  const shutdown = async (): Promise<void> => {
     console.log("\nShutting down...");
     await stopGateway();
     process.exit(0);

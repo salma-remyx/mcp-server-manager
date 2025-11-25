@@ -282,91 +282,6 @@ describe("ImportExportService", () => {
     });
   });
 
-  describe("exportToClaudeFormat", () => {
-    it("should export local servers to Claude format", () => {
-      const result = importExportService.exportToClaudeFormat();
-      expect(result.mcpServers).toBeDefined();
-      expect(result.mcpServers["existing-local"]).toBeDefined();
-      expect(result.mcpServers["existing-local"].command).toBe("node");
-    });
-
-    it("should export remote servers using mcp-remote", () => {
-      const result = importExportService.exportToClaudeFormat();
-      expect(result.mcpServers["existing-remote"]).toBeDefined();
-      expect(result.mcpServers["existing-remote"].command).toBe("npx");
-      expect(result.mcpServers["existing-remote"].args).toContain("mcp-remote");
-    });
-
-    it("should exclude disabled servers", () => {
-      // Write config with disabled server
-      fs.writeFileSync(
-        path.join(testConfigDir, "config.json"),
-        JSON.stringify({
-          servers: [
-            { id: "enabled", name: "Enabled", command: "node", args: [] },
-            { id: "disabled", name: "Disabled", command: "node", args: [], disabled: true },
-          ],
-          remoteServers: [],
-          port: 8850,
-        })
-      );
-
-      resetConfigService();
-      configService = getConfigService(testConfigDir);
-      importExportService = new ImportExportService();
-
-      const result = importExportService.exportToClaudeFormat();
-      expect(result.mcpServers["enabled"]).toBeDefined();
-      expect(result.mcpServers["disabled"]).toBeUndefined();
-    });
-
-    it("should include env for servers with env variables", () => {
-      fs.writeFileSync(
-        path.join(testConfigDir, "config.json"),
-        JSON.stringify({
-          servers: [
-            { id: "with-env", name: "With Env", command: "node", args: [], env: { KEY: "value" } },
-          ],
-          remoteServers: [],
-          port: 8850,
-        })
-      );
-
-      resetConfigService();
-      configService = getConfigService(testConfigDir);
-      importExportService = new ImportExportService();
-
-      const result = importExportService.exportToClaudeFormat();
-      expect(result.mcpServers["with-env"].env).toEqual({ KEY: "value" });
-    });
-
-    it("should add MCP_AUTH_TOKEN env for remote servers with bearerToken", () => {
-      fs.writeFileSync(
-        path.join(testConfigDir, "config.json"),
-        JSON.stringify({
-          servers: [],
-          remoteServers: [
-            {
-              id: "authed-remote",
-              name: "Authed Remote",
-              type: "http",
-              url: "http://localhost",
-              bearerToken: "token",
-            },
-          ],
-          port: 8850,
-        })
-      );
-
-      resetConfigService();
-      configService = getConfigService(testConfigDir);
-      importExportService = new ImportExportService();
-
-      const result = importExportService.exportToClaudeFormat();
-      expect(result.mcpServers["authed-remote"].env).toEqual({ MCP_AUTH_TOKEN: "token" });
-    });
-  });
-
   describe("exportToMcpsmFormat", () => {
     it("should export all servers in MCPSM format", () => {
       const result = importExportService.exportToMcpsmFormat();
@@ -393,13 +308,6 @@ describe("ImportExportService", () => {
       };
       expect(result).toHaveProperty("servers");
       expect(result).toHaveProperty("remoteServers");
-    });
-
-    it("should export in Claude format when specified", () => {
-      const result = importExportService.export("claude") as {
-        mcpServers: Record<string, unknown>;
-      };
-      expect(result).toHaveProperty("mcpServers");
     });
   });
 
