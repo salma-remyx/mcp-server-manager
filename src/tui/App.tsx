@@ -643,7 +643,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                       <Box key={server.id} gap={1}>
                         <Text color="cyan">{isCurrent ? "→" : " "}</Text>
                         <Text color={isDisabled ? "yellow" : isSelected ? "green" : "gray"}>
-                          {isSelected ? "[✓]" : isDisabled ? "[✗]" : "[ ]"}
+                          {isSelected ? "[✓]" : "[ ]"}
                         </Text>
                         <Text color={isDisabled ? "gray" : isCurrent ? "white" : undefined} bold={isCurrent}>
                           {server.name || server.id}
@@ -685,7 +685,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                       <Box key={server.id} gap={1}>
                         <Text color="magenta">{isCurrent ? "→" : " "}</Text>
                         <Text color={isDisabled ? "yellow" : isSelected ? "green" : "gray"}>
-                          {isSelected ? "[✓]" : isDisabled ? "[✗]" : "[ ]"}
+                          {isSelected ? "[✓]" : "[ ]"}
                         </Text>
                         <Text color={isDisabled ? "gray" : isCurrent ? "white" : undefined} bold={isCurrent}>
                           {server.name || server.id}
