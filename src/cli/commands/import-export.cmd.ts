@@ -29,7 +29,7 @@ export function registerImportExportCommands(program: Command): void {
   program
     .command("export")
     .description("Export server configuration")
-    .option("-f, --format <format>", "Export format (mcpsm, claude, cursor)", "mcpsm")
+    .option("-f, --format <format>", "Export format (mcpsm, json)", "mcpsm")
     .option("-o, --output <file>", "Output file path")
     .action(async (options) => {
       await handleExport(options);
@@ -73,6 +73,9 @@ async function handleImport(
     console.log(`  --skip                             Skip conflicting servers (default)`);
     console.log(`  --merge                            Intelligently merge conflicting servers`);
     console.log(`\nWhen no conflict option is provided, interactive mode will prompt per-server.`);
+    console.log(`\n${colors.bright}${colors.cyan}Export Servers${colors.reset}\n`);
+    console.log(`  mcpsm export -f mcpsm              Export to MCPSM format (default)`);
+    console.log(`  mcpsm export -f json               Export to JSON format (MCP Standard)`);
 
     // Show available sources
     const sources = importExportService.getAvailableSources();
@@ -196,7 +199,9 @@ async function handleExport(options: { format?: string; output?: string }): Prom
     const result = importExportService.exportToFile(filePath, format);
 
     if (result.success) {
-      console.log(`${colors.green}✓${colors.reset} Exported to ${filePath}`);
+      console.log(
+        `${colors.green}✓${colors.reset} Exported to ${colors.bright}${filePath}${colors.reset}`
+      );
     } else {
       console.error(`${colors.red}Error: ${result.error}${colors.reset}`);
       process.exit(1);

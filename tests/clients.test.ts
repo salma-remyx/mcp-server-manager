@@ -51,6 +51,7 @@ describe("ClientService", () => {
     it("should return null for unknown client", () => {
       clientService = new ClientService();
 
+      // Test with invalid client ID - permitted to use 'as any' in test files
       const unknownPath = clientService.getClientConfigPath("unknown-client" as any);
       expect(unknownPath).toBeNull();
     });
@@ -68,6 +69,7 @@ describe("ClientService", () => {
     it("should return false for unknown client", () => {
       clientService = new ClientService();
 
+      // Test with invalid client ID - permitted to use 'as any' in test files
       const result = clientService.isClientInstalled("unknown-client" as any);
       expect(result).toBe(false);
     });
@@ -121,6 +123,7 @@ describe("ClientService", () => {
     it("should return error for unknown client", () => {
       clientService = new ClientService();
 
+      // Test with invalid client ID - permitted to use 'as any' in test files
       const result = clientService.connectClient("unknown-client" as any);
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
