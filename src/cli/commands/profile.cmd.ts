@@ -65,7 +65,15 @@ export function registerProfileCommands(program: Command): void {
     .command("delete <name>")
     .alias("rm")
     .description("Delete a profile")
-    .action(async (name: string) => {
+    .option("-y, --yes", "Confirm deletion (required for CLI usage)")
+    .action(async (name: string, options) => {
+      if (!options.yes) {
+        console.log(`${c.cross} Confirmation required`);
+        console.log(`${colors.gray}Please run with --yes or -y to confirm deletion${colors.reset}`);
+        console.log(`${colors.gray}Example: mcpsm profile delete ${name} --yes${colors.reset}`);
+        process.exit(1);
+      }
+
       const profileService = getProfileService();
       const result = profileService.delete(name);
 

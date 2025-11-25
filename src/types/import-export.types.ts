@@ -86,3 +86,46 @@ export interface ImportPreview {
   totalSkipped: number;
   totalReplaced: number;
 }
+
+/** Conflict resolution strategy */
+export type ConflictResolution = "overwrite" | "skip" | "merge";
+
+/** Field difference in a conflict */
+export interface FieldDifference {
+  field: string;
+  existing: unknown;
+  incoming: unknown;
+  isDifferent: boolean;
+}
+
+/** Server conflict details */
+export interface ServerConflict {
+  id: string;
+  name: string;
+  type: "local" | "remote";
+  existing: any;
+  incoming: any;
+  differences: FieldDifference[];
+}
+
+/** Conflicts detection result */
+export interface ConflictsDetectionResult {
+  conflicts: ServerConflict[];
+  noConflicts: any[];
+  totalConflicts: number;
+}
+
+/** Per-server conflict decision */
+export interface ConflictDecision {
+  serverId: string;
+  resolution: ConflictResolution;
+  mergedServer?: any;
+}
+
+/** Merge results with conflict resolution */
+export interface MergeResults {
+  added: number;
+  updated: number;
+  skipped: number;
+  merged: number;
+}

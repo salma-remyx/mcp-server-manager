@@ -7,6 +7,12 @@ import path from "path";
 import { getConfigService } from "./config.service.js";
 import { getClientService } from "./client.service.js";
 import type { LocalServer, RemoteServer, Result, TransportType, ClientId } from "../types/index.js";
+import type {
+  ServerConflict,
+  FieldDifference,
+  ConflictsDetectionResult,
+  ConflictResolution,
+} from "../types/index.js";
 
 /** Parsed import result */
 export interface ParsedImport {
@@ -34,6 +40,7 @@ export interface MergeResults {
   added: number;
   updated: number;
   skipped: number;
+  merged?: number;
 }
 
 /** Export format */
@@ -215,6 +222,280 @@ export class ImportExportService {
     }
 
     return { success: true, ...parsed };
+  }
+
+  /** Compare two servers and identify differences */
+  private compareServers(
+    existing: LocalServer | RemoteServer,
+    incoming: ImportedServer
+  ): FieldDifference[] {
+    const differences: FieldDifference[] = [];
+    const isLocal = "command" in existing;
+
+    if (isLocal) {
+      const existingLocal = existing as LocalServer;
+
+      // Compare command
+      if (existingLocal.command !== incoming.command) {
+        differences.push({
+          field: "command",
+          existing: existingLocal.command,
+          incoming: incoming.command,
+          isDifferent: true,
+        });
+      }
+
+      // Compare args
+      const existingArgs = JSON.stringify(existingLocal.args || []);
+      const incomingArgs = JSON.stringify(incoming.args || []);
+      if (existingArgs !== incomingArgs) {
+        differences.push({
+          field: "args",
+          existing: existingLocal.args,
+          incoming: incoming.args,
+          isDifferent: true,
+        });
+      }
+
+      // Compare env
+      const existingEnv = JSON.stringify(existingLocal.env || {});
+      const incomingEnv = JSON.stringify(incoming.env || {});
+      if (existingEnv !== incomingEnv) {
+        differences.push({
+          field: "env",
+          existing: existingLocal.env,
+          incoming: incoming.env,
+          isDifferent: true,
+        });
+      }
+
+      // Compare name
+      if (existingLocal.name !== incoming.name) {
+        differences.push({
+          field: "name",
+          existing: existingLocal.name,
+          incoming: incoming.name,
+          isDifferent: true,
+        });
+      }
+
+      // Compare disabled status
+      if ((existingLocal.disabled || false) !== false) {
+        differences.push({
+          field: "disabled",
+          existing: existingLocal.disabled,
+          incoming: false,
+          isDifferent: true,
+        });
+      }
+    } else {
+      const existingRemote = existing as RemoteServer;
+
+      // Compare URL
+      if (existingRemote.url !== incoming.url) {
+        differences.push({
+          field: "url",
+          existing: existingRemote.url,
+          incoming: incoming.url,
+          isDifferent: true,
+        });
+      }
+
+      // Compare type
+      if (existingRemote.type !== incoming.type) {
+        differences.push({
+          field: "type",
+          existing: existingRemote.type,
+          incoming: incoming.type,
+          isDifferent: true,
+        });
+      }
+
+      // Compare bearerToken
+      if (existingRemote.bearerToken !== incoming.bearerToken) {
+        differences.push({
+          field: "bearerToken",
+          existing: existingRemote.bearerToken ? "***" : undefined,
+          incoming: incoming.bearerToken ? "***" : undefined,
+          isDifferent: true,
+        });
+      }
+
+      // Compare name
+      if (existingRemote.name !== incoming.name) {
+        differences.push({
+          field: "name",
+          existing: existingRemote.name,
+          incoming: incoming.name,
+          isDifferent: true,
+        });
+      }
+
+      // Compare disabled status
+      if ((existingRemote.disabled || false) !== false) {
+        differences.push({
+          field: "disabled",
+          existing: existingRemote.disabled,
+          incoming: false,
+          isDifferent: true,
+        });
+      }
+    }
+
+    return differences;
+  }
+
+  /** Detect conflicts between imported servers and existing servers */
+  detectConflicts(servers: ImportedServer[]): ConflictsDetectionResult {
+    const configService = getConfigService();
+    const conflicts: ServerConflict[] = [];
+    const noConflicts: ImportedServer[] = [];
+
+    for (const server of servers) {
+      const existing =
+        server.serverType === "remote"
+          ? configService.findRemoteServer(server.id)
+          : configService.findLocalServer(server.id);
+
+      if (existing) {
+        const differences = this.compareServers(existing, server);
+
+        // If there are NO differences, treat as no-conflict (auto-skip identical servers)
+        if (differences.every((d) => !d.isDifferent)) {
+          noConflicts.push(server);
+        } else {
+          // Only report as conflict if there are actual differences
+          conflicts.push({
+            id: server.id,
+            name: server.name,
+            type: server.serverType,
+            existing,
+            incoming: server,
+            differences,
+          });
+        }
+      } else {
+        noConflicts.push(server);
+      }
+    }
+
+    return {
+      conflicts,
+      noConflicts,
+      totalConflicts: conflicts.length,
+    };
+  }
+
+  /** Intelligently merge two servers, combining non-conflicting fields */
+  private mergeServerFields(
+    existing: LocalServer | RemoteServer,
+    incoming: ImportedServer
+  ): LocalServer | RemoteServer {
+    const isLocal = "command" in existing;
+
+    if (isLocal) {
+      const existingLocal = existing as LocalServer;
+      // For local servers, prefer incoming command/args but merge env
+      const mergedEnv = {
+        ...(existingLocal.env || {}),
+        ...(incoming.env || {}),
+      };
+
+      return {
+        id: existingLocal.id,
+        name: incoming.name || existingLocal.name,
+        command: incoming.command || existingLocal.command,
+        args: incoming.args !== undefined ? incoming.args : existingLocal.args,
+        env: Object.keys(mergedEnv).length > 0 ? mergedEnv : undefined,
+        disabled: existingLocal.disabled,
+      } as LocalServer;
+    } else {
+      const existingRemote = existing as RemoteServer;
+      // For remote servers, prefer incoming URL but keep existing token if not provided
+      return {
+        id: existingRemote.id,
+        name: incoming.name || existingRemote.name,
+        url: incoming.url || existingRemote.url,
+        type: incoming.type || existingRemote.type,
+        bearerToken: incoming.bearerToken || existingRemote.bearerToken,
+        disabled: existingRemote.disabled,
+      } as RemoteServer;
+    }
+  }
+
+  /** Merge servers into config with per-server conflict decisions */
+  mergeServersWithDecisions(
+    servers: ImportedServer[],
+    decisions: Map<string, ConflictResolution> = new Map()
+  ): MergeResults {
+    const configService = getConfigService();
+    const results: MergeResults = { added: 0, skipped: 0, updated: 0, merged: 0 };
+
+    for (const server of servers) {
+      const decision = decisions.get(server.id) || "skip";
+
+      if (server.serverType === "remote") {
+        const existing = configService.findRemoteServer(server.id);
+
+        if (existing) {
+          if (decision === "overwrite") {
+            configService.updateRemoteServer(server.id, {
+              name: server.name || server.id,
+              url: server.url!,
+              type: server.type || "http",
+              bearerToken: server.bearerToken,
+            });
+            results.updated++;
+          } else if (decision === "merge") {
+            const merged = this.mergeServerFields(existing, server) as RemoteServer;
+            configService.updateRemoteServer(server.id, merged);
+            results.merged!++;
+          } else {
+            results.skipped++;
+          }
+        } else {
+          configService.addRemoteServer({
+            id: server.id,
+            name: server.name || server.id,
+            url: server.url!,
+            type: server.type || "http",
+            bearerToken: server.bearerToken,
+          });
+          results.added++;
+        }
+      } else {
+        const existing = configService.findLocalServer(server.id);
+
+        if (existing) {
+          if (decision === "overwrite") {
+            configService.updateLocalServer(server.id, {
+              name: server.name || server.id,
+              command: server.command!,
+              args: server.args || [],
+              env: server.env,
+            });
+            results.updated++;
+          } else if (decision === "merge") {
+            const merged = this.mergeServerFields(existing, server) as LocalServer;
+            configService.updateLocalServer(server.id, merged);
+            results.merged!++;
+          } else {
+            results.skipped++;
+          }
+        } else {
+          configService.addLocalServer({
+            id: server.id,
+            name: server.name || server.id,
+            command: server.command!,
+            args: server.args || [],
+            env: server.env,
+          });
+          results.added++;
+        }
+      }
+    }
+
+    return results;
   }
 
   /** Merge servers into config */
