@@ -304,7 +304,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
       // Space - Enable/Disable server
       if (input === " ") {
-        const { server } = getCurrentServer();
+        const { server, type } = getCurrentServer();
         if (server) {
           const action = server.disabled ? "enable" : "disable";
           const result = server.disabled
@@ -322,6 +322,14 @@ export function App({ onExit }: AppProps): React.ReactElement {
               setTimeout(() => {
                 daemonService.startDaemon();
               }, 100);
+            }
+            // If disabling, remove from selection
+            if (!server.disabled) {
+              setState((prev) => {
+                const newSelected = new Set(prev.selectedServers);
+                newSelected.delete(type === "remote" ? `remote:${server.id}` : server.id);
+                return { ...prev, selectedServers: newSelected };
+              });
             }
             refreshServers();
           } else {
