@@ -12,35 +12,14 @@ import type {
   FieldDifference,
   ConflictsDetectionResult,
   ConflictResolution,
+  ImportedServer,
+  MergeResults,
 } from "../types/index.js";
 
 /** Parsed import result */
 export interface ParsedImport {
   format: string;
   servers: ImportedServer[];
-}
-
-/** Imported server (generic) */
-export interface ImportedServer {
-  id: string;
-  name: string;
-  serverType: "local" | "remote";
-  // Local server fields
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  // Remote server fields
-  url?: string;
-  type?: TransportType;
-  bearerToken?: string;
-}
-
-/** Merge results */
-export interface MergeResults {
-  added: number;
-  updated: number;
-  skipped: number;
-  merged?: number;
 }
 
 /** Export format */
@@ -279,11 +258,11 @@ export class ImportExportService {
         });
       }
 
-      // Compare disabled status
+      // Compare disabled status (imported servers are never disabled)
       if ((existingLocal.disabled || false) !== false) {
         differences.push({
           field: "disabled",
-          existing: existingLocal.disabled,
+          existing: existingLocal.disabled || false,
           incoming: false,
           isDifferent: true,
         });
@@ -331,11 +310,11 @@ export class ImportExportService {
         });
       }
 
-      // Compare disabled status
+      // Compare disabled status (imported servers are never disabled)
       if ((existingRemote.disabled || false) !== false) {
         differences.push({
           field: "disabled",
-          existing: existingRemote.disabled,
+          existing: existingRemote.disabled || false,
           incoming: false,
           isDifferent: true,
         });
@@ -435,14 +414,20 @@ export class ImportExportService {
       const decision = decisions.get(server.id) || "skip";
 
       if (server.serverType === "remote") {
+        if (!server.url) {
+          console.warn(`Skipping remote server ${server.id}: missing URL`);
+          results.skipped++;
+          continue;
+        }
+
         const existing = configService.findRemoteServer(server.id);
 
         if (existing) {
           if (decision === "overwrite") {
             configService.updateRemoteServer(server.id, {
               name: server.name || server.id,
-              url: server.url!,
-              type: server.type || "http",
+              url: server.url,
+              type: (server.type || "http") as TransportType,
               bearerToken: server.bearerToken,
             });
             results.updated++;
@@ -457,20 +442,26 @@ export class ImportExportService {
           configService.addRemoteServer({
             id: server.id,
             name: server.name || server.id,
-            url: server.url!,
-            type: server.type || "http",
+            url: server.url,
+            type: (server.type || "http") as TransportType,
             bearerToken: server.bearerToken,
           });
           results.added++;
         }
       } else {
+        if (!server.command) {
+          console.warn(`Skipping local server ${server.id}: missing command`);
+          results.skipped++;
+          continue;
+        }
+
         const existing = configService.findLocalServer(server.id);
 
         if (existing) {
           if (decision === "overwrite") {
             configService.updateLocalServer(server.id, {
               name: server.name || server.id,
-              command: server.command!,
+              command: server.command,
               args: server.args || [],
               env: server.env,
             });
@@ -486,7 +477,7 @@ export class ImportExportService {
           configService.addLocalServer({
             id: server.id,
             name: server.name || server.id,
-            command: server.command!,
+            command: server.command,
             args: server.args || [],
             env: server.env,
           });
@@ -502,18 +493,24 @@ export class ImportExportService {
   mergeServers(servers: ImportedServer[], options: { overwrite?: boolean } = {}): MergeResults {
     const configService = getConfigService();
     const { overwrite = false } = options;
-    const results: MergeResults = { added: 0, skipped: 0, updated: 0 };
+    const results: MergeResults = { added: 0, skipped: 0, updated: 0, merged: 0 };
 
     for (const server of servers) {
       if (server.serverType === "remote") {
+        if (!server.url) {
+          console.warn(`Skipping remote server ${server.id}: missing URL`);
+          results.skipped++;
+          continue;
+        }
+
         const existing = configService.findRemoteServer(server.id);
 
         if (existing) {
           if (overwrite) {
             configService.updateRemoteServer(server.id, {
               name: server.name || server.id,
-              url: server.url!,
-              type: server.type || "http",
+              url: server.url,
+              type: (server.type || "http") as TransportType,
               bearerToken: server.bearerToken,
             });
             results.updated++;
@@ -524,20 +521,26 @@ export class ImportExportService {
           configService.addRemoteServer({
             id: server.id,
             name: server.name || server.id,
-            url: server.url!,
-            type: server.type || "http",
+            url: server.url,
+            type: (server.type || "http") as TransportType,
             bearerToken: server.bearerToken,
           });
           results.added++;
         }
       } else {
+        if (!server.command) {
+          console.warn(`Skipping local server ${server.id}: missing command`);
+          results.skipped++;
+          continue;
+        }
+
         const existing = configService.findLocalServer(server.id);
 
         if (existing) {
           if (overwrite) {
             configService.updateLocalServer(server.id, {
               name: server.name || server.id,
-              command: server.command!,
+              command: server.command,
               args: server.args || [],
               env: server.env,
             });
@@ -549,7 +552,7 @@ export class ImportExportService {
           configService.addLocalServer({
             id: server.id,
             name: server.name || server.id,
-            command: server.command!,
+            command: server.command,
             args: server.args || [],
             env: server.env,
           });

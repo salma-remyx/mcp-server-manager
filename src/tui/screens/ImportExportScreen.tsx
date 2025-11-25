@@ -9,10 +9,9 @@ import SelectInput from "ink-select-input";
 import { Header, MenuPanel } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getImportExportService } from "../../services/import-export.service.js";
-import type { ExportFormat, ImportedServer } from "../../services/import-export.service.js";
+import type { ExportFormat } from "../../services/import-export.service.js";
 import { getClientService } from "../../services/client.service.js";
-import type { ClientId } from "../../types/index.js";
-import type { ServerConflict, ConflictResolution } from "../../types/index.js";
+import type { ClientId, ImportedServer, ServerConflict, ConflictResolution } from "../../types/index.js";
 
 type View =
   | "menu"

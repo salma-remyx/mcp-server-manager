@@ -111,6 +111,7 @@ export type {
   ConflictsDetectionResult,
   ConflictDecision,
   MergeResults,
+  ImportedServer,
 } from "./import-export.types.js";
 
 // Common types

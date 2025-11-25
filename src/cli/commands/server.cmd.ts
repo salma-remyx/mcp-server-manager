@@ -212,10 +212,11 @@ export function registerServerCommands(program: Command): void {
     .command("remove <nameOrId>")
     .aliases(["rm", "delete"])
     .description("Remove a server")
-    .option("-y, --yes", "Confirm deletion (required for CLI usage)")
+    .option("-y, --yes", "Confirm deletion (required for non-interactive mode)")
     .action(async (nameOrId, options) => {
-      if (!options.yes) {
-        console.log(`${c.cross} Confirmation required`);
+      const isInteractive = process.stdin.isTTY;
+      if (!options.yes && !isInteractive) {
+        console.log(`${c.cross} Confirmation required in non-interactive mode`);
         console.log(`${colors.gray}Please run with --yes or -y to confirm deletion${colors.reset}`);
         console.log(`${colors.gray}Example: mcpsm remove ${nameOrId} --yes${colors.reset}`);
         process.exit(1);

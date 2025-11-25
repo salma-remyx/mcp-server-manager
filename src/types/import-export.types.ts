@@ -2,8 +2,23 @@
  * Import/Export-related type definitions
  */
 
-import type { LocalServer, RemoteServer } from "./server.types.js";
+import type { LocalServer, RemoteServer, TransportType } from "./server.types.js";
 import type { ClientId } from "./client.types.js";
+
+/** Imported server (generic) */
+export interface ImportedServer {
+  id: string;
+  name: string;
+  serverType: "local" | "remote";
+  // Local server fields
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  // Remote server fields
+  url?: string;
+  type?: TransportType;
+  bearerToken?: string;
+}
 
 /** Export format types */
 export type ExportFormat = "mcpsm" | "claude";
@@ -103,15 +118,15 @@ export interface ServerConflict {
   id: string;
   name: string;
   type: "local" | "remote";
-  existing: any;
-  incoming: any;
+  existing: LocalServer | RemoteServer;
+  incoming: ImportedServer;
   differences: FieldDifference[];
 }
 
 /** Conflicts detection result */
 export interface ConflictsDetectionResult {
   conflicts: ServerConflict[];
-  noConflicts: any[];
+  noConflicts: ImportedServer[];
   totalConflicts: number;
 }
 
@@ -119,7 +134,7 @@ export interface ConflictsDetectionResult {
 export interface ConflictDecision {
   serverId: string;
   resolution: ConflictResolution;
-  mergedServer?: any;
+  mergedServer?: LocalServer | RemoteServer;
 }
 
 /** Merge results with conflict resolution */
@@ -127,5 +142,5 @@ export interface MergeResults {
   added: number;
   updated: number;
   skipped: number;
-  merged: number;
+  merged?: number;
 }

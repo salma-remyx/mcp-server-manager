@@ -111,10 +111,11 @@ export function registerSettingsCommands(program: Command): void {
   settings
     .command("reset")
     .description("Reset all settings to defaults")
-    .option("-y, --yes", "Confirm reset (required for CLI usage)")
+    .option("-y, --yes", "Confirm reset (required for non-interactive mode)")
     .action(async (options) => {
-      if (!options.yes) {
-        console.log(`${c.cross} Confirmation required`);
+      const isInteractive = process.stdin.isTTY;
+      if (!options.yes && !isInteractive) {
+        console.log(`${c.cross} Confirmation required in non-interactive mode`);
         console.log(`${colors.gray}Please run with --yes or -y to confirm reset${colors.reset}`);
         console.log(`${colors.gray}Example: mcpsm settings reset --yes${colors.reset}`);
         process.exit(1);
