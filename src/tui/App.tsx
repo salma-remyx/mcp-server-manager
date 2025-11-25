@@ -637,7 +637,9 @@ export function App({ onExit }: AppProps): React.ReactElement {
                         <Text color={isDisabled ? "gray" : isCurrent ? "white" : undefined} bold={isCurrent}>
                           {server.name || server.id}
                         </Text>
-                        <Text dimColor>-</Text>
+                        <Text color={isDisabled ? "yellow" : "green"}>
+                          {isDisabled ? "✗" : "✓"}
+                        </Text>
                         <Text color={isDisabled ? "yellow" : disabledCount > 0 ? "yellow" : "gray"}>
                           {isDisabled ? "disabled" : `${enabledTools}/${totalTools} tools`}
                         </Text>
@@ -679,7 +681,9 @@ export function App({ onExit }: AppProps): React.ReactElement {
                         <Text color={isDisabled ? "gray" : isCurrent ? "white" : undefined} bold={isCurrent}>
                           {server.name || server.id}
                         </Text>
-                        <Text dimColor>-</Text>
+                        <Text color={isDisabled ? "yellow" : "green"}>
+                          {isDisabled ? "✗" : "✓"}
+                        </Text>
                         <Text color={isDisabled ? "yellow" : disabledCount > 0 ? "yellow" : "gray"}>
                           {isDisabled ? "disabled" : `${enabledTools}/${totalTools} tools`}
                         </Text>
