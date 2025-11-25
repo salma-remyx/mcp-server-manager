@@ -323,15 +323,24 @@ export function App({ onExit }: AppProps): React.ReactElement {
                 daemonService.startDaemon();
               }, 100);
             }
-            // If disabling, remove from selection
-            if (!server.disabled) {
-              setState((prev) => {
-                const newSelected = new Set(prev.selectedServers);
+            // Update state with refreshed servers and deselect if disabling
+            setState((prev) => {
+              const newLocal = configService.getLocalServers();
+              const newRemote = configService.getRemoteServers();
+              const newSelected = new Set(prev.selectedServers);
+
+              // If disabling, remove from selection
+              if (!server.disabled) {
                 newSelected.delete(type === "remote" ? `remote:${server.id}` : server.id);
-                return { ...prev, selectedServers: newSelected };
-              });
-            }
-            refreshServers();
+              }
+
+              return {
+                ...prev,
+                localServers: newLocal,
+                remoteServers: newRemote,
+                selectedServers: newSelected,
+              };
+            });
           } else {
             showMessage(result.error || "Failed", "error");
           }
