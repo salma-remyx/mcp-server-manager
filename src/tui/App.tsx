@@ -640,15 +640,13 @@ export function App({ onExit }: AppProps): React.ReactElement {
                     return (
                       <Box key={server.id} gap={1}>
                         <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                        <Text color={isSelected ? "green" : "gray"}>
-                          {isSelected ? "[✓]" : "[ ]"}
+                        <Text color={isDisabled ? "yellow" : isSelected ? "green" : "gray"}>
+                          {isSelected ? "[✓]" : isDisabled ? "[✗]" : "[ ]"}
                         </Text>
                         <Text color={isDisabled ? "gray" : isCurrent ? "white" : undefined} bold={isCurrent}>
                           {server.name || server.id}
                         </Text>
-                        <Text color={isDisabled ? "yellow" : "green"}>
-                          {isDisabled ? "✗" : "✓"}
-                        </Text>
+                        <Text dimColor>-</Text>
                         <Text color={isDisabled ? "yellow" : disabledCount > 0 ? "yellow" : "gray"}>
                           {isDisabled ? "disabled" : `${enabledTools}/${totalTools} tools`}
                         </Text>
@@ -684,15 +682,13 @@ export function App({ onExit }: AppProps): React.ReactElement {
                     return (
                       <Box key={server.id} gap={1}>
                         <Text color="magenta">{isCurrent ? "→" : " "}</Text>
-                        <Text color={isSelected ? "green" : "gray"}>
-                          {isSelected ? "[✓]" : "[ ]"}
+                        <Text color={isDisabled ? "yellow" : isSelected ? "green" : "gray"}>
+                          {isSelected ? "[✓]" : isDisabled ? "[✗]" : "[ ]"}
                         </Text>
                         <Text color={isDisabled ? "gray" : isCurrent ? "white" : undefined} bold={isCurrent}>
                           {server.name || server.id}
                         </Text>
-                        <Text color={isDisabled ? "yellow" : "green"}>
-                          {isDisabled ? "✗" : "✓"}
-                        </Text>
+                        <Text dimColor>-</Text>
                         <Text color={isDisabled ? "yellow" : disabledCount > 0 ? "yellow" : "gray"}>
                           {isDisabled ? "disabled" : `${enabledTools}/${totalTools} tools`}
                         </Text>
