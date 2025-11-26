@@ -51,7 +51,7 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
 
   // Handle menu option selection
   const handleMenuOption = useCallback(
-    (optionId: string) => {
+    async (optionId: string) => {
       switch (optionId) {
         case "start": {
           const runningStatus = daemonService.isDaemonRunning();
@@ -66,7 +66,7 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
             }));
           } else {
             setState((prev) => ({ ...prev, isLoading: true }));
-            const result = daemonService.startDaemon([]);
+            const result = await daemonService.startDaemon([]);
             setState((prev) => ({
               ...prev,
               isLoading: false,
@@ -88,9 +88,11 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
               actionResult: { success: false, message: "Daemon is not running" },
             }));
           } else {
-            const result = daemonService.stopDaemon();
+            setState((prev) => ({ ...prev, isLoading: true }));
+            const result = await daemonService.stopDaemon();
             setState((prev) => ({
               ...prev,
+              isLoading: false,
               view: "action",
               actionResult: result.success
                 ? { success: true, message: "Daemon stopped" }
