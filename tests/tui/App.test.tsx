@@ -108,14 +108,13 @@ describe("App Component", () => {
     it("should display local servers when configured", () => {
       const { lastFrame } = render(<App />);
 
-      expect(lastFrame()).toContain("Local Servers");
+      expect(lastFrame()).toContain("Servers");
       expect(lastFrame()).toContain("Server One");
     });
 
     it("should display remote servers when configured", () => {
       const { lastFrame } = render(<App />);
 
-      expect(lastFrame()).toContain("Remote Servers");
       expect(lastFrame()).toContain("Remote One");
     });
 

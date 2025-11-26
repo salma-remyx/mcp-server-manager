@@ -46,7 +46,7 @@ describe("AddServerScreen", () => {
     it("should display help text about ESC", () => {
       const { lastFrame } = render(<AddServerScreen onBack={mockOnBack} />);
 
-      expect(lastFrame()).toContain("ESC to go back");
+      expect(lastFrame()).toMatch(/ESC.*Go back|Go back/i);
     });
 
     it("should show navigation hints", () => {

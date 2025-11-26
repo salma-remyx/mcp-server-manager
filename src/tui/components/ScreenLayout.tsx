@@ -2,10 +2,12 @@
  * ScreenLayout - Standardized screen layout with fixed height and menu
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Box, Text } from "ink";
-import { Header, MenuPanel } from "./index.js";
+import { Header, ShortcutsBar } from "./index.js";
 import type { MenuSection } from "../utils/menu.js";
+import type { Shortcut } from "./ShortcutsBar.js";
+import { useTerminalSize } from "../hooks/useTerminalSize.js";
 
 interface ScreenLayoutProps {
   title: string;
@@ -15,6 +17,8 @@ interface ScreenLayoutProps {
   menuSections?: MenuSection[];
   /** Highlighted menu item */
   highlightedView?: string;
+  /** Custom shortcuts for footer bar */
+  shortcuts?: Shortcut[];
   /** Main content area */
   children: React.ReactNode;
   /** Optional footer message */
@@ -23,47 +27,63 @@ interface ScreenLayoutProps {
   customHeader?: React.ReactNode;
 }
 
-/** Fixed height for screen content area */
-const CONTENT_HEIGHT = 20; // Lines available for content
-
 export function ScreenLayout({
   title,
   subtitle,
   menuSections,
-  highlightedView,
+  shortcuts,
   children,
   footer,
   customHeader,
 }: ScreenLayoutProps): React.ReactElement {
-  return (
-    <Box flexDirection="column">
-      {/* Header */}
-      {customHeader || <Header title={title} />}
+  const terminalSize = useTerminalSize();
+  const isCompactLayout = terminalSize.columns < 90;
+  const contentMargin = isCompactLayout ? 0 : 1;
 
-      {/* Subtitle/Status */}
+  const derivedShortcuts = useMemo(() => {
+    if (shortcuts && shortcuts.length > 0) {
+      return shortcuts;
+    }
+    if (!menuSections) return undefined;
+    return menuSections.flatMap((section) =>
+      section.items.map((item) => ({
+        key: item.key,
+        label: item.label,
+      }))
+    );
+  }, [shortcuts, menuSections]);
+
+  return (
+    <Box flexDirection="column" paddingX={isCompactLayout ? 0 : 1}>
+      <Box marginX={contentMargin}>{customHeader || <Header title={title} />}</Box>
+
       {subtitle && (
-        <Box paddingX={1} marginTop={0}>
+        <Box marginX={contentMargin} marginTop={0}>
           <Text dimColor>{subtitle}</Text>
         </Box>
       )}
 
-      {/* Main content area with fixed height */}
-      <Box marginTop={1} gap={2}>
-        {/* Left panel: Content */}
-        <Box flexDirection="column" flexGrow={1} minHeight={CONTENT_HEIGHT}>
-          {children}
-        </Box>
-
-        {/* Right panel: Menu */}
-        {menuSections && menuSections.length > 0 && (
-          <MenuPanel sections={menuSections} highlightedView={highlightedView} />
-        )}
+      <Box
+        marginTop={1}
+        marginX={contentMargin}
+        flexDirection="column"
+        borderStyle="round"
+        borderColor="green"
+        paddingX={1}
+        paddingY={0}
+      >
+        {children}
       </Box>
 
-      {/* Footer */}
       {footer && (
-        <Box paddingX={1} marginTop={1}>
+          <Box marginX={contentMargin} marginTop={1}>
           {footer}
+        </Box>
+      )}
+
+      {derivedShortcuts && derivedShortcuts.length > 0 && (
+        <Box marginTop={1} marginX={contentMargin}>
+          <ShortcutsBar shortcuts={derivedShortcuts} />
         </Box>
       )}
     </Box>

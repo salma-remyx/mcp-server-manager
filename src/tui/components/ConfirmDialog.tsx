@@ -78,8 +78,8 @@ export function ConfirmDialog({
       flexDirection="column"
       borderStyle="round"
       borderColor={titleColor}
-      paddingX={2}
-      paddingY={1}
+      paddingX={1}
+      paddingY={0}
     >
       {/* Title */}
       <Text color={titleColor} bold>

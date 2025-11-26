@@ -32,6 +32,8 @@ export interface ServerToolFilter {
   toolsData?: Record<string, ToolData>;
   /** Total tokens for all enabled tools */
   totalTokens?: number;
+  /** Last error encountered while testing this server */
+  error?: string;
 }
 
 /** Tool filters for all servers (keyed by server ID or "remote:serverId") */

@@ -74,7 +74,7 @@ describe("TokensScreen", () => {
     it("should show press any key message", () => {
       const { lastFrame } = render(<TokensScreen onBack={mockOnBack} />);
 
-      expect(lastFrame()).toContain("Press any key");
+      expect(lastFrame()).toMatch(/Any.*Go back|Go back/i);
     });
   });
 });

@@ -5,10 +5,20 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
-import { Header, MenuPanel } from "../components/index.js";
+import os from "os";
+import { ScreenLayout } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getClientService } from "../../services/client.service.js";
 import type { DetectedClient } from "../../types/index.js";
+
+/** Convert absolute path to use ~ for home directory */
+function shortenPath(path: string): string {
+  const homeDir = os.homedir();
+  if (path.startsWith(homeDir)) {
+    return path.replace(homeDir, "~");
+  }
+  return path;
+}
 
 interface ClientsScreenProps {
   onBack: () => void;
@@ -130,22 +140,6 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
 
   const { clients, currentIndex, connecting, message, messageType } = state;
 
-  // Show connecting spinner
-  if (connecting) {
-    return (
-      <Box flexDirection="column">
-        <Header title="MCP Clients" />
-
-        <Box paddingX={1} marginTop={1} gap={1}>
-          <Text color="cyan">
-            <Spinner type="dots" />
-          </Text>
-          <Text>Updating client connection...</Text>
-        </Box>
-      </Box>
-    );
-  }
-
   const clientsMenuSections = createMenuSections({
     actions: [
       { key: "Enter", label: "Connect/Disconnect" },
@@ -156,82 +150,87 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
     showSystem: false,
   });
 
-  return (
-    <Box flexDirection="column">
-      <Header title="MCP Clients" />
+  // Show connecting spinner
+  if (connecting) {
+    return (
+      <ScreenLayout title="MCP Clients" menuSections={clientsMenuSections}>
+        <Box paddingY={1} gap={1}>
+          <Text color="cyan">
+            <Spinner type="dots" />
+          </Text>
+          <Text>Updating client connection...</Text>
+        </Box>
+      </ScreenLayout>
+    );
+  }
 
-      {/* Message */}
-      {message && (
-        <Box paddingX={1} marginTop={1}>
+  return (
+    <ScreenLayout
+      title="MCP Clients"
+      menuSections={clientsMenuSections}
+      footer={
+        message ? (
           <Text
             color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}
           >
             {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
           </Text>
-        </Box>
-      )}
+        ) : undefined
+      }
+    >
+      {clients.length === 0 ? (
+        <Text dimColor>No clients detected.</Text>
+      ) : (
+        clients.map((client, idx) => {
+          const isCurrent = idx === currentIndex;
 
-      {/* Main content: Clients + Menu side by side */}
-      <Box marginTop={1} gap={2}>
-        {/* Left panel: Clients list */}
-        <Box flexDirection="column" flexGrow={1} paddingX={1}>
-          {clients.length === 0 ? (
-            <Text dimColor>No clients detected.</Text>
-          ) : (
-            clients.map((client, idx) => {
-              const isCurrent = idx === currentIndex;
+          // Status icon and color based on connection status
+          let statusIcon: string;
+          let statusColor: "green" | "yellow" | "gray";
+          let statusText: string;
 
-              // Status icon and color based on connection status
-              let statusIcon: string;
-              let statusColor: "green" | "yellow" | "gray";
-              let statusText: string;
+          if (client.status === "connected") {
+            statusIcon = "✔";
+            statusColor = "green";
+            statusText = "connected";
+          } else if (client.status === "disconnected") {
+            statusIcon = "○";
+            statusColor = "yellow";
+            statusText = "disconnected";
+          } else {
+            statusIcon = "✗";
+            statusColor = "gray";
+            statusText = "not installed";
+          }
 
-              if (client.status === "connected") {
-                statusIcon = "✔";
-                statusColor = "green";
-                statusText = "connected";
-              } else if (client.status === "disconnected") {
-                statusIcon = "○";
-                statusColor = "yellow";
-                statusText = "disconnected";
-              } else {
-                statusIcon = "✗";
-                statusColor = "gray";
-                statusText = "not installed";
-              }
-
-              return (
-                <Box key={client.id} flexDirection="column" marginBottom={1}>
-                  <Box gap={1}>
-                    <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                    <Text color={statusColor}>{statusIcon}</Text>
-                    <Text color={isCurrent ? "cyan" : undefined} bold={isCurrent}>
-                      {client.name}
-                    </Text>
-                    <Text dimColor>[{client.id}]</Text>
-                  </Box>
-                  <Box marginLeft={5} gap={1}>
-                    <Text color={statusColor}>{statusText}</Text>
-                    <Text dimColor>|</Text>
-                    <Text dimColor>
-                      {client.serverCount} {client.serverCount === 1 ? "server" : "servers"}
-                    </Text>
-                  </Box>
-                  {client.mcpConfigPath && (
-                    <Box marginLeft={5}>
-                      <Text dimColor>{client.mcpConfigPath}</Text>
-                    </Box>
-                  )}
+          return (
+            <Box key={client.id} flexDirection="column" marginBottom={1}>
+              {/* First line: arrow, icon, name, status, servers */}
+              <Box gap={1}>
+                <Text color={isCurrent ? "magenta" : "cyan"}>{isCurrent ? "→" : " "}</Text>
+                <Text color={statusColor}>{statusIcon}</Text>
+                <Text color={isCurrent ? "magenta" : undefined} bold={isCurrent}>
+                  {client.name}
+                </Text>
+                <Text dimColor>[{client.id}]</Text>
+                <Text dimColor>-</Text>
+                <Text color={statusColor}>{statusText}</Text>
+                <Text dimColor>-</Text>
+                <Text dimColor>
+                  {client.serverCount} {client.serverCount === 1 ? "server" : "servers"}
+                </Text>
+              </Box>
+              {/* Second line: config path */}
+              {client.mcpConfigPath && (
+                <Box marginLeft={3}>
+                  <Text dimColor>{shortenPath(client.mcpConfigPath)}</Text>
                 </Box>
-              );
-            })
-          )}
-        </Box>
-
-        {/* Right panel: Menu */}
-        <MenuPanel sections={clientsMenuSections} highlightedView="C" />
-      </Box>
-    </Box>
+              )}
+            </Box>
+          );
+        })
+      )}
+    </ScreenLayout>
   );
 }
 

@@ -453,11 +453,9 @@ export function AuthScreen({
               return (
                 <Box key={server.id} flexDirection="column">
                   <Box gap={1}>
-                    <Text color={isSelected ? "cyan" : undefined}>
-                      {isSelected ? "→" : " "}
-                    </Text>
+                    <Text color={isSelected ? "magenta" : "cyan"}>{isSelected ? "→" : " "}</Text>
                     <Text color={statusColor}>{statusIcon}</Text>
-                    <Text bold={isSelected} color={isSelected ? "cyan" : undefined}>
+                    <Text bold={isSelected} color={isSelected ? "magenta" : undefined}>
                       {server.name}
                     </Text>
                     <Text color={statusColor} dimColor={!isSelected}>({statusText})</Text>

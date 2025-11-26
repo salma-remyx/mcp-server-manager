@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
-import { Header } from "../components/index.js";
+import { ScreenLayout } from "../components/index.js";
 import { getConfigService } from "../../services/config.service.js";
 import { formatTokens } from "../../shared/formatters.js";
 
@@ -84,17 +84,18 @@ export function TokensScreen({ onBack }: TokensScreenProps): React.ReactElement 
   });
 
   return (
-    <Box flexDirection="column">
-      <Header title="Token Usage" />
-
-      <Box flexDirection="column" paddingX={1} marginTop={1}>
-        {servers.length === 0 ? (
-          <Box flexDirection="column">
-            <Text dimColor>No token data available.</Text>
-            <Text dimColor>Test servers to discover tools and count tokens.</Text>
-          </Box>
-        ) : (
-          servers.map((server) => {
+    <ScreenLayout
+      title="Token Usage"
+      shortcuts={[{ key: "Any", label: "Go back" }]}
+    >
+      {servers.length === 0 ? (
+        <Box flexDirection="column" paddingY={1}>
+          <Text dimColor>No token data available.</Text>
+          <Text dimColor>Test servers to discover tools and count tokens.</Text>
+        </Box>
+      ) : (
+        <>
+          {servers.map((server) => {
             const typeLabel = server.type !== "stdio" ? ` (${server.type})` : "";
             const topTools = server.tools.sort((a, b) => b.tokens - a.tokens).slice(0, 5);
 
@@ -122,22 +123,18 @@ export function TokensScreen({ onBack }: TokensScreenProps): React.ReactElement 
                 )}
               </Box>
             );
-          })
-        )}
+          })}
 
-        {servers.length > 0 && (
-          <Box marginTop={1}>
-            <Text bold>Total: </Text>
-            <Text color="magenta">{formatTokens(grandTotal)}</Text>
-            <Text> tokens</Text>
-          </Box>
-        )}
-      </Box>
-
-      <Box paddingX={1} marginTop={2}>
-        <Text dimColor>Press any key to go back...</Text>
-      </Box>
-    </Box>
+          {servers.length > 0 && (
+            <Box marginTop={1}>
+              <Text bold>Total: </Text>
+              <Text color="magenta">{formatTokens(grandTotal)}</Text>
+              <Text> tokens</Text>
+            </Box>
+          )}
+        </>
+      )}
+    </ScreenLayout>
   );
 }
 

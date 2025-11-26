@@ -56,10 +56,11 @@ describe("DaemonScreen", () => {
       expect(lastFrame()).toMatch(/startup|Startup|Enable|Disable/i);
     });
 
-    it("should display log file path", () => {
+    it("should display compact status summary", () => {
       const { lastFrame } = render(<DaemonScreen onBack={mockOnBack} />);
 
-      expect(lastFrame()).toContain("Log file");
+      expect(lastFrame()).toContain("Status:");
+      expect(lastFrame()).toContain("Auto-start");
     });
   });
 

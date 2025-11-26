@@ -156,7 +156,7 @@ describe("DoctorScreen", () => {
 
       await waitForStateUpdate(200);
 
-      expect(lastFrame()).toContain("Press any key");
+      expect(lastFrame()).toMatch(/Any.*Go back|Go back/i);
     });
   });
 

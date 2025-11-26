@@ -6,7 +6,7 @@ import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import fs from "fs";
-import { Header, MenuPanel } from "../components/index.js";
+import { ScreenLayout } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getDaemonService } from "../../services/daemon.service.js";
 
@@ -188,28 +188,35 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
   const { currentIndex, view, actionResult, isLoading, logs } = state;
   const status = daemonService.getStatus();
 
+  const daemonMenuSections = createMenuSections({
+    actions: [{ key: "Enter", label: "Select" }],
+    showData: false,
+    showConfig: false,
+    showSystem: false,
+  });
+
   // Loading view
   if (isLoading) {
     return (
-      <Box flexDirection="column">
-        <Header title="Daemon Management" />
-        <Box paddingX={1} marginTop={1} gap={1}>
+      <ScreenLayout title="Daemon Management" menuSections={daemonMenuSections}>
+        <Box paddingY={1} gap={1}>
           <Text color="cyan">
             <Spinner type="dots" />
           </Text>
           <Text>Starting daemon...</Text>
         </Box>
-      </Box>
+      </ScreenLayout>
     );
   }
 
   // Logs view
   if (view === "logs") {
     return (
-      <Box flexDirection="column">
-        <Header title="Recent Logs" />
-
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
+      <ScreenLayout
+        title="Recent Logs"
+        shortcuts={[{ key: "Any", label: "Go back" }]}
+      >
+        <Box flexDirection="column" paddingY={1}>
           <Box marginBottom={1}>
             <Text dimColor>{daemonService.getLogFilePath()}</Text>
           </Box>
@@ -224,98 +231,64 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
             ))
           )}
         </Box>
-
-        <Box paddingX={1} marginTop={2}>
-          <Text dimColor>Press any key to go back...</Text>
-        </Box>
-      </Box>
+      </ScreenLayout>
     );
   }
 
   // Action result view
   if (view === "action" && actionResult) {
     return (
-      <Box flexDirection="column">
-        <Header title="Daemon Management" />
-
-        <Box paddingX={1} marginTop={1} gap={1}>
+      <ScreenLayout
+        title="Daemon Management"
+        shortcuts={[{ key: "Any", label: "Continue" }]}
+      >
+        <Box paddingY={1} gap={1}>
           <Text color={actionResult.success ? "green" : "yellow"}>
             {actionResult.success ? "✓" : "⚠"}
           </Text>
           <Text>{actionResult.message}</Text>
         </Box>
-
-        <Box paddingX={1} marginTop={2}>
-          <Text dimColor>Press any key to continue...</Text>
-        </Box>
-      </Box>
+      </ScreenLayout>
     );
   }
 
   // Menu view
-  const daemonMenuSections = createMenuSections({
-    actions: [{ key: "Enter", label: "Select" }],
-    showData: false,
-    showConfig: false,
-    showSystem: false,
-  });
-
   return (
-    <Box flexDirection="column">
-      <Header title="Daemon Management" />
+    <ScreenLayout title="Daemon Management" menuSections={daemonMenuSections}>
+      {/* Status summary - compact single line */}
+      <Box gap={1} marginBottom={1} paddingY={1}>
+        <Text>Status:</Text>
+        <Text color={status.running ? "green" : "red"}>
+          {status.running ? "●" : "●"} {status.running ? `Running (PID: ${status.pid})` : "Stopped"}
+        </Text>
+        <Text dimColor>|</Text>
+        <Text>Port:</Text>
+        <Text color="cyan">{status.port}</Text>
+        <Text dimColor>|</Text>
+        <Text>Auto-start:</Text>
+        <Text color={status.startupEnabled ? "green" : "gray"}>
+          {status.startupEnabled ? "enabled" : "disabled"}
+        </Text>
+      </Box>
 
-      {/* Main content: Status + Options + Menu side by side */}
-      <Box marginTop={1} gap={2}>
-        {/* Left panel: Status and options */}
-        <Box flexDirection="column" flexGrow={1} paddingX={1}>
-          {/* Status summary */}
-          <Box flexDirection="column" marginBottom={2}>
-            <Box gap={1} marginBottom={1}>
-              <Text>Status:</Text>
-              <Text color={status.running ? "green" : "red"}>
-                {status.running ? "●" : "●"} {status.running ? `Running (PID: ${status.pid})` : "Stopped"}
-              </Text>
-            </Box>
-            <Box gap={1} marginBottom={1}>
-              <Text>Port:</Text>
-              <Text color="cyan">{status.port}</Text>
-            </Box>
-            <Box gap={1} marginBottom={1}>
-              <Text>Auto-start:</Text>
-              <Text color={status.startupEnabled ? "green" : "gray"}>
-                {status.startupEnabled ? "enabled" : "disabled"}
-              </Text>
-            </Box>
+      {/* Menu options */}
+      {MENU_OPTIONS.map((option, idx) => {
+        const isCurrent = idx === currentIndex;
+
+        return (
+          <Box key={option.id} flexDirection="column" marginBottom={1}>
             <Box gap={1}>
-              <Text>Log file:</Text>
-              <Text dimColor>{status.logFile}</Text>
+              <Text color={isCurrent ? "magenta" : "cyan"}>{isCurrent ? "→" : " "}</Text>
+              <Text color={isCurrent ? "magenta" : undefined} bold={isCurrent}>
+                {option.label}
+              </Text>
+              <Text dimColor>-</Text>
+              <Text dimColor>{option.description}</Text>
             </Box>
           </Box>
-
-          {/* Menu options */}
-          {MENU_OPTIONS.map((option, idx) => {
-            const isCurrent = idx === currentIndex;
-
-            return (
-              <Box key={option.id} flexDirection="column" marginBottom={1}>
-                <Box gap={1}>
-                  <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                  <Text color={isCurrent ? "white" : undefined} bold={isCurrent}>
-                    {option.label}
-                  </Text>
-                </Box>
-                <Box marginLeft={4}>
-                  <Text dimColor>{option.description}</Text>
-                </Box>
-              </Box>
-            );
-          })}
-        </Box>
-
-        {/* Right panel: Menu */}
-        <MenuPanel sections={daemonMenuSections} highlightedView="H" />
-      </Box>
-    </Box>
+        );
+      })}
+    </ScreenLayout>
   );
 }
 
