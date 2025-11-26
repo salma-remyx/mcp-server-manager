@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js->=18-green)](https://nodejs.org)
 
-**[🌐 Website](https://mateustorquato.github.io/mcp-server-manager/) • [📚 Documentation](https://mateustorquato.github.io/mcp-server-manager/docs/guide/getting-started)**
+**[🌐 Website & Documentation](https://mateustorquato.github.io/mcp-server-manager/guide/getting-started.html)**
 
 </div>
 
@@ -85,7 +85,7 @@ mcpsm test
 mcpsm clients connect claude
 ```
 
-For complete command reference and guides, see the **[full documentation](https://mateustorquato.github.io/mcp-server-manager/docs/guide/getting-started)**.
+For complete command reference and guides, see the **[documentation](https://mateustorquato.github.io/mcp-server-manager/guide/getting-started.html)**.
 
 ---
 
