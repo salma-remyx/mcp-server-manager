@@ -58,9 +58,9 @@ const CLIENT_PATHS: ClientPathsConfig = {
     linux: path.join(os.homedir(), ".continue/config.json"),
   },
   "claude-code": {
-    darwin: path.join(os.homedir(), ".claude/claude_code_config.json"),
-    win32: path.join(os.homedir(), ".claude/claude_code_config.json"),
-    linux: path.join(os.homedir(), ".claude/claude_code_config.json"),
+    darwin: path.join(os.homedir(), ".claude.json"),
+    win32: path.join(os.homedir(), ".claude.json"),
+    linux: path.join(os.homedir(), ".claude.json"),
   },
   codex: {
     darwin: path.join(os.homedir(), ".codex/config.toml"),
