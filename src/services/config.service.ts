@@ -162,6 +162,11 @@ export class ConfigService {
     fs.writeFileSync(this.paths.selectionStatePath, JSON.stringify(state, null, 2));
   }
 
+  /** Reload all config data from disk */
+  reload(): void {
+    this.load();
+  }
+
   // === Getters ===
 
   /** Get config paths */

@@ -32,6 +32,7 @@ export {
   startGateway,
   stopGateway,
   getGatewayStatus,
+  refreshGateway,
   runGatewayForeground,
 } from "./gateway.service.js";
 

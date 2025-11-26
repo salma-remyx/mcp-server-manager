@@ -985,6 +985,21 @@ export class AuthService {
     }
     return null;
   }
+
+  /** Reload tokens and pending auths from disk (used by daemon refresh) */
+  reload(): void {
+    this.loadTokens();
+    this.loadPendingAuths();
+  }
+
+  /** Get storage paths for watchers/diagnostics */
+  getStoragePaths(): { configDir: string; tokensPath: string; pendingAuthPath: string } {
+    return {
+      configDir: this.configDir,
+      tokensPath: this.tokensPath,
+      pendingAuthPath: this.pendingAuthPath,
+    };
+  }
 }
 
 /** Singleton instance */

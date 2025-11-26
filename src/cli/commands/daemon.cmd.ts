@@ -32,6 +32,14 @@ export function registerDaemonCommands(program: Command): void {
       await handleStop();
     });
 
+  // daemon refresh
+  daemon
+    .command("refresh")
+    .description("Refresh running daemon configuration without restart")
+    .action(async () => {
+      await handleRefresh();
+    });
+
   // daemon status
   daemon
     .command("status")
@@ -136,7 +144,7 @@ async function handleStart(
   }
 
   // Daemon mode
-  const result = daemonService.startDaemon(selectedServers);
+  const result = await daemonService.startDaemon(selectedServers);
   if (result.success) {
     console.log(`${colors.green}✓${colors.reset} Gateway started (PID: ${result.pid})`);
     if (selectedServers.length > 0) {
@@ -154,10 +162,23 @@ async function handleStart(
 /** Handle daemon stop */
 async function handleStop(): Promise<void> {
   const daemonService = getDaemonService();
-  const result = daemonService.stopDaemon();
+  const result = await daemonService.stopDaemon();
 
   if (result.success) {
     console.log(`${colors.green}✓${colors.reset} Gateway stopped`);
+  } else {
+    console.error(`${colors.red}Error: ${result.error}${colors.reset}`);
+    process.exit(1);
+  }
+}
+
+/** Handle daemon refresh */
+async function handleRefresh(): Promise<void> {
+  const daemonService = getDaemonService();
+  const result = await daemonService.refreshDaemon();
+
+  if (result.success) {
+    console.log(`${colors.green}✓${colors.reset} Gateway refreshed`);
   } else {
     console.error(`${colors.red}Error: ${result.error}${colors.reset}`);
     process.exit(1);

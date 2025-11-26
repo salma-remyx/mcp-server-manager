@@ -11,6 +11,7 @@ import { createMenuSections } from "../utils/menu.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getAuthService } from "../../services/auth.service.js";
 import { getTestingService } from "../../services/testing.service.js";
+import { getDaemonService } from "../../services/daemon.service.js";
 import type { RemoteServer, AuthStatus } from "../../types/index.js";
 
 interface AuthScreenProps {
@@ -42,6 +43,14 @@ export function AuthScreen({
   const [currentAuthServer, setCurrentAuthServer] = useState<string | null>(null);
   const [message, setMessage] = useState<string>("");
   const [confirmRevoke, setConfirmRevoke] = useState<{ id: string; name: string } | null>(null);
+  const refreshDaemonIfRunning = useCallback((context: string) => {
+    const daemonService = getDaemonService();
+    if (daemonService.isDaemonRunning().running) {
+      daemonService.refreshDaemon().catch((error) => {
+        console.error(`Failed to refresh daemon after ${context}:`, error);
+      });
+    }
+  }, []);
 
   // Load servers and their auth status
   const loadServers = useCallback(async (): Promise<void> => {
@@ -201,6 +210,7 @@ export function AuthScreen({
         );
         setMessage(`${server.name} authenticated successfully!`);
         onAuthComplete?.(server.id, true);
+        refreshDaemonIfRunning("authentication");
 
         // Switch to authenticated view after a delay
         setTimeout(() => {
@@ -224,7 +234,7 @@ export function AuthScreen({
 
       setCurrentAuthServer(null);
     },
-    [onAuthComplete]
+    [onAuthComplete, refreshDaemonIfRunning]
   );
 
   // Revoke authentication for a server
@@ -232,6 +242,7 @@ export function AuthScreen({
     (serverId: string): void => {
       const authService = getAuthService();
       authService.removeToken(serverId);
+      refreshDaemonIfRunning("revoking auth");
 
       setAllServers((prev) =>
         prev.map((s) =>
@@ -256,7 +267,7 @@ export function AuthScreen({
       // Reload to update the lists
       loadServers();
     },
-    [loadServers]
+    [loadServers, refreshDaemonIfRunning]
   );
 
   // Handle keyboard input

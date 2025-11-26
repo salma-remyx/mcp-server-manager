@@ -43,6 +43,22 @@ interface ConnectedServer {
   tools: Tool[];
 }
 
+async function closeServerConnection(server: ConnectedServer): Promise<void> {
+  try {
+    await Promise.race([
+      server.transport.close(),
+      new Promise<void>((resolve) => {
+        setTimeout(() => {
+          logger.warn(`Timeout closing connection to ${server.name}`);
+          resolve();
+        }, 5000);
+      }),
+    ]);
+  } catch (error) {
+    logger.warn(`Error closing connection to ${server.name}:`, error);
+  }
+}
+
 interface GatewayState {
   running: boolean;
   port: number;
@@ -50,6 +66,8 @@ interface GatewayState {
   mcpServer: Server | null;
   connectedServers: Map<string, ConnectedServer>;
   toolToServerMap: Map<string, string>; // toolName -> serverId
+  aggregatedTools: Tool[];
+  activeSelection: Set<string> | null;
 }
 
 let gatewayState: GatewayState = {
@@ -59,7 +77,11 @@ let gatewayState: GatewayState = {
   mcpServer: null,
   connectedServers: new Map(),
   toolToServerMap: new Map(),
+  aggregatedTools: [],
+  activeSelection: null,
 };
+
+let refreshLock: Promise<void> = Promise.resolve();
 
 /**
  * Connect to a local STDIO-based MCP server
@@ -207,6 +229,13 @@ function buildToolMapping(): Tool[] {
   return allTools;
 }
 
+/** Rebuild aggregated tool list and tool mapping */
+function refreshAggregatedTools(): Tool[] {
+  const aggregated = buildToolMapping();
+  gatewayState.aggregatedTools = aggregated;
+  return aggregated;
+}
+
 /**
  * Handle tool call by routing to the appropriate server
  */
@@ -268,9 +297,10 @@ export async function startGateway(
 
     // Determine which servers to actually start
     // Priority: explicit selectedServerIds > TUI selection state
+    const usingExplicitSelection = !!(selectedServerIds && selectedServerIds.length > 0);
     let serverIdsToStart: Set<string> = new Set();
 
-    if (selectedServerIds && selectedServerIds.length > 0) {
+    if (usingExplicitSelection) {
       // Explicit server IDs provided (from CLI or profile)
       serverIdsToStart = new Set(selectedServerIds);
     } else {
@@ -281,6 +311,7 @@ export async function startGateway(
 
     // Filter servers to only those in the start set
     const selectedSet = serverIdsToStart;
+    gatewayState.activeSelection = usingExplicitSelection ? new Set(selectedSet) : null;
     localServers = localServers.filter((s) => selectedSet.has(s.id));
     remoteServers = remoteServers.filter(
       (s) => selectedSet.has(s.id) || selectedSet.has(`remote:${s.id}`)
@@ -298,9 +329,14 @@ export async function startGateway(
 
     const results = await Promise.all(connectionPromises);
     const connectedServers = results.filter((r): r is ConnectedServer => r !== null);
+    const failedCount = results.length - connectedServers.length;
+
+    if (failedCount > 0) {
+      logger.warn(`Skipped ${failedCount} server(s) due to connection errors`);
+    }
 
     if (connectedServers.length === 0) {
-      return { success: false, error: "Failed to connect to any servers" };
+      logger.warn("No servers connected; starting gateway with 0 tools");
     }
 
     // Store connected servers
@@ -309,7 +345,7 @@ export async function startGateway(
     }
 
     // Build tool mapping
-    const aggregatedTools = buildToolMapping();
+    const aggregatedTools = refreshAggregatedTools();
     logger.info(
       `Aggregated ${aggregatedTools.length} tools from ${connectedServers.length} servers`
     );
@@ -326,7 +362,7 @@ export async function startGateway(
 
     // Handle tools/list request - return all aggregated tools with their JSON Schema
     mcpServer.setRequestHandler(ListToolsRequestSchema, () => ({
-      tools: aggregatedTools,
+      tools: gatewayState.aggregatedTools,
     }));
 
     // Handle tools/call request - route to appropriate server
@@ -363,8 +399,8 @@ export async function startGateway(
         res.end(
           JSON.stringify({
             status: "ok",
-            servers: connectedServers.length,
-            tools: aggregatedTools.length,
+            servers: gatewayState.connectedServers.size,
+            tools: gatewayState.aggregatedTools.length,
           })
         );
         return;
@@ -411,8 +447,14 @@ export async function startGateway(
 
     // Start listening
     await new Promise<void>((resolve, reject) => {
-      httpServer.on("error", reject);
+      const onError = (err: Error): void => {
+        httpServer.off("error", onError);
+        reject(err);
+      };
+
+      httpServer.once("error", onError);
       httpServer.listen(port, () => {
+        httpServer.off("error", onError);
         logger.info(`Gateway listening on http://localhost:${port}`);
         resolve();
       });
@@ -445,23 +487,7 @@ export async function stopGateway(): Promise<{ success: boolean; error?: string 
     // Close all server connections with timeout to prevent hanging
     const closePromises: Promise<void>[] = [];
     for (const [, server] of gatewayState.connectedServers) {
-      const closePromise = (async (): Promise<void> => {
-        try {
-          // Add timeout to prevent hanging on close
-          await Promise.race([
-            server.transport.close(),
-            new Promise<void>((resolve) => {
-              setTimeout(() => {
-                logger.warn(`Timeout closing connection to ${server.name}`);
-                resolve();
-              }, 5000);
-            }),
-          ]);
-        } catch (error) {
-          logger.warn(`Error closing connection to ${server.name}:`, error);
-        }
-      })();
-      closePromises.push(closePromise);
+      closePromises.push(closeServerConnection(server));
     }
 
     // Wait for all connections to close (with timeout)
@@ -487,6 +513,8 @@ export async function stopGateway(): Promise<{ success: boolean; error?: string 
       mcpServer: null,
       connectedServers: new Map(),
       toolToServerMap: new Map(),
+      aggregatedTools: [],
+      activeSelection: null,
     };
 
     logger.info("Gateway stopped");
@@ -511,8 +539,129 @@ export function getGatewayStatus(): {
     running: gatewayState.running,
     port: gatewayState.port,
     serverCount: gatewayState.connectedServers.size,
-    toolCount: gatewayState.toolToServerMap.size,
+    toolCount: gatewayState.aggregatedTools.length,
   };
+}
+
+/**
+ * Refresh the running gateway configuration without restarting the process
+ */
+export async function refreshGateway(
+  reason = "manual"
+): Promise<{ success: boolean; error?: string }> {
+  if (!gatewayState.running || !gatewayState.httpServer) {
+    return { success: false, error: "Gateway is not running" };
+  }
+
+  const runRefresh = async (): Promise<void> => {
+    logger.info(`Refreshing gateway configuration (${reason})...`);
+
+    const configService = getConfigService();
+    const authService = getAuthService();
+
+    // Reload data from disk
+    configService.reload();
+    authService.reload();
+
+    const configuredPort = configService.getPort();
+    if (configuredPort !== gatewayState.port && gatewayState.httpServer) {
+      logger.info(`Port changed (${gatewayState.port} -> ${configuredPort}), re-binding server`);
+      await new Promise<void>((resolve, reject) => {
+        gatewayState.httpServer?.close((err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        const server = gatewayState.httpServer;
+        if (!server) {
+          resolve();
+          return;
+        }
+
+        const onError = (err: Error): void => {
+          server.off("error", onError);
+          reject(err);
+        };
+
+        server.once("error", onError);
+        server.listen(configuredPort, () => {
+          server.off("error", onError);
+          resolve();
+        });
+      });
+
+      gatewayState.port = configuredPort;
+    }
+
+    // Determine selected servers (same logic as startGateway)
+    const selectionState = configService.getSelectionState();
+    const serverIdsToStart =
+      gatewayState.activeSelection && gatewayState.activeSelection.size > 0
+        ? new Set(gatewayState.activeSelection)
+        : new Set([...selectionState.local, ...selectionState.remote]);
+
+    const localServers = configService
+      .getEnabledLocalServers()
+      .filter((s) => serverIdsToStart.has(s.id));
+    const remoteServers = configService
+      .getEnabledRemoteServers()
+      .filter((s) => serverIdsToStart.has(`remote:${s.id}`));
+
+    if (localServers.length === 0 && remoteServers.length === 0) {
+      logger.warn("No servers selected/enabled during refresh; clearing connections");
+    }
+
+    // Close existing connections
+    const closePromises = Array.from(gatewayState.connectedServers.values()).map((server) =>
+      closeServerConnection(server)
+    );
+    await Promise.allSettled(closePromises);
+    gatewayState.connectedServers.clear();
+    gatewayState.toolToServerMap.clear();
+    gatewayState.aggregatedTools = [];
+
+    // Reconnect to selected servers
+    const connectionPromises: Promise<ConnectedServer | null>[] = [
+      ...localServers.map(connectLocalServer),
+      ...remoteServers.map(connectRemoteServer),
+    ];
+
+    const results = await Promise.all(connectionPromises);
+    const connectedServers = results.filter((r): r is ConnectedServer => r !== null);
+    const failedCount = results.length - connectedServers.length;
+
+    if (failedCount > 0) {
+      logger.warn(`Skipped ${failedCount} server(s) during refresh due to connection errors`);
+    }
+
+    for (const server of connectedServers) {
+      gatewayState.connectedServers.set(server.id, server);
+    }
+
+    const aggregatedTools = refreshAggregatedTools();
+    logger.info(
+      `Gateway refresh complete: ${connectedServers.length} server(s), ${aggregatedTools.length} tool(s)`
+    );
+  };
+
+  refreshLock = refreshLock.then(
+    () => runRefresh(),
+    () => runRefresh()
+  );
+
+  try {
+    await refreshLock;
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Gateway refresh failed: ${message}`);
+    return { success: false, error: message };
+  }
 }
 
 /**
@@ -528,7 +677,7 @@ export async function runGatewayForeground(selectedServerIds?: string[]): Promis
 
   console.log(`Gateway running on http://localhost:${gatewayState.port}`);
   console.log(`Connected to ${gatewayState.connectedServers.size} servers`);
-  console.log(`Serving ${gatewayState.toolToServerMap.size} tools`);
+  console.log(`Serving ${gatewayState.aggregatedTools.length} tools`);
   console.log("Press Ctrl+C to stop");
 
   // Handle shutdown signals
@@ -544,8 +693,18 @@ export async function runGatewayForeground(selectedServerIds?: string[]): Promis
     await shutdown();
   };
 
+  const handleRefreshSignal = (): void => {
+    refreshGateway("signal").then((result) => {
+      if (!result.success) {
+        logger.warn(`Gateway refresh from signal failed: ${result.error}`);
+      }
+    });
+  };
+
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
+  process.on("SIGHUP", handleRefreshSignal);
+  process.on("SIGUSR1", handleRefreshSignal);
   process.on("uncaughtException", handleError);
   process.on("unhandledRejection", (reason) => {
     const error = reason instanceof Error ? reason : new Error(String(reason));

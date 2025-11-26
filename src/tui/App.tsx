@@ -11,8 +11,11 @@ import { getTestingService } from "../services/testing.service.js";
 import { getProfileService } from "../services/profile.service.js";
 import { getDaemonService } from "../services/daemon.service.js";
 import { getAuthService } from "../services/auth.service.js";
+import { createLogger } from "../shared/logger.js";
 import type { LocalServer, RemoteServer, ServerToolFilter } from "../types/index.js";
 import { VERSION } from "../shared/version.js";
+
+const log = createLogger("App");
 
 // Screen components
 import { AddServerScreen } from "./screens/AddServerScreen.js";
@@ -89,6 +92,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
   const { exit } = useApp();
   const configService = getConfigService();
   const profileService = getProfileService();
+  const daemonService = getDaemonService();
   const terminalSize = useTerminalSize();
   const isCompactLayout = terminalSize.columns < 90;
   const contentMargin = isCompactLayout ? 0 : 1;
@@ -225,6 +229,17 @@ export function App({ onExit }: AppProps): React.ReactElement {
     };
   }, [messageTimeoutId]);
 
+  const refreshDaemonIfRunning = useCallback(
+    (context: string) => {
+      if (daemonService.isDaemonRunning().running) {
+        daemonService.refreshDaemon().catch((error) => {
+          log.error(`Failed to refresh daemon after ${context}:`, error);
+        });
+      }
+    },
+    [daemonService]
+  );
+
   // Load tool counts and auth status on mount
   useEffect(() => {
     let isMounted = true;
@@ -303,6 +318,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
       if (!isMounted) return;
       setState((prev) => ({ ...prev, toolCounts: finalToolCounts, serversNeedingAuth: finalNeedsAuth }));
+      refreshDaemonIfRunning("auto-testing servers");
     };
 
     loadToolCountsAndAuthStatus();
@@ -310,7 +326,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [refreshDaemonIfRunning]);
 
   // Create unified server list
   const unifiedServers = React.useMemo((): UnifiedServer[] => {
@@ -322,7 +338,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
       servers.push({ server, type: "remote", id: `remote:${server.id}` });
     });
     return servers;
-  }, [state.localServers, state.remoteServers]);
+  }, [refreshDaemonIfRunning, state.localServers, state.remoteServers]);
 
   // Get current server
   const getCurrentServer = useCallback((): {
@@ -387,16 +403,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
       if (result.success) {
         showMessage(`Server '${server.name}' deleted`, "success");
-        // Restart daemon if running (auto-sync)
-        const daemonService = getDaemonService();
-        const daemonStatus = daemonService.isDaemonRunning();
-        if (daemonStatus.running) {
-          daemonService.stopDaemon();
-          // Small delay to ensure process exits before restarting
-          setTimeout(() => {
-            daemonService.startDaemon();
-          }, 100);
-        }
+        // Refresh daemon if running (auto-sync)
+        refreshDaemonIfRunning("deleting server");
         
         // Get fresh server lists after deletion - create new arrays to ensure React detects the change
         // Force reload by creating new arrays with new object references
@@ -443,7 +451,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return { ...prev, confirmDelete: undefined };
       }
     });
-  }, [showMessage]);
+  }, [refreshDaemonIfRunning, showMessage]);
 
   // Handle delete cancellation
   const handleDeleteCancel = useCallback(() => {
@@ -519,6 +527,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
         };
       });
     });
+    refreshDaemonIfRunning("testing servers");
   }, [state.localServers, state.remoteServers]);
 
   // Keyboard input handling (only on main screen)
@@ -592,16 +601,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
             : configService.disableServer(server.id);
 
           if (result.success) {
-            // Restart daemon if running (auto-sync)
-            const daemonService = getDaemonService();
-            const daemonStatus = daemonService.isDaemonRunning();
-            if (daemonStatus.running) {
-              daemonService.stopDaemon();
-              // Small delay to ensure process exits before restarting
-              setTimeout(() => {
-                daemonService.startDaemon();
-              }, 100);
-            }
+            // Refresh daemon if running (auto-sync)
+            refreshDaemonIfRunning("toggling server");
             // Update state with refreshed servers and deselect if disabling
             setState((prev) => {
               const newLocal = configService.getLocalServers().map((s) => ({ ...s }));

@@ -24,6 +24,7 @@ export class DaemonService {
   private pidFile: string;
   private logFile: string;
   private logsDir: string;
+  private restartLock: Promise<void>;
 
   constructor() {
     const configService = getConfigService();
@@ -31,6 +32,7 @@ export class DaemonService {
     this.logsDir = path.join(this.configDir, "logs");
     this.pidFile = path.join(this.configDir, "daemon.pid");
     this.logFile = path.join(this.logsDir, "gateway.log");
+    this.restartLock = Promise.resolve();
 
     this.ensureLogsDir();
   }
@@ -39,6 +41,63 @@ export class DaemonService {
   private ensureLogsDir(): void {
     if (!fs.existsSync(this.logsDir)) {
       fs.mkdirSync(this.logsDir, { recursive: true });
+    }
+  }
+
+  /** Find PIDs of processes using a specific port */
+  private findProcessesByPort(port: number): number[] {
+    const pids: number[] = [];
+    try {
+      if (process.platform === "darwin" || process.platform === "linux") {
+        // Use lsof to find processes using the port
+        const output = execSync(`lsof -ti :${port}`, {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        });
+        const lines = output
+          .trim()
+          .split("\n")
+          .filter((line) => line.trim());
+        for (const line of lines) {
+          const pid = parseInt(line.trim(), 10);
+          if (!isNaN(pid) && pid > 0) {
+            pids.push(pid);
+          }
+        }
+      }
+    } catch {
+      // lsof returns non-zero exit code if no processes found, which is fine
+      log.debug(`No processes found on port ${port}`);
+    }
+    return pids;
+  }
+
+  /** Kill a process and wait for it to terminate */
+  private async killProcess(pid: number, signal: string = "SIGTERM"): Promise<boolean> {
+    try {
+      process.kill(pid, signal as "SIGTERM" | "SIGKILL");
+
+      // Wait for process to terminate (check every 100ms, max 5 seconds)
+      for (let i = 0; i < 50; i++) {
+        try {
+          process.kill(pid, 0); // Check if process exists
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        } catch {
+          // Process no longer exists
+          return true;
+        }
+      }
+
+      // Process still running after SIGTERM, try SIGKILL
+      if (signal === "SIGTERM") {
+        log.warn(`Process ${pid} did not terminate with SIGTERM, trying SIGKILL`);
+        return await this.killProcess(pid, "SIGKILL");
+      }
+
+      return false;
+    } catch (error) {
+      log.debug(`Error killing process ${pid}:`, error);
+      return false;
     }
   }
 
@@ -65,11 +124,49 @@ export class DaemonService {
     }
   }
 
+  /** Check if any process is using the daemon port */
+  private isPortInUse(port: number): boolean {
+    const pids = this.findProcessesByPort(port);
+    return pids.length > 0;
+  }
+
   /** Start daemon */
-  startDaemon(selectedServers: string[] = []): Result & { pid?: number } {
+  async startDaemon(selectedServers: string[] = []): Promise<Result & { pid?: number }> {
     const status = this.isDaemonRunning();
     if (status.running) {
       return { success: false, error: `Daemon already running (PID: ${status.pid})` };
+    }
+
+    // Check if port is in use by any process
+    // Retry a few times in case port is still being released
+    const configService = getConfigService();
+    const port = configService.getPort();
+
+    // Try up to 3 times with delays
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
+      }
+
+      if (!this.isPortInUse(port)) {
+        break; // Port is free, proceed
+      }
+
+      if (attempt === 2) {
+        // Last attempt failed, check what's using the port
+        const pids = this.findProcessesByPort(port);
+        // If no PIDs found, port might be in TIME_WAIT, try starting anyway
+        if (pids.length === 0) {
+          log.debug(
+            `Port ${port} appears in use but no processes found, attempting to start anyway`
+          );
+          break;
+        }
+        return {
+          success: false,
+          error: `Port ${port} is already in use by process(es): ${pids.join(", ")}. Please stop the daemon first.`,
+        };
+      }
     }
 
     // Find the CLI path - using import.meta.url for ES modules
@@ -109,33 +206,134 @@ export class DaemonService {
   }
 
   /** Stop daemon */
-  stopDaemon(): Result {
+  async stopDaemon(): Promise<Result> {
+    const configService = getConfigService();
+    const port = configService.getPort();
+    const pidsToKill = new Set<number>();
+
+    // Get PID from file if it exists
     const status = this.isDaemonRunning();
-    if (!status.running) {
-      return { success: false, error: "Daemon not running" };
+    if (status.running && status.pid) {
+      pidsToKill.add(status.pid);
+    }
+
+    // Also find any processes using the port (in case PID file is stale)
+    const portPids = this.findProcessesByPort(port);
+    for (const pid of portPids) {
+      pidsToKill.add(pid);
+    }
+
+    if (pidsToKill.size === 0) {
+      // Clean up PID file if it exists but no processes found
+      if (fs.existsSync(this.pidFile)) {
+        try {
+          fs.unlinkSync(this.pidFile);
+        } catch (error) {
+          log.debug("Failed to remove PID file:", error);
+        }
+      }
+      return { success: true };
+    }
+
+    // Kill all processes
+    const killPromises = Array.from(pidsToKill).map((pid) => this.killProcess(pid));
+    const results = await Promise.allSettled(killPromises);
+
+    // Log any failures
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      const pid = Array.from(pidsToKill)[i];
+      if (result.status === "rejected" || !result.value) {
+        log.warn(`Failed to kill process ${pid}`);
+      }
+    }
+
+    // Clean up PID file
+    if (fs.existsSync(this.pidFile)) {
+      try {
+        fs.unlinkSync(this.pidFile);
+      } catch (error) {
+        log.debug("Failed to remove PID file:", error);
+      }
+    }
+
+    // Wait a bit more to ensure port is released
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // Verify port is free - this is the most important check
+    if (this.isPortInUse(port)) {
+      const remainingPids = this.findProcessesByPort(port);
+      return {
+        success: false,
+        error: `Port ${port} is still in use by process(es): ${remainingPids.join(", ")}`,
+      };
+    }
+
+    // Return success if port is free, even if some kill operations had issues
+    // (the port being free is what matters)
+    return { success: true };
+  }
+
+  /** Queue daemon restarts so we don't spawn overlapping processes */
+  async restartDaemonSafely(): Promise<Result & { pid?: number }> {
+    const run = async (): Promise<Result & { pid?: number }> => {
+      const configService = getConfigService();
+      const port = configService.getPort();
+      const status = this.isDaemonRunning();
+
+      // If nothing is running and the port is free, nothing to do
+      if (!status.running && !this.isPortInUse(port)) {
+        return { success: true };
+      }
+
+      const stopResult = await this.stopDaemon();
+      if (!stopResult.success) {
+        return { success: false, error: stopResult.error || "Failed to stop daemon" };
+      }
+
+      // Extra wait to ensure port is fully released before starting
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      return this.startDaemon();
+    };
+
+    const restartPromise = this.restartLock.then(run, run);
+
+    // Update lock but swallow errors so future restarts aren't blocked
+    this.restartLock = restartPromise.then(
+      () => undefined,
+      () => undefined
+    );
+
+    return restartPromise;
+  }
+
+  /** Ask the running daemon to refresh its configuration without restarting */
+  async refreshDaemon(): Promise<Result> {
+    const status = this.isDaemonRunning();
+    if (!status.running || !status.pid) {
+      return { success: false, error: "Daemon is not running" };
     }
 
     try {
-      if (status.pid === undefined) {
-        return { success: false, error: "Daemon PID not found" };
-      }
-      process.kill(status.pid, "SIGTERM");
-      fs.unlinkSync(this.pidFile);
+      process.kill(status.pid, "SIGHUP");
       return { success: true };
-    } catch (e) {
-      return { success: false, error: e instanceof Error ? e.message : String(e) };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.warn(`Failed to send refresh signal: ${message}`);
+      return { success: false, error: message };
     }
   }
 
   /** Restart the daemon if it's running */
-  restartDaemon(): Result & { pid?: number } {
+  async restartDaemon(): Promise<Result & { pid?: number }> {
     const status = this.isDaemonRunning();
     if (!status.running) {
       return { success: false, error: "Daemon is not running" };
     }
 
     // Stop the daemon
-    const stopResult = this.stopDaemon();
+    const stopResult = await this.stopDaemon();
     if (!stopResult.success) {
       return { success: false, error: `Failed to stop daemon: ${stopResult.error}` };
     }

@@ -27,6 +27,7 @@ interface ToolsState {
 
 export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): React.ReactElement {
   const configService = getConfigService();
+  const daemonService = getDaemonService();
 
   const [state, setState] = useState<ToolsState>(() => {
     const localServers = configService.getLocalServers();
@@ -93,18 +94,13 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     []
   );
 
-  // Restart daemon if running (for auto-sync tool changes)
-  const restartDaemonIfRunning = useCallback(() => {
-    const daemonService = getDaemonService();
-    const daemonStatus = daemonService.isDaemonRunning();
-    if (daemonStatus.running) {
-      daemonService.stopDaemon();
-      // Small delay to ensure process exits before restarting
-      setTimeout(() => {
-        daemonService.startDaemon();
-      }, 100);
+  const refreshDaemonIfRunning = useCallback(() => {
+    if (daemonService.isDaemonRunning().running) {
+      daemonService.refreshDaemon().catch((error) => {
+        console.error("Failed to refresh daemon after tool changes:", error);
+      });
     }
-  }, []);
+  }, [daemonService]);
 
   // Handle keyboard input
   useInput((input, key) => {
@@ -138,7 +134,7 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     if (input === " " && tools.length > 0 && serverId) {
       const tool = tools[currentToolIndex];
       configService.toggleTool(serverId, tool);
-      restartDaemonIfRunning();
+      refreshDaemonIfRunning();
       reloadTools(true);
       return;
     }
@@ -146,7 +142,7 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     // Enable all - A
     if (input.toLowerCase() === "a" && tools.length > 0 && serverId) {
       configService.enableAllTools(serverId);
-      restartDaemonIfRunning();
+      refreshDaemonIfRunning();
       reloadTools(true);
       showMessage("All tools enabled", "success");
       return;
@@ -155,7 +151,7 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     // Disable all - N
     if (input.toLowerCase() === "n" && tools.length > 0 && serverId) {
       configService.disableAllTools(serverId);
-      restartDaemonIfRunning();
+      refreshDaemonIfRunning();
       reloadTools(true);
       showMessage("All tools disabled", "success");
       return;

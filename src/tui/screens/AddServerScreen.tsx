@@ -12,6 +12,7 @@ import { ScreenLayout } from "../components/index.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getTestingService } from "../../services/testing.service.js";
 import { getAuthService } from "../../services/auth.service.js";
+import { getDaemonService } from "../../services/daemon.service.js";
 import type { LocalServer, RemoteServer, TransportType } from "../../types/index.js";
 
 type Step = "name" | "type" | "command" | "args" | "url" | "token" | "testing" | "authenticating" | "done";
@@ -44,6 +45,14 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
   useApp(); // Keep app context active
   const configService = getConfigService();
   const testingService = getTestingService();
+  const refreshDaemonIfRunning = useCallback(() => {
+    const daemonService = getDaemonService();
+    if (daemonService.isDaemonRunning().running) {
+      daemonService.refreshDaemon().catch((error) => {
+        console.error("Failed to refresh daemon after server changes:", error);
+      });
+    }
+  }, []);
 
   const [state, setState] = useState<FormState>({
     step: "name",
@@ -180,8 +189,9 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         }));
       }
       setIsTesting(false);
+      refreshDaemonIfRunning();
     },
-    [state.serverId, state.name, state.command, configService, testingService]
+    [configService, refreshDaemonIfRunning, state.command, state.name, state.serverId, testingService]
   );
 
   // Handle URL submission
@@ -278,8 +288,17 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         }));
       }
       setIsTesting(false);
+      refreshDaemonIfRunning();
     },
-    [state.serverId, state.name, state.serverType, state.url, configService, testingService]
+    [
+      configService,
+      refreshDaemonIfRunning,
+      state.name,
+      state.serverId,
+      state.serverType,
+      state.url,
+      testingService,
+    ]
   );
 
   return (
