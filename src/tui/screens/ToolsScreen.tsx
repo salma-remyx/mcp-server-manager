@@ -4,7 +4,7 @@
 
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
-import { Header, MenuPanel } from "../components/index.js";
+import { ScreenLayout, ScrollableList } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getDaemonService } from "../../services/daemon.service.js";
@@ -181,15 +181,17 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
   // No server selected
   if (!state.serverId) {
     return (
-      <Box flexDirection="column">
-        <Header title="Tool Filters" />
-        <Box paddingX={1} marginTop={1}>
+      <ScreenLayout
+        title="Tool Filters"
+        menuSections={createMenuSections({ showData: false, showConfig: false, showSystem: false })}
+      >
+        <Box paddingX={1} paddingY={1} flexDirection="column">
           <Text dimColor>No server selected.</Text>
+          <Box marginTop={1}>
+            <Text dimColor>Press Q or ESC to go back</Text>
+          </Box>
         </Box>
-        <Box paddingX={1} marginTop={1}>
-          <Text dimColor>Press Q or ESC to go back</Text>
-        </Box>
-      </Box>
+      </ScreenLayout>
     );
   }
 
@@ -204,52 +206,51 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     showSystem: false,
   });
 
+  const footer = message ? (
+    <Text
+      color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}
+    >
+      {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
+    </Text>
+  ) : undefined;
+
   return (
-    <Box flexDirection="column">
-      <Header title={`Tools: ${serverName}`} />
-
-      {/* Message */}
-      {message && (
-        <Box paddingX={1} marginTop={1}>
-          <Text
-            color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}
-          >
-            {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
-          </Text>
+    <ScreenLayout
+      title={`Tools: ${serverName}`}
+      menuSections={toolsMenuSections}
+      highlightedView="T"
+      footer={footer}
+    >
+      {tools.length === 0 ? (
+        <Box paddingX={1} paddingY={1} flexDirection="column">
+          <Text dimColor>No tools discovered for this server.</Text>
+          <Text dimColor>Run a test (X) to discover tools.</Text>
         </Box>
+      ) : (
+        <ScrollableList
+          items={tools}
+          selectedIndex={currentToolIndex}
+          emptyMessage="No tools discovered for this server."
+          renderItem={(tool, idx) => {
+            const isCurrent = idx === currentToolIndex;
+            const isEnabled = !disabledTools.has(tool);
+
+            return (
+              <Box key={tool} gap={1} paddingX={1}>
+                <Text color="cyan">{isCurrent ? "→" : " "}</Text>
+                <Text color={isEnabled ? "green" : "red"}>{isEnabled ? "[✓]" : "[ ]"}</Text>
+                <Text
+                  color={isEnabled ? (isCurrent ? "white" : undefined) : "gray"}
+                  bold={isCurrent}
+                >
+                  {tool}
+                </Text>
+              </Box>
+            );
+          }}
+        />
       )}
-
-      {/* Main content: Tools + Menu side by side */}
-      <Box marginTop={1} gap={2}>
-        {/* Left panel: Tools list */}
-        <Box flexDirection="column" flexGrow={1} paddingX={1}>
-          {tools.length === 0 ? (
-            <Box flexDirection="column">
-              <Text dimColor>No tools discovered for this server.</Text>
-              <Text dimColor>Run a test (X) to discover tools.</Text>
-            </Box>
-          ) : (
-            tools.map((tool, idx) => {
-              const isCurrent = idx === currentToolIndex;
-              const isEnabled = !disabledTools.has(tool);
-
-              return (
-                <Box key={tool} gap={1}>
-                  <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                  <Text color={isEnabled ? "green" : "red"}>{isEnabled ? "[✓]" : "[ ]"}</Text>
-                  <Text color={isEnabled ? (isCurrent ? "white" : undefined) : "gray"} bold={isCurrent}>
-                    {tool}
-                  </Text>
-                </Box>
-              );
-            })
-          )}
-        </Box>
-
-        {/* Right panel: Menu */}
-        <MenuPanel sections={toolsMenuSections} highlightedView="T" />
-      </Box>
-    </Box>
+    </ScreenLayout>
   );
 }
 

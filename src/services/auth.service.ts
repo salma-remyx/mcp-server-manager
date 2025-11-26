@@ -983,6 +983,11 @@ export class AuthService {
     this.saveTokens();
   }
 
+  /** Get all server IDs that have stored OAuth tokens */
+  getAllStoredTokenServerIds(): string[] {
+    return Array.from(this.tokens.keys());
+  }
+
   /** Get token preview (masked) */
   getTokenPreview(serverId: string): string | null {
     const stored = this.tokens.get(serverId);

@@ -6,7 +6,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import open from "open";
-import { Header } from "../components/index.js";
+import { ScreenLayout, ScrollableList } from "../components/index.js";
+import { createMenuSections } from "../utils/menu.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getAuthService } from "../../services/auth.service.js";
 import { getTestingService } from "../../services/testing.service.js";
@@ -20,7 +21,6 @@ interface AuthScreenProps {
   onAuthComplete?: (serverId: string, success: boolean) => void;
 }
 
-type View = "needs-auth" | "authenticated";
 type AuthPhase = "idle" | "authenticating" | "waiting" | "success" | "error";
 
 interface ServerAuthState {
@@ -33,26 +33,15 @@ interface ServerAuthState {
 
 export function AuthScreen({
   onBack,
-  serverId,
+  serverId: _serverId,
   onAuthComplete,
 }: AuthScreenProps): React.ReactElement {
   const [allServers, setAllServers] = useState<ServerAuthState[]>([]);
-  const [view, setView] = useState<View>("needs-auth");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [currentAuthServer, setCurrentAuthServer] = useState<string | null>(null);
   const [message, setMessage] = useState<string>("");
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
-
-  // Get filtered lists based on view
-  const needsAuthServers = allServers.filter(
-    (s) => s.status.requiresAuth || s.phase === "error"
-  );
-  const authenticatedServers = allServers.filter(
-    (s) => s.status.hasToken && !s.status.isExpired && s.phase !== "error"
-  );
-
-  const currentList = view === "needs-auth" ? needsAuthServers : authenticatedServers;
 
   // Load servers and their auth status
   const loadServers = useCallback(async (): Promise<void> => {
@@ -63,40 +52,49 @@ export function AuthScreen({
     const allRemoteServers = configService.getRemoteServers();
     const states: ServerAuthState[] = [];
 
+    // Also get all server IDs that have stored OAuth tokens
+    const storedTokenServerIds = authService.getAllStoredTokenServerIds();
+
     for (const server of allRemoteServers) {
-      const hasToken = authService.hasValidToken(server.id);
-      const isExpired = authService.isTokenExpired(server.id);
       const token = authService.getToken(server.id);
+      const hasToken = !!token; // Check if token exists (even if expired)
+      const hasStoredToken = storedTokenServerIds.includes(server.id);
+      const isExpired = authService.isTokenExpired(server.id);
       const hasStaticToken = !!server.bearerToken;
       const isOAuthEnabled = server.oauth?.enabled || false;
 
-      // Check if server actually needs auth (test it) - only if no tokens
+      // Check if server actually needs auth (test it) - only if no tokens at all
       let requiresAuth = false;
-      if (!hasToken && !hasStaticToken) {
+      if (!hasToken && !hasStaticToken && isOAuthEnabled) {
         // Quick test to see if server needs auth
         const testResult = await testingService.testRemoteServer(server, true);
         requiresAuth = testResult.requiresAuth || false;
       }
 
-      // Only include servers that:
+      // Include ALL servers that:
       // 1. Have OAuth enabled, OR
-      // 2. Have an OAuth token stored, OR
-      // 3. Returned 401 (require auth)
-      const shouldInclude = isOAuthEnabled || hasToken || requiresAuth;
+      // 2. Have an OAuth token stored (even if expired)
+      const shouldInclude = isOAuthEnabled || hasToken || hasStoredToken;
 
       if (!shouldInclude) {
         continue; // Skip servers without OAuth
       }
 
+      // Determine if server requires auth:
+      // - No token and OAuth enabled (needs auth)
+      // - Token expired (needs re-auth)
+      // - Test returned 401 (needs auth)
+      const needsAuth = (!hasToken && !hasStaticToken && isOAuthEnabled) || (hasToken && isExpired) || requiresAuth;
+
       const status: AuthStatus = {
         serverId: server.id,
         serverName: server.name,
-        hasToken,
-        isOAuth: isOAuthEnabled,
+        hasToken: hasToken || hasStoredToken, // Token exists (may be expired)
+        isOAuth: isOAuthEnabled || hasStoredToken, // Consider as OAuth if has stored token
         isExpired,
         expiresAt: token?.expiresAt,
-                    tokenPreview: hasToken ? authService.getTokenPreview(server.id) || undefined : undefined,
-        requiresAuth: requiresAuth || isExpired,
+        tokenPreview: (hasToken || hasStoredToken) ? authService.getTokenPreview(server.id) || undefined : undefined,
+        requiresAuth: needsAuth,
       };
 
       states.push({
@@ -109,21 +107,7 @@ export function AuthScreen({
     setAllServers(states);
     setIsLoading(false);
 
-    // If single server mode and it needs auth, start immediately
-    if (serverId) {
-      const targetServer = states.find((s) => s.server.id === serverId);
-      if (targetServer?.status.requiresAuth) {
-        await startAuth(targetServer.server);
-      }
-    }
-
-    // Auto-switch to authenticated view if no servers need auth
-    const needsAuth = states.filter((s) => s.status.requiresAuth);
-    const hasAuth = states.filter((s) => s.status.hasToken && !s.status.isExpired);
-    if (needsAuth.length === 0 && hasAuth.length > 0) {
-      setView("authenticated");
-    }
-  }, [serverId]);
+  }, []);
 
   useEffect(() => {
     loadServers();
@@ -244,36 +228,36 @@ export function AuthScreen({
   );
 
   // Revoke authentication for a server
-  const revokeAuth = useCallback((serverId: string): void => {
-    const authService = getAuthService();
-    authService.removeToken(serverId);
+  const revokeAuth = useCallback(
+    (serverId: string): void => {
+      const authService = getAuthService();
+      authService.removeToken(serverId);
 
-    setAllServers((prev) =>
-      prev.map((s) =>
-        s.server.id === serverId
-          ? {
-              ...s,
-              status: {
-                ...s.status,
-                hasToken: false,
-                requiresAuth: true,
-                tokenPreview: undefined,
-              },
-              phase: "idle" as AuthPhase,
-            }
-          : s
-      )
-    );
+      setAllServers((prev) =>
+        prev.map((s) =>
+          s.server.id === serverId
+            ? {
+                ...s,
+                status: {
+                  ...s.status,
+                  hasToken: false,
+                  requiresAuth: true,
+                  tokenPreview: undefined,
+                },
+                phase: "idle" as AuthPhase,
+              }
+            : s
+        )
+      );
 
-    setMessage(`Token revoked for server`);
-    setConfirmRevoke(null);
+      setMessage(`Token revoked for ${serverId}`);
+      setConfirmRevoke(null);
 
-    // Switch to needs-auth view if that's the only server in authenticated
-    setTimeout(() => {
-      setView("needs-auth");
-      setSelectedIndex(0);
-    }, 500);
-  }, []);
+      // Reload to update the lists
+      loadServers();
+    },
+    [loadServers]
+  );
 
   // Handle keyboard input
   useInput(
@@ -312,40 +296,20 @@ export function AuthScreen({
         return;
       }
 
-      // Tab to switch views
-      if (key.tab || input === "1" || input === "2") {
-        if (key.tab) {
-          setView((prev) => (prev === "needs-auth" ? "authenticated" : "needs-auth"));
-        } else if (input === "1") {
-          setView("needs-auth");
-        } else if (input === "2") {
-          setView("authenticated");
-        }
-        setSelectedIndex(0);
-        setMessage("");
-        return;
-      }
-
       if (key.upArrow) {
         setSelectedIndex((prev) => Math.max(0, prev - 1));
       } else if (key.downArrow) {
-        setSelectedIndex((prev) => Math.min(currentList.length - 1, prev + 1));
+        setSelectedIndex((prev) => Math.min(allServers.length - 1, prev + 1));
       } else if (key.return) {
-        const selected = currentList[selectedIndex];
-        if (selected) {
-          if (view === "needs-auth" && selected.status.requiresAuth) {
-            startAuth(selected.server);
-          }
+        // Enter to authenticate server that needs auth
+        const selected = allServers[selectedIndex];
+        if (selected && selected.status.requiresAuth) {
+          startAuth(selected.server);
         }
-      } else if (input === "a" || input === "A") {
-        // Authenticate all servers that need auth
-        if (view === "needs-auth" && needsAuthServers.length > 0) {
-          startAuth(needsAuthServers[0].server);
-        }
-      } else if ((input === "r" || input === "R") && view === "authenticated") {
-        // Revoke selected server's token
-        const selected = currentList[selectedIndex];
-        if (selected) {
+      } else if (input === "r" || input === "R") {
+        // Revoke selected server's token (if it has one)
+        const selected = allServers[selectedIndex];
+        if (selected && selected.status.hasToken) {
           setConfirmRevoke(selected.server.id);
           setMessage(`Revoke token for ${selected.server.name}? (Y/N)`);
         }
@@ -356,26 +320,44 @@ export function AuthScreen({
     { isActive: !isLoading }
   );
 
+  // Create menu sections
+  const authMenuSections = createMenuSections({
+    actions: [
+      { key: "Enter", label: "Authenticate" },
+      { key: "R", label: "Revoke token" },
+    ],
+    showData: false,
+    showConfig: false,
+    showSystem: false,
+  });
+
   if (isLoading) {
     return (
-      <Box flexDirection="column">
-        <Header title="OAuth Management" />
-        <Box paddingX={1} marginTop={1} gap={1}>
+      <ScreenLayout title="OAuth Management" menuSections={authMenuSections}>
+        <Box paddingX={1} paddingY={1} gap={1}>
           <Text color="cyan">
             <Spinner type="dots" />
           </Text>
           <Text>Checking OAuth servers...</Text>
         </Box>
-      </Box>
+      </ScreenLayout>
     );
   }
 
   // No OAuth servers at all
   if (allServers.length === 0) {
     return (
-      <Box flexDirection="column">
-        <Header title="OAuth Management" />
-        <Box paddingX={1} marginTop={1} flexDirection="column">
+      <ScreenLayout
+        title="OAuth Management"
+        menuSections={authMenuSections}
+        footer={
+          <Text>
+            <Text color="yellow">ESC</Text>
+            <Text dimColor>: Back to main</Text>
+          </Text>
+        }
+      >
+        <Box paddingX={1} paddingY={1} flexDirection="column">
           <Text dimColor>No OAuth servers found.</Text>
           <Box marginTop={1}>
             <Text dimColor>
@@ -388,52 +370,44 @@ export function AuthScreen({
             </Text>
           </Box>
         </Box>
-        <Box paddingX={1} marginTop={2}>
-          <Text>
-            <Text color="yellow">ESC</Text>
-            <Text dimColor>: Back to main</Text>
-          </Text>
-        </Box>
-      </Box>
+      </ScreenLayout>
     );
   }
 
-  const noServersNeedAuth = needsAuthServers.length === 0;
-  const noAuthenticatedServers = authenticatedServers.length === 0;
+  // Footer message
+  const footerMessage = currentAuthServer ? (
+    <Text>
+      <Text color="yellow">ESC</Text>
+      <Text dimColor>: Cancel authentication</Text>
+    </Text>
+  ) : confirmRevoke ? (
+    <Text>
+      <Text color="green">Y</Text>
+      <Text dimColor>: Confirm  </Text>
+      <Text color="red">N</Text>
+      <Text dimColor>: Cancel</Text>
+    </Text>
+  ) : message ? (
+    <Text color="cyan">{message}</Text>
+  ) : undefined;
 
   return (
-    <Box flexDirection="column">
-      <Header title="OAuth Management" />
-
-      {/* Tab bar */}
-      <Box paddingX={1} marginTop={1} gap={2}>
-        <Text
-          color={view === "needs-auth" ? "cyan" : "gray"}
-          bold={view === "needs-auth"}
-        >
-          [1] Needs Auth ({needsAuthServers.length})
-        </Text>
-        <Text
-          color={view === "authenticated" ? "cyan" : "gray"}
-          bold={view === "authenticated"}
-        >
-          [2] Authenticated ({authenticatedServers.length})
-        </Text>
-      </Box>
-
-      <Box flexDirection="column" paddingX={1} marginTop={1}>
-        {view === "needs-auth" ? (
-          noServersNeedAuth ? (
-            <Box flexDirection="column" paddingY={1}>
-              <Text color="green">✓ All servers are authenticated!</Text>
-              <Box marginTop={1}>
-                <Text dimColor>
-                  Press Tab or 2 to manage authenticated servers
-                </Text>
-              </Box>
-            </Box>
-          ) : (
-            needsAuthServers.map((state, index) => {
+    <ScreenLayout
+      title="OAuth Management"
+      menuSections={authMenuSections}
+      footer={footerMessage}
+    >
+      <Box flexDirection="column" paddingX={1}>
+        {allServers.length === 0 ? (
+          <Box flexDirection="column" paddingY={1}>
+            <Text dimColor>No OAuth servers configured.</Text>
+          </Box>
+        ) : (
+          <ScrollableList
+            items={allServers}
+            selectedIndex={selectedIndex}
+            emptyMessage="No OAuth servers configured."
+            renderItem={(state, index) => {
               const isSelected = index === selectedIndex;
               const { server, status, phase, error, authUrl } = state;
 
@@ -455,7 +429,11 @@ export function AuthScreen({
                   statusText = error || "failed";
                   break;
                 default:
-                  if (status.isExpired) {
+                  if (status.hasToken && !status.isExpired) {
+                    statusIcon = "✓";
+                    statusColor = "green";
+                    statusText = status.tokenPreview || "authenticated";
+                  } else if (status.hasToken && status.isExpired) {
                     statusIcon = "!";
                     statusColor = "yellow";
                     statusText = "token expired";
@@ -476,7 +454,7 @@ export function AuthScreen({
                     <Text bold={isSelected} color={isSelected ? "cyan" : undefined}>
                       {server.name}
                     </Text>
-                    <Text color={statusColor}>({statusText})</Text>
+                    <Text color={statusColor} dimColor={!isSelected}>({statusText})</Text>
                     {phase === "waiting" && (
                       <Text color="cyan">
                         <Spinner type="dots" />
@@ -492,94 +470,11 @@ export function AuthScreen({
                   )}
                 </Box>
               );
-            })
-          )
-        ) : noAuthenticatedServers ? (
-          <Box flexDirection="column" paddingY={1}>
-            <Text dimColor>No authenticated servers</Text>
-            <Box marginTop={1}>
-              <Text dimColor>
-                Press Tab or 1 to authenticate servers
-              </Text>
-            </Box>
-          </Box>
-        ) : (
-          authenticatedServers.map((state, index) => {
-            const isSelected = index === selectedIndex;
-            const { server, status } = state;
-
-            return (
-              <Box key={server.id} gap={1}>
-                <Text color={isSelected ? "cyan" : undefined}>
-                  {isSelected ? "▶" : " "}
-                </Text>
-                <Text color="green">✓</Text>
-                <Text bold={isSelected} color={isSelected ? "cyan" : undefined}>
-                  {server.name}
-                </Text>
-                {status.tokenPreview && (
-                  <Text dimColor>({status.tokenPreview})</Text>
-                )}
-              </Box>
-            );
-          })
+            }}
+          />
         )}
       </Box>
-
-      {message && (
-        <Box paddingX={1} marginTop={1}>
-          <Text color={confirmRevoke ? "yellow" : "cyan"}>{message}</Text>
-        </Box>
-      )}
-
-      <Box paddingX={1} marginTop={2} flexDirection="column" borderStyle="single" borderColor="gray">
-        {currentAuthServer ? (
-          <Text>
-            <Text color="yellow">ESC</Text>
-            <Text dimColor>: Cancel authentication</Text>
-          </Text>
-        ) : confirmRevoke ? (
-          <Text>
-            <Text color="green">Y</Text>
-            <Text dimColor>: Confirm  </Text>
-            <Text color="red">N</Text>
-            <Text dimColor>: Cancel</Text>
-          </Text>
-        ) : (
-          <Box flexDirection="column" gap={0}>
-            <Text>
-              <Text color="cyan">Tab</Text>
-              <Text dimColor>/</Text>
-              <Text color="cyan">1</Text>
-              <Text dimColor>/</Text>
-              <Text color="cyan">2</Text>
-              <Text dimColor>: Switch tab  </Text>
-              <Text color="cyan">↑↓</Text>
-              <Text dimColor>: Navigate  </Text>
-              {view === "needs-auth" ? (
-                <>
-                  <Text color="green">Enter</Text>
-                  <Text dimColor>: Authenticate  </Text>
-                  <Text color="green">A</Text>
-                  <Text dimColor>: Auth all</Text>
-                </>
-              ) : (
-                <>
-                  <Text color="red">R</Text>
-                  <Text dimColor>: Revoke token</Text>
-                </>
-              )}
-            </Text>
-            <Text>
-              <Text color="yellow">Q</Text>
-              <Text dimColor>/</Text>
-              <Text color="yellow">ESC</Text>
-              <Text dimColor>: Back to main</Text>
-            </Text>
-          </Box>
-        )}
-      </Box>
-    </Box>
+    </ScreenLayout>
   );
 }
 
