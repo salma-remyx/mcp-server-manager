@@ -35,12 +35,17 @@ export {
   runGatewayForeground,
 } from "./gateway.service.js";
 
+// Auth service
+export { AuthService, getAuthService, resetAuthService } from "./auth.service.js";
+
 // Re-export types used by services
 export type {
   AppConfig,
   LocalServer,
   RemoteServer,
   Server,
+  OAuthConfig,
+  StoredOAuthTokens,
   ToolFilters,
   ServerToolFilter,
   ConfigPaths,
@@ -54,4 +59,9 @@ export type {
   ServerTestResult,
   Result,
   OperationResult,
+  AuthStatus,
+  AuthResult,
+  TokenResponse,
+  AuthServerMetadata,
+  ServerAuthRequirements,
 } from "../types/index.js";

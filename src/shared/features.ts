@@ -14,7 +14,8 @@ export type FeatureCategory =
   | "settings"
   | "daemon"
   | "import-export"
-  | "utilities";
+  | "utilities"
+  | "auth";
 
 /** Feature definition */
 export interface Feature {
@@ -282,6 +283,40 @@ export const FEATURES: Feature[] = [
     cliCommands: ["tokens"],
     tuiImplementation: "TokensScreen.tsx",
     requiredInTui: true,
+  },
+
+  // === Auth ===
+  {
+    id: "auth-status",
+    name: "Auth status",
+    category: "auth",
+    cliCommands: ["auth status"],
+    tuiImplementation: null, // CLI-only for now
+    requiredInTui: false,
+  },
+  {
+    id: "auth-login",
+    name: "OAuth login",
+    category: "auth",
+    cliCommands: ["auth login", "auth login-all"],
+    tuiImplementation: "AuthScreen.tsx",
+    requiredInTui: false, // Optional but implemented
+  },
+  {
+    id: "auth-logout",
+    name: "OAuth logout",
+    category: "auth",
+    cliCommands: ["auth logout", "auth clear"],
+    tuiImplementation: "AuthScreen.tsx",
+    requiredInTui: false, // Optional but implemented
+  },
+  {
+    id: "auth-refresh",
+    name: "Refresh OAuth token",
+    category: "auth",
+    cliCommands: ["auth refresh"],
+    tuiImplementation: null, // CLI-only
+    requiredInTui: false,
   },
 ];
 

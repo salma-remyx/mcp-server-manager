@@ -34,6 +34,10 @@ export const mockTestingService = {
   testLocalServer: vi.fn(() => Promise.resolve({ success: true, toolCount: 5 })),
   testRemoteServer: vi.fn(() => Promise.resolve({ success: true, toolCount: 3 })),
   testAllServers: vi.fn(() => Promise.resolve([])),
+  testAllServersStreaming: vi.fn(async (onResult: (result: unknown) => void) => {
+    // Simulate streaming by calling onResult for each result
+    return Promise.resolve([]);
+  }),
   autoTestUnknownServers: vi.fn(() => Promise.resolve()),
 };
 

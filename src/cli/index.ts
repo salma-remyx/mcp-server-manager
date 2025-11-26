@@ -15,6 +15,7 @@ import { registerToolsCommands } from "./commands/tools.cmd.js";
 import { registerUtilityCommands } from "./commands/utility.cmd.js";
 import { registerDaemonCommands } from "./commands/daemon.cmd.js";
 import { registerImportExportCommands } from "./commands/import-export.cmd.js";
+import { registerAuthCommands } from "./commands/auth.cmd.js";
 
 /** Package version */
 const VERSION = "2.0.0";
@@ -47,6 +48,7 @@ function createProgram(): Command {
   registerUtilityCommands(program);
   registerDaemonCommands(program);
   registerImportExportCommands(program);
+  registerAuthCommands(program);
 
   // Default action - show TUI or help
   program.action(async () => {

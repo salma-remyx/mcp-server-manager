@@ -73,6 +73,7 @@ describe("CLI/TUI Parity", () => {
         "daemon",
         "import-export",
         "utilities",
+        "auth",
       ];
       for (const feature of FEATURES) {
         expect(validCategories).toContain(feature.category);

@@ -7,6 +7,8 @@
 export type {
   TransportType,
   ServerType,
+  OAuthConfig,
+  StoredOAuthTokens,
   BaseServer,
   LocalServer,
   RemoteServer,
@@ -76,10 +78,15 @@ export type {
 export type {
   TokenResponse,
   AuthServerMetadata,
+  ProtectedResourceMetadata,
   PKCEData,
+  ClientRegistrationRequest,
   ClientRegistration,
+  PendingAuthorization,
   AuthStatus,
   AuthResult,
+  OAuthCallbackResult,
+  ServerAuthRequirements,
 } from "./auth.types.js";
 
 // Daemon types

@@ -8,6 +8,34 @@ export type TransportType = "http" | "sse";
 /** Server transport type including local */
 export type ServerType = "stdio" | TransportType;
 
+/** OAuth configuration for remote servers */
+export interface OAuthConfig {
+  /** Whether OAuth is enabled for this server */
+  enabled: boolean;
+  /** Client ID (for pre-registered clients) */
+  clientId?: string;
+  /** Client secret (for confidential clients) */
+  clientSecret?: string;
+  /** Custom scopes to request */
+  scopes?: string[];
+  /** Authorization server URL (if different from resource server) */
+  authServerUrl?: string;
+}
+
+/** Stored OAuth tokens */
+export interface StoredOAuthTokens {
+  /** Access token */
+  accessToken: string;
+  /** Refresh token (if available) */
+  refreshToken?: string;
+  /** Token expiration timestamp (ms since epoch) */
+  expiresAt?: number;
+  /** Token type (usually "Bearer") */
+  tokenType: string;
+  /** Scopes granted */
+  scopes?: string[];
+}
+
 /** Base server interface with common properties */
 export interface BaseServer {
   /** Unique server identifier */
@@ -34,8 +62,10 @@ export interface RemoteServer extends BaseServer {
   type: TransportType;
   /** Server endpoint URL */
   url: string;
-  /** Bearer token for authentication */
+  /** Bearer token for authentication (static token) */
   bearerToken?: string;
+  /** OAuth configuration (dynamic tokens) */
+  oauth?: OAuthConfig;
 }
 
 /** Union type for any server */

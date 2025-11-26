@@ -11,3 +11,4 @@ export { DaemonScreen } from "./DaemonScreen.js";
 export { ImportExportScreen } from "./ImportExportScreen.js";
 export { DoctorScreen } from "./DoctorScreen.js";
 export { TokensScreen } from "./TokensScreen.js";
+export { AuthScreen } from "./AuthScreen.js";

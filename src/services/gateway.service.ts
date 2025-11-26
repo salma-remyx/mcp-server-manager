@@ -24,6 +24,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { getConfigService } from "./config.service.js";
+import { getAuthService } from "./auth.service.js";
 import { createLogger } from "../shared/logger.js";
 import { VERSION } from "../shared/version.js";
 import type { LocalServer, RemoteServer } from "../types/index.js";
@@ -111,6 +112,7 @@ async function connectLocalServer(server: LocalServer): Promise<ConnectedServer 
  */
 async function connectRemoteServer(server: RemoteServer): Promise<ConnectedServer | null> {
   const configService = getConfigService();
+  const authService = getAuthService();
 
   try {
     logger.info(`Connecting to remote server: ${server.name} (${server.type})`);
@@ -118,8 +120,19 @@ async function connectRemoteServer(server: RemoteServer): Promise<ConnectedServe
     const url = new URL(server.url);
     const headers: Record<string, string> = {};
 
+    // Check for static bearer token first
     if (server.bearerToken) {
       headers["Authorization"] = `Bearer ${server.bearerToken}`;
+    }
+    // Then check for OAuth token
+    else if (server.oauth?.enabled) {
+      const token = await authService.getValidToken(server);
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+        logger.debug(`Using OAuth token for ${server.name}`);
+      } else {
+        logger.warn(`OAuth enabled for ${server.name} but no valid token found`);
+      }
     }
 
     // Create appropriate transport based on server type

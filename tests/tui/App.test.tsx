@@ -278,17 +278,22 @@ describe("App Component", () => {
       stdin.write("x");
       await waitForStateUpdate();
 
-      expect(lastFrame()).toContain("Testing all servers");
+      expect(lastFrame()).toContain("Testing Servers");
     });
 
     it("should show test results", async () => {
-      mockTestingService.testAllServers.mockResolvedValueOnce([
-        {
-          server: { id: "s1", name: "Test Server", command: "node", args: [] },
-          type: "local",
-          result: { success: true, toolCount: 5 },
-        },
-      ]);
+      // Mock streaming results
+      mockTestingService.testAllServersStreaming.mockImplementationOnce(
+        async (onResult: (result: unknown) => void) => {
+          const result = {
+            server: { id: "s1", name: "Test Server", command: "node", args: [] },
+            type: "local" as const,
+            result: { success: true, toolCount: 5 },
+          };
+          onResult({ ...result, index: 0, total: 1 });
+          return [result];
+        }
+      );
 
       const { lastFrame, stdin } = render(<App />);
 
@@ -296,7 +301,7 @@ describe("App Component", () => {
       await waitForStateUpdate(300);
 
       // Should show results or testing status
-      expect(lastFrame()).toMatch(/Testing|tools|results/i);
+      expect(lastFrame()).toMatch(/Testing|tools|Complete/i);
     });
   });
 

@@ -305,6 +305,13 @@ export class ConfigService {
 
     this.config.servers.push(server);
     this.saveConfig();
+
+    // Auto-select new server (so it starts with the daemon)
+    if (!server.disabled && !this.selectionState.local.includes(server.id)) {
+      this.selectionState.local.push(server.id);
+      this.saveSelectionState(this.selectionState);
+    }
+
     return { success: true };
   }
 
@@ -334,6 +341,14 @@ export class ConfigService {
 
     this.config.remoteServers.push(server);
     this.saveConfig();
+
+    // Auto-select new server (so it starts with the daemon)
+    const remoteId = `remote:${server.id}`;
+    if (!server.disabled && !this.selectionState.remote.includes(remoteId)) {
+      this.selectionState.remote.push(remoteId);
+      this.saveSelectionState(this.selectionState);
+    }
+
     return { success: true };
   }
 
@@ -413,11 +428,24 @@ export class ConfigService {
       return { success: false, error: `Server '${id}' not found` };
     }
 
+    let updateResult: Result;
     if (result.type === "local") {
-      return this.updateLocalServer(id, { disabled: false });
+      updateResult = this.updateLocalServer(id, { disabled: false });
+      // Also add to selection state
+      if (updateResult.success && !this.selectionState.local.includes(id)) {
+        this.selectionState.local.push(id);
+        this.saveSelectionState(this.selectionState);
+      }
     } else {
-      return this.updateRemoteServer(id, { disabled: false });
+      updateResult = this.updateRemoteServer(id, { disabled: false });
+      // Also add to selection state
+      const remoteId = `remote:${id}`;
+      if (updateResult.success && !this.selectionState.remote.includes(remoteId)) {
+        this.selectionState.remote.push(remoteId);
+        this.saveSelectionState(this.selectionState);
+      }
     }
+    return updateResult;
   }
 
   /** Disable a server */

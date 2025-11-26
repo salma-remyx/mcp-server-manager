@@ -23,6 +23,7 @@ import { DaemonScreen } from "./screens/DaemonScreen.js";
 import { ImportExportScreen } from "./screens/ImportExportScreen.js";
 import { DoctorScreen } from "./screens/DoctorScreen.js";
 import { TokensScreen } from "./screens/TokensScreen.js";
+import { AuthScreen } from "./screens/AuthScreen.js";
 
 type Section = "local" | "remote";
 type Screen =
@@ -36,6 +37,7 @@ type Screen =
   | "import-export"
   | "doctor"
   | "tokens"
+  | "auth"
   | "testing";
 
 interface AppState {
@@ -54,7 +56,11 @@ interface AppState {
     success: boolean;
     toolCount?: number;
     error?: string;
+    requiresAuth?: boolean;
   }> | null;
+  testingTotal: number; // Total servers being tested
+  testingCompleted: number; // Servers completed
+  authServerId?: string; // Server to auth when going to auth screen
 }
 
 interface AppProps {
@@ -74,16 +80,46 @@ export function App({ onExit }: AppProps): React.ReactElement {
     const savedState = configService.getSelectionState();
     const selectedServers = new Set<string>();
 
+    // Local servers - IDs stored without prefix
     savedState.local.forEach((id) => {
       if (localServers.find((s) => s.id === id)) {
         selectedServers.add(id);
       }
     });
+
+    // Remote servers - IDs stored WITH "remote:" prefix
     savedState.remote.forEach((id) => {
-      if (remoteServers.find((s) => s.id === id)) {
-        selectedServers.add(`remote:${id}`);
+      // The id in savedState.remote already has "remote:" prefix
+      const serverId = id.startsWith("remote:") ? id.replace("remote:", "") : id;
+      if (remoteServers.find((s) => s.id === serverId)) {
+        selectedServers.add(`remote:${serverId}`);
       }
     });
+
+    // Auto-select enabled servers that aren't in selection state yet
+    // This handles servers added before the auto-select fix
+    localServers.forEach((server) => {
+      if (!server.disabled && !selectedServers.has(server.id)) {
+        selectedServers.add(server.id);
+        // Also save to selection state
+        if (!savedState.local.includes(server.id)) {
+          savedState.local.push(server.id);
+        }
+      }
+    });
+    remoteServers.forEach((server) => {
+      const remoteId = `remote:${server.id}`;
+      if (!server.disabled && !selectedServers.has(remoteId)) {
+        selectedServers.add(remoteId);
+        // Also save to selection state
+        if (!savedState.remote.includes(remoteId)) {
+          savedState.remote.push(remoteId);
+        }
+      }
+    });
+
+    // Save updated selection state
+    configService.saveSelectionState(savedState);
 
     return {
       screen: "main",
@@ -96,6 +132,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
       message: null,
       messageType: "info",
       testResults: null,
+      testingTotal: 0,
+      testingCompleted: 0,
     };
   });
 
@@ -213,26 +251,75 @@ export function App({ onExit }: AppProps): React.ReactElement {
   // Navigate back to main screen
   const goBack = useCallback(() => {
     refreshServers();
-    setState((prev) => ({ ...prev, screen: "main", testResults: null }));
+    setState((prev) => ({
+      ...prev,
+      screen: "main",
+      testResults: null,
+      testingTotal: 0,
+      testingCompleted: 0,
+    }));
   }, [refreshServers]);
 
-  // Run test all servers
+  // Run test all servers with streaming results
   const runTestAllServers = useCallback(async () => {
-    setState((prev) => ({ ...prev, screen: "testing", testResults: null }));
-
     const testingService = getTestingService();
-    const results = await testingService.testAllServers();
+    const localCount = state.localServers.length;
+    const remoteCount = state.remoteServers.length;
+    const total = localCount + remoteCount;
 
-    const testResults = results.map(({ server, type, result }) => ({
-      name: server.name,
-      type: type === "remote" ? (server as RemoteServer).type : "stdio",
-      success: result.success,
-      toolCount: result.toolCount,
-      error: result.error,
+    // Initialize with empty results array for all servers
+    const initialResults = [
+      ...state.localServers.map((s) => ({
+        name: s.name,
+        type: "stdio" as string,
+        success: false,
+        testing: true,
+      })),
+      ...state.remoteServers.map((s) => ({
+        name: s.name,
+        type: s.type as string,
+        success: false,
+        testing: true,
+      })),
+    ];
+
+    setState((prev) => ({
+      ...prev,
+      screen: "testing",
+      testResults: initialResults as typeof prev.testResults,
+      testingTotal: total,
+      testingCompleted: 0,
     }));
 
-    setState((prev) => ({ ...prev, testResults }));
-  }, []);
+    // Track which servers have been updated
+    const serverOrder = [
+      ...state.localServers.map((s) => s.name),
+      ...state.remoteServers.map((s) => s.name),
+    ];
+
+    await testingService.testAllServersStreaming(({ server, type, result }) => {
+      const serverIndex = serverOrder.indexOf(server.name);
+
+      setState((prev) => {
+        const newResults = [...(prev.testResults || [])];
+        if (serverIndex >= 0 && serverIndex < newResults.length) {
+          newResults[serverIndex] = {
+            name: server.name,
+            type: type === "remote" ? (server as RemoteServer).type : "stdio",
+            success: result.success,
+            toolCount: result.toolCount,
+            error: result.error,
+            requiresAuth: result.requiresAuth,
+          };
+        }
+        return {
+          ...prev,
+          testResults: newResults,
+          testingCompleted: prev.testingCompleted + 1,
+        };
+      });
+    });
+  }, [state.localServers, state.remoteServers]);
 
   // Keyboard input handling (only on main screen)
   useInput(
@@ -240,14 +327,25 @@ export function App({ onExit }: AppProps): React.ReactElement {
       // Only handle input on main and testing screens
       if (state.screen !== "main" && state.screen !== "testing") return;
 
-      // Handle testing screen - any key to go back
-      if (state.screen === "testing" && state.testResults !== null) {
+      // Handle testing screen
+      if (state.screen === "testing") {
+        const isComplete = state.testingCompleted >= state.testingTotal && state.testingTotal > 0;
+
+        // Only allow interaction when testing is complete
+        if (!isComplete) return;
+
+        // "O" key to open auth screen for servers that need auth
+        if (input === "o" || input === "O") {
+          const needsAuth = state.testResults?.filter((r) => r.requiresAuth && !r.success) || [];
+          if (needsAuth.length > 0) {
+            setState((prev) => ({ ...prev, screen: "auth" }));
+            return;
+          }
+        }
+        // Any other key to go back
         goBack();
         return;
       }
-
-      // Don't process other keys while testing
-      if (state.screen === "testing") return;
 
       const { localServers, remoteServers } = state;
       const totalLocal = localServers.length;
@@ -480,6 +578,19 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return;
       }
 
+      // O - OAuth Authentication
+      if (input === "o" || input === "O") {
+        // Check if current server is remote and needs auth
+        const { server, type } = getCurrentServer();
+        if (type === "remote" && server) {
+          setState((prev) => ({ ...prev, screen: "auth", authServerId: server.id }));
+        } else {
+          // Open auth screen for all remote servers
+          setState((prev) => ({ ...prev, screen: "auth", authServerId: undefined }));
+        }
+        return;
+      }
+
       // Enter - Open daemon management screen
       if (key.return) {
         // Go to daemon management screen to start/stop daemon
@@ -532,41 +643,93 @@ export function App({ onExit }: AppProps): React.ReactElement {
     return <TokensScreen onBack={goBack} />;
   }
 
+  if (screen === "auth") {
+    return (
+      <AuthScreen
+        onBack={goBack}
+        serverId={state.authServerId}
+        onAuthComplete={(serverId, success) => {
+          if (success) {
+            showMessage(`${serverId} authenticated`, "success");
+          }
+        }}
+      />
+    );
+  }
+
   // Testing screen
   if (screen === "testing") {
+    const { testResults, testingTotal, testingCompleted } = state;
+    const isComplete = testingCompleted >= testingTotal && testingTotal > 0;
+    const needsAuthCount = testResults?.filter((r) => r.requiresAuth && !r.success).length ?? 0;
+
     return (
       <Box flexDirection="column">
         <Header title="MCP Server Manager" version={VERSION} />
 
         <Box flexDirection="column" paddingX={1} marginTop={1}>
-          <Text bold>Testing all servers...</Text>
-
-          {state.testResults === null ? (
-            <Box marginTop={1} gap={1}>
+          <Box gap={1}>
+            <Text bold>Testing Servers</Text>
+            {!isComplete && testingTotal > 0 && (
               <Text color="cyan">
-                <Spinner type="dots" />
+                ({testingCompleted}/{testingTotal})
               </Text>
-              <Text>Running tests...</Text>
-            </Box>
-          ) : (
-            <Box flexDirection="column" marginTop={1}>
-              {state.testResults.map((result, idx) => (
-                <Box key={idx} gap={1}>
-                  <Text color={result.success ? "green" : "red"}>{result.success ? "✓" : "✗"}</Text>
-                  <Text>
-                    {result.name}
-                    {result.type !== "stdio" ? ` (${result.type})` : ""}
-                  </Text>
-                  <Text dimColor>-</Text>
-                  <Text color={result.success ? "green" : "red"}>
-                    {result.success ? `${result.toolCount} tools` : result.error}
-                  </Text>
-                </Box>
-              ))}
+            )}
+            {isComplete && (
+              <Text color="green">
+                ✓ Complete
+              </Text>
+            )}
+          </Box>
 
-              <Box marginTop={2}>
-                <Text dimColor>Press any key to continue...</Text>
-              </Box>
+          <Box flexDirection="column" marginTop={1}>
+            {testResults?.map((result, idx) => {
+              const isTesting = (result as { testing?: boolean }).testing;
+
+              return (
+                <Box key={idx} gap={1}>
+                  {isTesting ? (
+                    <>
+                      <Text color="cyan">
+                        <Spinner type="dots" />
+                      </Text>
+                      <Text dimColor>
+                        {result.name}
+                        {result.type !== "stdio" ? ` (${result.type})` : ""}
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text color={result.success ? "green" : result.requiresAuth ? "yellow" : "red"}>
+                        {result.success ? "✓" : result.requiresAuth ? "○" : "✗"}
+                      </Text>
+                      <Text>
+                        {result.name}
+                        {result.type !== "stdio" ? ` (${result.type})` : ""}
+                      </Text>
+                      <Text dimColor>-</Text>
+                      <Text color={result.success ? "green" : result.requiresAuth ? "yellow" : "red"}>
+                        {result.success
+                          ? `${result.toolCount} tools`
+                          : result.requiresAuth
+                            ? "requires auth"
+                            : result.error}
+                      </Text>
+                    </>
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+
+          {isComplete && (
+            <Box marginTop={2} flexDirection="column">
+              {needsAuthCount > 0 && (
+                <Text color="yellow">
+                  {needsAuthCount} server(s) need authentication. Press <Text bold>O</Text> to authenticate.
+                </Text>
+              )}
+              <Text dimColor>Press any key to continue...</Text>
             </Box>
           )}
         </Box>
@@ -637,11 +800,14 @@ export function App({ onExit }: AppProps): React.ReactElement {
                     const disabledCount = filter?.disabledTools?.length ?? 0;
                     const enabledTools = totalTools - disabledCount;
 
+                    // Disabled servers always show empty brackets
+                    const showCheck = !isDisabled && isSelected;
+
                     return (
                       <Box key={server.id} gap={1}>
                         <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                        <Text color={isDisabled ? "yellow" : isSelected ? "green" : "gray"}>
-                          {isSelected ? "[✓]" : "[ ]"}
+                        <Text color={isDisabled ? "yellow" : showCheck ? "green" : "gray"}>
+                          {showCheck ? "[✓]" : "[ ]"}
                         </Text>
                         <Text color={isDisabled ? "gray" : isCurrent ? "white" : undefined} bold={isCurrent}>
                           {server.name || server.id}
@@ -678,16 +844,21 @@ export function App({ onExit }: AppProps): React.ReactElement {
                     const totalTools = filter?.allTools?.length ?? 0;
                     const disabledCount = filter?.disabledTools?.length ?? 0;
                     const enabledTools = totalTools - disabledCount;
+                    const transportType = server.type.toUpperCase();
+
+                    // Disabled servers always show empty brackets
+                    const showCheck = !isDisabled && isSelected;
 
                     return (
                       <Box key={server.id} gap={1}>
                         <Text color="magenta">{isCurrent ? "→" : " "}</Text>
-                        <Text color={isDisabled ? "yellow" : isSelected ? "green" : "gray"}>
-                          {isSelected ? "[✓]" : "[ ]"}
+                        <Text color={isDisabled ? "yellow" : showCheck ? "green" : "gray"}>
+                          {showCheck ? "[✓]" : "[ ]"}
                         </Text>
                         <Text color={isDisabled ? "gray" : isCurrent ? "white" : undefined} bold={isCurrent}>
                           {server.name || server.id}
                         </Text>
+                        <Text color="gray">({transportType})</Text>
                         <Text dimColor>-</Text>
                         <Text color={isDisabled ? "yellow" : disabledCount > 0 ? "yellow" : "gray"}>
                           {isDisabled ? "disabled" : `${enabledTools}/${totalTools} tools`}
