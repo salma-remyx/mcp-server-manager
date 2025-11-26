@@ -210,7 +210,7 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
           </Box>
         </Box>
         <Box marginTop={2}>
-          <Text dimColor>ENTER para criar, ESC para cancelar</Text>
+          <Text dimColor>ENTER to create, ESC to cancel</Text>
         </Box>
       </ScreenLayout>
     );
