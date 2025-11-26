@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js->=18-green)](https://nodejs.org)
 
-**[🌐 Landing Page](https://mateustorquato.github.io/mcp-server-manager/) • [📚 Documentation](https://mateustorquato.github.io/mcp-server-manager/docs/) • [🐙 GitHub](https://github.com/MateusTorquato/mcp-server-manager)**
+**[🌐 Website](https://mateustorquato.github.io/mcp-server-manager/) • [📚 Documentation](https://mateustorquato.github.io/mcp-server-manager/docs/guide/getting-started)**
 
 </div>
 
@@ -36,8 +36,6 @@ This friction slows down development and makes server management error-prone.
 - ⚡ **Automatic Sync** - Changes propagate to all clients instantly
 - 🧪 **Built-in Testing** - Verify servers before using them
 - 📊 **Token Tracking** - Monitor context usage per server
-
-For complete documentation, visit **[mateustorquato.github.io/mcp-server-manager/docs/](https://mateustorquato.github.io/mcp-server-manager/docs/)**
 
 ---
 
@@ -87,36 +85,13 @@ mcpsm test
 mcpsm clients connect claude
 ```
 
-For complete command reference and guides, see the **[full documentation](https://mateustorquato.github.io/mcp-server-manager/docs/)**.
-
----
-
-## Requirements
-
-- **Node.js** >= 18.0.0
-
-Check your system with:
-
-```bash
-mcpsm doctor
-```
+For complete command reference and guides, see the **[full documentation](https://mateustorquato.github.io/mcp-server-manager/docs/guide/getting-started)**.
 
 ---
 
 ## Contributing
 
 Contributions are welcome! Please see our [contributing guidelines](https://github.com/MateusTorquato/mcp-server-manager/blob/main/CONTRIBUTING.md) for details.
-
-```bash
-# Install dependencies
-npm install
-
-# Build the project
-npm run build
-
-# Run tests
-npm test
-```
 
 ---
 
