@@ -80,6 +80,6 @@ All connected clients are automatically updated with the new port.
 
 ## Next Steps
 
-- [Configure tool filters](cli/tools.md)
-- [Create profiles](cli/profiles.md)
-- [Set up daemon mode](cli/daemon.md)
+- [Configure tool filters](/cli/tools.md)
+- [Create profiles](/cli/profiles.md)
+- [Set up daemon mode](/cli/daemon.md)
