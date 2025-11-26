@@ -382,17 +382,9 @@ export class ClientService {
     }
 
     // For clients without real-time loading, use primary config
-    const configPath = this.getClientConfigPath(clientId);
-    if (!configPath) {
-      return { success: false, error: "Unknown client" };
-    }
-
+    // Use readClientConfig to handle TOML-based clients (like Codex) correctly
     try {
-      let clientConfig: ClientMcpConfig = {};
-      if (fs.existsSync(configPath)) {
-        const data = fs.readFileSync(configPath, "utf8");
-        clientConfig = JSON.parse(data) as ClientMcpConfig;
-      }
+      const clientConfig: ClientMcpConfig = this.readClientConfig(clientId) || {};
 
       if (!clientConfig.mcpServers) {
         clientConfig.mcpServers = {};
@@ -453,17 +445,9 @@ export class ClientService {
     }
 
     // For clients without real-time loading, use primary config
-    const configPath = this.getClientConfigPath(clientId);
-    if (!configPath) {
-      return { success: false, error: "Unknown client" };
-    }
-
+    // Use readClientConfig to handle TOML-based clients (like Codex) correctly
     try {
-      let currentConfig: ClientMcpConfig | null = null;
-      if (fs.existsSync(configPath)) {
-        const data = fs.readFileSync(configPath, "utf8");
-        currentConfig = JSON.parse(data) as ClientMcpConfig;
-      }
+      const currentConfig = this.readClientConfig(clientId);
 
       if (!currentConfig || !currentConfig.mcpServers || !currentConfig.mcpServers.mcpsm) {
         return { success: true };

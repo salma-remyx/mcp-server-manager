@@ -437,14 +437,30 @@ export async function stopGateway(): Promise<{ success: boolean; error?: string 
   logger.info("Stopping gateway...");
 
   try {
-    // Close all server connections
+    // Close all server connections with timeout to prevent hanging
+    const closePromises: Promise<void>[] = [];
     for (const [, server] of gatewayState.connectedServers) {
-      try {
-        await server.transport.close();
-      } catch (error) {
-        logger.warn(`Error closing connection to ${server.name}:`, error);
-      }
+      const closePromise = (async (): Promise<void> => {
+        try {
+          // Add timeout to prevent hanging on close
+          await Promise.race([
+            server.transport.close(),
+            new Promise<void>((resolve) => {
+              setTimeout(() => {
+                logger.warn(`Timeout closing connection to ${server.name}`);
+                resolve();
+              }, 5000);
+            }),
+          ]);
+        } catch (error) {
+          logger.warn(`Error closing connection to ${server.name}:`, error);
+        }
+      })();
+      closePromises.push(closePromise);
     }
+
+    // Wait for all connections to close (with timeout)
+    await Promise.allSettled(closePromises);
 
     // Close HTTP server
     if (gatewayState.httpServer) {
@@ -517,8 +533,19 @@ export async function runGatewayForeground(selectedServerIds?: string[]): Promis
     process.exit(0);
   };
 
+  // Handle uncaught errors to ensure cleanup
+  const handleError = async (error: Error): Promise<void> => {
+    console.error("Uncaught error:", error);
+    await shutdown();
+  };
+
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
+  process.on("uncaughtException", handleError);
+  process.on("unhandledRejection", (reason) => {
+    const error = reason instanceof Error ? reason : new Error(String(reason));
+    handleError(error);
+  });
 
   // Keep process alive
   await new Promise(() => {});
