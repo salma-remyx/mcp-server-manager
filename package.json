@@ -4,8 +4,8 @@
   "description": "Interactive CLI to manage, test, and run multiple MCP (Model Context Protocol) servers with OAuth support",
   "type": "module",
   "bin": {
-    "mcp-server-manager": "./bin/cli.js",
-    "mcpsm": "./bin/cli.js"
+    "mcp-server-manager": "bin/cli.js",
+    "mcpsm": "bin/cli.js"
   },
   "main": "dist/index.js",
   "exports": {
@@ -63,6 +63,9 @@
   "homepage": "https://github.com/MateusTorquato/mcp-server-manager#readme",
   "bugs": {
     "url": "https://github.com/MateusTorquato/mcp-server-manager/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "engines": {
     "node": ">=20.0.0"

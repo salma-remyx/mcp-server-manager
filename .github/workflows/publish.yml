@@ -25,12 +25,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js (OIDC)
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           registry-url: "https://registry.npmjs.org"
+          # OIDC (Trusted Publishing) - no token expiration!
+          # Don't set NODE_AUTH_TOKEN to use OIDC
+          # See docs/OIDC_SETUP.md for setup instructions
 
       - name: Install dependencies
         run: npm ci
@@ -41,26 +44,51 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Publish to npm
+      - name: Publish to npm (OIDC - Trusted Publishing)
+        # Use OIDC (Trusted Publishing) - no token expiration needed!
+        # This requires Trusted Publishing to be configured on npm first
+        # See docs/OIDC_SETUP.md for setup instructions
+        run: |
+          echo "Attempting OIDC (Trusted Publishing) authentication..."
+          npm publish --provenance --access public || {
+            echo ""
+            echo "❌ OIDC publish failed. To set up Trusted Publishing (no token expiration):"
+            echo ""
+            echo "📖 Full instructions: See docs/OIDC_SETUP.md"
+            echo ""
+            echo "Quick setup:"
+            echo "1. Go to: https://www.npmjs.com/settings/YOUR_USERNAME/automation"
+            echo "2. Click 'Add GitHub Actions' or 'Configure'"
+            echo "3. Select repository: MateusTorquato/mcp-server-manager"
+            echo "4. Save the configuration"
+            echo ""
+            echo "After setup, remove NPM_TOKEN secret (if exists) to use OIDC exclusively."
+            exit 1
+          }
+
+      - name: Setup Node.js (Fallback - NPM_TOKEN)
+        # Fallback: Setup with NPM_TOKEN if OIDC failed
+        # Remove this step once OIDC is set up
+        if: failure() && secrets.NPM_TOKEN != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to npm (Fallback - NPM_TOKEN)
+        # Fallback: Use NPM_TOKEN if OIDC is not configured
+        # Remove this step once OIDC is set up
+        if: failure() && secrets.NPM_TOKEN != ''
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [ -n "$NODE_AUTH_TOKEN" ]; then
-            echo "Using NPM_TOKEN for authentication"
-            npm publish --access public || {
-              echo "Publish failed. If this is the first time publishing, you may need to:"
-              echo "1. Create the package manually on npmjs.com, OR"
-              echo "2. Ensure NPM_TOKEN has publish permissions"
-              exit 1
-            }
-          else
-            echo "Attempting OIDC authentication with provenance"
-            npm publish --access public --provenance || {
-              echo "OIDC publish failed. Please configure NPM_TOKEN secret in repository settings."
-              echo "Get your token from: https://www.npmjs.com/settings/YOUR_USERNAME/tokens"
-              exit 1
-            }
-          fi
+          echo "Using NPM_TOKEN as fallback (OIDC not configured)"
+          npm publish --access public || {
+            echo "Publish failed. Ensure NPM_TOKEN has publish permissions"
+            exit 1
+          }
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
