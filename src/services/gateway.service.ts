@@ -23,6 +23,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { getConfigService } from "./config.service.js";
 import { getAuthService } from "./auth.service.js";
 import { createLogger } from "../shared/logger.js";
@@ -313,10 +314,8 @@ export async function startGateway(
       `Aggregated ${aggregatedTools.length} tools from ${connectedServers.length} servers`
     );
 
-    // Create MCP server using the high-level McpServer from the SDK
-    const { McpServer } = await import("@modelcontextprotocol/sdk/server/mcp.js");
-
-    const mcpServer = new McpServer(
+    // Create MCP server using the lower-level Server API to work directly with JSON Schema
+    const mcpServer = new Server(
       { name: "mcpsm-gateway", version: VERSION },
       {
         capabilities: {
@@ -325,13 +324,19 @@ export async function startGateway(
       }
     );
 
-    // Register all aggregated tools
-    for (const tool of aggregatedTools) {
-      mcpServer.tool(tool.name, tool.description || "", async (args: Record<string, unknown>) => {
-        const result = await handleToolCall(tool.name, args);
-        return result;
-      });
-    }
+    // Handle tools/list request - return all aggregated tools with their JSON Schema
+    mcpServer.setRequestHandler(ListToolsRequestSchema, () => ({
+      tools: aggregatedTools,
+    }));
+
+    // Handle tools/call request - route to appropriate server
+    mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
+      const toolName = request.params.name;
+      const args = request.params.arguments || {};
+
+      const result = await handleToolCall(toolName, args);
+      return result;
+    });
 
     // Track active transports per session
     const activeSessions = new Map<string, StreamableHTTPServerTransport>();
@@ -393,7 +398,7 @@ export async function startGateway(
             }
           };
 
-          await mcpServer.server.connect(transport);
+          await mcpServer.connect(transport);
         }
 
         await transport.handleRequest(req, res);
@@ -418,7 +423,7 @@ export async function startGateway(
       running: true,
       port,
       httpServer,
-      mcpServer: mcpServer.server,
+      mcpServer,
     };
 
     return { success: true };
