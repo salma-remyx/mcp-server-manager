@@ -8,7 +8,7 @@ import TextInput from "ink-text-input";
 import SelectInput from "ink-select-input";
 import Spinner from "ink-spinner";
 import open from "open";
-import { Header } from "../components/index.js";
+import { ScreenLayout } from "../components/index.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getTestingService } from "../../services/testing.service.js";
 import { getAuthService } from "../../services/auth.service.js";
@@ -283,179 +283,171 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
   );
 
   return (
-    <Box flexDirection="column">
-      <Header title="Add New MCP Server" />
-
-      <Box flexDirection="column" paddingX={1} marginTop={1}>
-        {/* Name step */}
-        {state.step === "name" && (
-          <Box flexDirection="column">
-            <Text>Server name:</Text>
-            <Box marginTop={1}>
-              <Text color="cyan">&gt; </Text>
-              <TextInput
-                value={state.name}
-                onChange={(value) => setState((prev) => ({ ...prev, name: value }))}
-                onSubmit={handleNameSubmit}
-              />
-            </Box>
-          </Box>
-        )}
-
-        {/* Type step */}
-        {state.step === "type" && (
-          <Box flexDirection="column">
-            <Text>Server type:</Text>
-            <Box marginTop={1}>
-              <SelectInput items={SERVER_TYPE_OPTIONS} onSelect={handleTypeSelect} />
-            </Box>
-          </Box>
-        )}
-
-        {/* Command step (local) */}
-        {state.step === "command" && (
-          <Box flexDirection="column">
-            <Text>Command executable:</Text>
-            <Text dimColor>Examples: npx, node, python, uvx</Text>
-            <Box marginTop={1}>
-              <Text color="cyan">&gt; </Text>
-              <TextInput
-                value={state.command}
-                onChange={(value) => setState((prev) => ({ ...prev, command: value }))}
-                onSubmit={handleCommandSubmit}
-              />
-            </Box>
-          </Box>
-        )}
-
-        {/* Args step (local) */}
-        {state.step === "args" && (
-          <Box flexDirection="column">
-            <Text>Arguments (space separated, optional):</Text>
-            <Box marginTop={1}>
-              <Text color="cyan">&gt; </Text>
-              <TextInput
-                value={state.args}
-                onChange={(value) => setState((prev) => ({ ...prev, args: value }))}
-                onSubmit={handleArgsSubmit}
-              />
-            </Box>
-          </Box>
-        )}
-
-        {/* URL step (remote) */}
-        {state.step === "url" && (
-          <Box flexDirection="column">
-            <Text>Server URL:</Text>
-            <Box marginTop={1}>
-              <Text color="cyan">&gt; </Text>
-              <TextInput
-                value={state.url}
-                onChange={(value) => setState((prev) => ({ ...prev, url: value }))}
-                onSubmit={handleUrlSubmit}
-              />
-            </Box>
-          </Box>
-        )}
-
-        {/* Token step (remote) */}
-        {state.step === "token" && (
-          <Box flexDirection="column">
-            <Text>Bearer token (optional):</Text>
-            <Box marginTop={1}>
-              <Text color="cyan">&gt; </Text>
-              <TextInput
-                value={state.token}
-                onChange={(value) => setState((prev) => ({ ...prev, token: value }))}
-                onSubmit={handleTokenSubmit}
-              />
-            </Box>
-          </Box>
-        )}
-
-        {/* Testing step */}
-        {state.step === "testing" && (
-          <Box flexDirection="column">
-            <Box>
-              <Text color="green">✓</Text>
-              <Text> Server '{state.name}' added!</Text>
-            </Box>
-            <Box marginTop={1}>
-              <Text color="cyan">
-                <Spinner type="dots" />
-              </Text>
-              <Text> Testing {state.name}...</Text>
-            </Box>
-          </Box>
-        )}
-
-        {/* Authenticating step */}
-        {state.step === "authenticating" && (
-          <Box flexDirection="column">
-            <Box>
-              <Text color="green">✓</Text>
-              <Text> Server '{state.name}' added!</Text>
-            </Box>
-            <Box marginTop={1}>
-              <Text color="yellow">○</Text>
-              <Text> Server requires authentication</Text>
-            </Box>
-            <Box marginTop={1}>
-              <Text color="cyan">
-                <Spinner type="dots" />
-              </Text>
-              <Text> Opening browser for authentication...</Text>
-            </Box>
-            <Box marginTop={1}>
-              <Text dimColor>Complete the authentication in your browser</Text>
-            </Box>
-          </Box>
-        )}
-
-        {/* Done step */}
-        {state.step === "done" && (
-          <Box flexDirection="column">
-            <Box>
-              <Text color="green">✓</Text>
-              <Text> Server '{state.name}' added!</Text>
-            </Box>
-
-            {state.testResult && (
-              <Box flexDirection="column" marginTop={1}>
-                {state.testResult.success ? (
-                  <Box>
-                    <Text color="green">✓ OK</Text>
-                    <Text> ({state.testResult.toolCount} tools)</Text>
-                  </Box>
-                ) : (
-                  <Box>
-                    <Text color="red">✗ FAILED</Text>
-                    <Text> - {state.testResult.error}</Text>
-                  </Box>
-                )}
-                <Box marginTop={1}>
-                  <Text dimColor>Press any key to continue...</Text>
-                </Box>
-              </Box>
-            )}
-          </Box>
-        )}
-
-        {/* Error message */}
-        {state.error && (
+    <ScreenLayout
+      title="Add New MCP Server"
+      shortcuts={[{ key: "ESC", label: "Go back" }]}
+    >
+      {/* Name step */}
+      {state.step === "name" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Text>Server name:</Text>
           <Box marginTop={1}>
-            <Text color="red">Error: {state.error}</Text>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={state.name}
+              onChange={(value) => setState((prev) => ({ ...prev, name: value }))}
+              onSubmit={handleNameSubmit}
+            />
           </Box>
-        )}
+        </Box>
+      )}
 
-        {/* Help */}
-        {state.step !== "done" && state.step !== "testing" && state.step !== "authenticating" && (
-          <Box marginTop={2}>
-            <Text dimColor>ESC to go back</Text>
+      {/* Type step */}
+      {state.step === "type" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Text>Server type:</Text>
+          <Box marginTop={1}>
+            <SelectInput items={SERVER_TYPE_OPTIONS} onSelect={handleTypeSelect} />
           </Box>
-        )}
-      </Box>
-    </Box>
+        </Box>
+      )}
+
+      {/* Command step (local) */}
+      {state.step === "command" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Text>Command executable:</Text>
+          <Text dimColor>Examples: npx, node, python, uvx</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={state.command}
+              onChange={(value) => setState((prev) => ({ ...prev, command: value }))}
+              onSubmit={handleCommandSubmit}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {/* Args step (local) */}
+      {state.step === "args" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Text>Arguments (space separated, optional):</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={state.args}
+              onChange={(value) => setState((prev) => ({ ...prev, args: value }))}
+              onSubmit={handleArgsSubmit}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {/* URL step (remote) */}
+      {state.step === "url" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Text>Server URL:</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={state.url}
+              onChange={(value) => setState((prev) => ({ ...prev, url: value }))}
+              onSubmit={handleUrlSubmit}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {/* Token step (remote) */}
+      {state.step === "token" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Text>Bearer token (optional):</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={state.token}
+              onChange={(value) => setState((prev) => ({ ...prev, token: value }))}
+              onSubmit={handleTokenSubmit}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {/* Testing step */}
+      {state.step === "testing" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Box>
+            <Text color="green">✓</Text>
+            <Text> Server '{state.name}' added!</Text>
+          </Box>
+          <Box marginTop={1}>
+            <Text color="cyan">
+              <Spinner type="dots" />
+            </Text>
+            <Text> Testing {state.name}...</Text>
+          </Box>
+        </Box>
+      )}
+
+      {/* Authenticating step */}
+      {state.step === "authenticating" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Box>
+            <Text color="green">✓</Text>
+            <Text> Server '{state.name}' added!</Text>
+          </Box>
+          <Box marginTop={1}>
+            <Text color="yellow">○</Text>
+            <Text> Server requires authentication</Text>
+          </Box>
+          <Box marginTop={1}>
+            <Text color="cyan">
+              <Spinner type="dots" />
+            </Text>
+            <Text> Opening browser for authentication...</Text>
+          </Box>
+          <Box marginTop={1}>
+            <Text dimColor>Complete the authentication in your browser</Text>
+          </Box>
+        </Box>
+      )}
+
+      {/* Done step */}
+      {state.step === "done" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Box>
+            <Text color="green">✓</Text>
+            <Text> Server '{state.name}' added!</Text>
+          </Box>
+
+          {state.testResult && (
+            <Box flexDirection="column" marginTop={1}>
+              {state.testResult.success ? (
+                <Box>
+                  <Text color="green">✓ OK</Text>
+                  <Text> ({state.testResult.toolCount} tools)</Text>
+                </Box>
+              ) : (
+                <Box>
+                  <Text color="red">✗ FAILED</Text>
+                  <Text> - {state.testResult.error}</Text>
+                </Box>
+              )}
+              <Box marginTop={1}>
+                <Text dimColor>Press any key to continue...</Text>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {/* Error message */}
+      {state.error && (
+        <Box marginTop={1}>
+          <Text color="red">Error: {state.error}</Text>
+        </Box>
+      )}
+    </ScreenLayout>
   );
 }
 

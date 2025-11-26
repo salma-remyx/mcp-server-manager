@@ -5,7 +5,7 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { Header, MenuPanel } from "../components/index.js";
+import { ScreenLayout } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getSettingsService } from "../../services/settings.service.js";
 import { getClientService } from "../../services/client.service.js";
@@ -210,49 +210,6 @@ export function SettingsScreen({ onBack }: SettingsScreenProps): React.ReactElem
   const { settings, keys, currentIndex, view, editValue, message, messageType } = state;
   const info = settingsService.getInfo();
 
-  // Edit view
-  if (view === "edit") {
-    const settingKey = keys[currentIndex];
-    return (
-      <Box flexDirection="column">
-        <Header title="Edit Setting" />
-
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
-          <Text>{settingKey}:</Text>
-          <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
-            <TextInput
-              value={editValue}
-              onChange={(value) => setState((prev) => ({ ...prev, editValue: value }))}
-              onSubmit={handleEditSetting}
-            />
-          </Box>
-        </Box>
-
-        <Box paddingX={1} marginTop={2}>
-          <Text dimColor>ENTER to save, ESC to cancel</Text>
-        </Box>
-      </Box>
-    );
-  }
-
-  // Confirm reset view
-  if (view === "confirmReset") {
-    return (
-      <Box flexDirection="column">
-        <Header title="Reset Settings" />
-
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
-          <Text color="yellow">Reset all settings to defaults?</Text>
-          <Box marginTop={1}>
-            <Text>Press Y to confirm, N to cancel</Text>
-          </Box>
-        </Box>
-      </Box>
-    );
-  }
-
-  // List view
   const settingsMenuSections = createMenuSections({
     actions: [
       { key: "Enter", label: "Edit" },
@@ -264,63 +221,87 @@ export function SettingsScreen({ onBack }: SettingsScreenProps): React.ReactElem
     showSystem: false,
   });
 
-  return (
-    <Box flexDirection="column">
-      <Header title="Settings" />
+  // Edit view
+  if (view === "edit") {
+    const settingKey = keys[currentIndex];
+    return (
+      <ScreenLayout title="Edit Setting" menuSections={settingsMenuSections}>
+        <Box flexDirection="column" paddingY={1}>
+          <Text>{settingKey}:</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={editValue}
+              onChange={(value) => setState((prev) => ({ ...prev, editValue: value }))}
+              onSubmit={handleEditSetting}
+            />
+          </Box>
+        </Box>
 
-      {/* Message */}
+        <Box marginTop={2}>
+          <Text dimColor>ENTER to save, ESC to cancel</Text>
+        </Box>
+      </ScreenLayout>
+    );
+  }
+
+  // Confirm reset view
+  if (view === "confirmReset") {
+    return (
+      <ScreenLayout title="Reset Settings" menuSections={settingsMenuSections}>
+        <Box flexDirection="column" paddingY={1}>
+          <Text color="yellow">Reset all settings to defaults?</Text>
+          <Box marginTop={1}>
+            <Text>Press Y to confirm, N to cancel</Text>
+          </Box>
+        </Box>
+      </ScreenLayout>
+    );
+  }
+
+  // List view
+  return (
+    <ScreenLayout title="Settings" menuSections={settingsMenuSections}>
       {message && (
-        <Box paddingX={1} marginTop={1}>
-          <Text
-            color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}
-          >
+        <Box marginBottom={1}>
+          <Text color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}>
             {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
           </Text>
         </Box>
       )}
 
-      {/* Main content: Settings + Menu side by side */}
-      <Box marginTop={1} gap={2}>
-        {/* Left panel: Settings list */}
-        <Box flexDirection="column" flexGrow={1} paddingX={1}>
-          {keys.map((settingKey, idx) => {
-            const isCurrent = idx === currentIndex;
-            const value = settings[settingKey];
-            const settingInfo = info[settingKey];
-            const isDefault = settingsService.isDefault(settingKey);
+      {keys.map((settingKey, idx) => {
+        const isCurrent = idx === currentIndex;
+        const value = settings[settingKey];
+        const settingInfo = info[settingKey];
+        const isDefault = settingsService.isDefault(settingKey);
 
-            // Format value
-            let valueDisplay: React.ReactElement;
-            if (typeof value === "boolean") {
-              valueDisplay = <Text color={value ? "green" : "red"}>{value ? "true" : "false"}</Text>;
-            } else {
-              valueDisplay = <Text color="cyan">{String(value)}</Text>;
-            }
+        let valueDisplay: React.ReactElement;
+        if (typeof value === "boolean") {
+          valueDisplay = <Text color={value ? "green" : "red"}>{value ? "true" : "false"}</Text>;
+        } else {
+          valueDisplay = <Text color="cyan">{String(value)}</Text>;
+        }
 
-            return (
-              <Box key={settingKey} flexDirection="column" marginBottom={1}>
-                <Box gap={1}>
-                  <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                  <Text color={isCurrent ? "white" : undefined} bold={isCurrent}>
-                    {settingKey}:
-                  </Text>
-                  {valueDisplay}
-                  {isDefault && <Text dimColor>(default)</Text>}
-                </Box>
-                {settingInfo?.description && (
-                  <Box marginLeft={4}>
-                    <Text dimColor>{settingInfo.description}</Text>
-                  </Box>
-                )}
+        return (
+          <Box key={settingKey} flexDirection="column" marginBottom={1}>
+            <Box gap={1}>
+              <Text color={isCurrent ? "magenta" : "green"}>{isCurrent ? "→" : " "}</Text>
+              <Text color={isCurrent ? "magenta" : undefined} bold={isCurrent}>
+                {settingKey}:
+              </Text>
+              {valueDisplay}
+              {isDefault && <Text dimColor>(default)</Text>}
+            </Box>
+            {settingInfo?.description && (
+              <Box marginLeft={4}>
+                <Text dimColor>{settingInfo.description}</Text>
               </Box>
-            );
-          })}
-        </Box>
-
-        {/* Right panel: Menu */}
-        <MenuPanel sections={settingsMenuSections} highlightedView="G" />
-      </Box>
-    </Box>
+            )}
+          </Box>
+        );
+      })}
+    </ScreenLayout>
   );
 }
 

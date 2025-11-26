@@ -225,10 +225,10 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
 
             return (
               <Box key={tool} gap={1} paddingX={1}>
-                <Text color="cyan">{isCurrent ? "→" : " "}</Text>
+                <Text color={isCurrent ? "magenta" : "cyan"}>{isCurrent ? "→" : " "}</Text>
                 <Text color={isEnabled ? "green" : "red"}>{isEnabled ? "[✓]" : "[ ]"}</Text>
                 <Text
-                  color={isEnabled ? (isCurrent ? "white" : undefined) : "gray"}
+                  color={isCurrent ? "magenta" : isEnabled ? undefined : "gray"}
                   bold={isCurrent}
                 >
                   {tool}

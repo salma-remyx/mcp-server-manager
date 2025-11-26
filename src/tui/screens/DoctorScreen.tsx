@@ -7,7 +7,7 @@ import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { execSync } from "child_process";
 import fs from "fs";
-import { Header } from "../components/index.js";
+import { ScreenLayout } from "../components/index.js";
 import { getConfigService } from "../../services/config.service.js";
 
 interface DoctorScreenProps {
@@ -137,46 +137,42 @@ export function DoctorScreen({ onBack }: DoctorScreenProps): React.ReactElement 
 
   if (isLoading) {
     return (
-      <Box flexDirection="column">
-        <Header title="System Health Check" />
-        <Box paddingX={1} marginTop={1} gap={1}>
+      <ScreenLayout
+        title="System Health Check"
+        shortcuts={[{ key: "Any", label: "Go back" }]}
+      >
+        <Box paddingY={1} gap={1}>
           <Text color="cyan">
             <Spinner type="dots" />
           </Text>
           <Text>Running health checks...</Text>
         </Box>
-      </Box>
+      </ScreenLayout>
     );
   }
 
   const allOk = checks.every((c) => c.status || c.name.includes("uv"));
 
   return (
-    <Box flexDirection="column">
-      <Header title="System Health Check" />
-
-      <Box flexDirection="column" paddingX={1} marginTop={1}>
-        {checks.map((check) => (
-          <Box key={check.name} gap={1}>
-            <Text color={check.status ? "green" : "yellow"}>{check.status ? "✓" : "✗"}</Text>
-            <Text>{check.name}:</Text>
-            <Text color={check.status ? "green" : "yellow"}>{check.info}</Text>
-          </Box>
-        ))}
-      </Box>
-
-      <Box paddingX={1} marginTop={1}>
-        {allOk ? (
+    <ScreenLayout
+      title="System Health Check"
+      shortcuts={[{ key: "Any", label: "Go back" }]}
+      footer={
+        allOk ? (
           <Text color="green">✓ All checks passed!</Text>
         ) : (
           <Text color="yellow">⚠ Some checks failed. See above for details.</Text>
-        )}
-      </Box>
-
-      <Box paddingX={1} marginTop={2}>
-        <Text dimColor>Press any key to go back...</Text>
-      </Box>
-    </Box>
+        )
+      }
+    >
+      {checks.map((check) => (
+        <Box key={check.name} gap={1} marginBottom={1}>
+          <Text color={check.status ? "green" : "yellow"}>{check.status ? "✓" : "✗"}</Text>
+          <Text>{check.name}:</Text>
+          <Text color={check.status ? "green" : "yellow"}>{check.info}</Text>
+        </Box>
+      ))}
+    </ScreenLayout>
   );
 }
 

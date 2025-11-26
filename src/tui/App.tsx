@@ -5,13 +5,13 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import Spinner from "ink-spinner";
-import { Header, MenuPanel, ConfirmDialog } from "./components/index.js";
+import { Header, ShortcutsBar, ConfirmDialog, ScrollableList, ScreenLayout } from "./components/index.js";
 import { getConfigService } from "../services/config.service.js";
 import { getTestingService } from "../services/testing.service.js";
 import { getProfileService } from "../services/profile.service.js";
 import { getDaemonService } from "../services/daemon.service.js";
 import { getAuthService } from "../services/auth.service.js";
-import type { LocalServer, RemoteServer } from "../types/index.js";
+import type { LocalServer, RemoteServer, ServerToolFilter } from "../types/index.js";
 import { VERSION } from "../shared/version.js";
 
 // Screen components
@@ -25,8 +25,8 @@ import { ImportExportScreen } from "./screens/ImportExportScreen.js";
 import { DoctorScreen } from "./screens/DoctorScreen.js";
 import { TokensScreen } from "./screens/TokensScreen.js";
 import { AuthScreen } from "./screens/AuthScreen.js";
+import { useTerminalSize } from "./hooks/useTerminalSize.js";
 
-type Section = "local" | "remote";
 type Screen =
   | "main"
   | "add-server"
@@ -41,9 +41,14 @@ type Screen =
   | "auth"
   | "testing";
 
+interface UnifiedServer {
+  server: LocalServer | RemoteServer;
+  type: "local" | "remote";
+  id: string; // For local: server.id, for remote: `remote:${server.id}`
+}
+
 interface AppState {
   screen: Screen;
-  currentSection: Section;
   currentIndex: number;
   selectedServers: Set<string>;
   toolCounts: Map<string, number>;
@@ -70,14 +75,27 @@ interface AppProps {
   onExit?: () => void;
 }
 
+function filterIndicatesAuth(filter?: ServerToolFilter): boolean {
+  if (!filter?.error) return false;
+  const message = filter.error.toLowerCase();
+  return (
+    message.includes("auth") ||
+    message.includes("unauthorized") ||
+    message.includes("401")
+  );
+}
+
 export function App({ onExit }: AppProps): React.ReactElement {
   const { exit } = useApp();
   const configService = getConfigService();
   const profileService = getProfileService();
+  const terminalSize = useTerminalSize();
+  const isCompactLayout = terminalSize.columns < 90;
+  const contentMargin = isCompactLayout ? 0 : 1;
 
   const [state, setState] = useState<AppState>(() => {
-    const localServers = configService.getLocalServers();
-    const remoteServers = configService.getRemoteServers();
+    const localServers = configService.getLocalServers().map((server) => ({ ...server }));
+    const remoteServers = configService.getRemoteServers().map((server) => ({ ...server }));
 
     // Restore selection state
     const savedState = configService.getSelectionState();
@@ -126,7 +144,6 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
     return {
       screen: "main",
-      currentSection: localServers.length > 0 ? "local" : "remote",
       currentIndex: 0,
       selectedServers,
       toolCounts: new Map<string, number>(),
@@ -143,8 +160,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
   // Refresh servers from config and auto-select new enabled servers
   const refreshServers = useCallback(() => {
-    const newLocalServers = configService.getLocalServers();
-    const newRemoteServers = configService.getRemoteServers();
+    const newLocalServers = configService.getLocalServers().map((server) => ({ ...server }));
+    const newRemoteServers = configService.getRemoteServers().map((server) => ({ ...server }));
 
     setState((prev) => {
       const newSelected = new Set(prev.selectedServers);
@@ -237,8 +254,11 @@ export function App({ onExit }: AppProps): React.ReactElement {
       // Check which remote servers need authentication
       const needsAuth = new Set<string>();
       for (const server of state.remoteServers) {
-        // Server needs auth if OAuth is enabled but no valid token
-        if (server.oauth?.enabled && !authService.hasValidToken(server.id)) {
+        const filter = toolFilters[`remote:${server.id}`];
+        if (
+          (server.oauth?.enabled && !authService.hasValidToken(server.id)) ||
+          filterIndicatesAuth(filter)
+        ) {
           needsAuth.add(server.id);
         }
       }
@@ -272,7 +292,11 @@ export function App({ onExit }: AppProps): React.ReactElement {
       // Re-check auth status after testing
       const finalNeedsAuth = new Set<string>();
       for (const server of state.remoteServers) {
-        if (server.oauth?.enabled && !authService.hasValidToken(server.id)) {
+        const filter = updatedFilters[`remote:${server.id}`];
+        if (
+          (server.oauth?.enabled && !authService.hasValidToken(server.id)) ||
+          filterIndicatesAuth(filter)
+        ) {
           finalNeedsAuth.add(server.id);
         }
       }
@@ -288,20 +312,29 @@ export function App({ onExit }: AppProps): React.ReactElement {
     };
   }, []);
 
+  // Create unified server list
+  const unifiedServers = React.useMemo((): UnifiedServer[] => {
+    const servers: UnifiedServer[] = [];
+    state.localServers.forEach((server) => {
+      servers.push({ server, type: "local", id: server.id });
+    });
+    state.remoteServers.forEach((server) => {
+      servers.push({ server, type: "remote", id: `remote:${server.id}` });
+    });
+    return servers;
+  }, [state.localServers, state.remoteServers]);
+
   // Get current server
   const getCurrentServer = useCallback((): {
     server: LocalServer | RemoteServer | null;
     type: "local" | "remote";
   } => {
-    const { currentSection, currentIndex, localServers, remoteServers } = state;
-    if (currentSection === "local" && localServers[currentIndex]) {
-      return { server: localServers[currentIndex], type: "local" };
-    }
-    if (currentSection === "remote" && remoteServers[currentIndex]) {
-      return { server: remoteServers[currentIndex], type: "remote" };
+    const unified = unifiedServers[state.currentIndex];
+    if (unified) {
+      return { server: unified.server, type: unified.type };
     }
     return { server: null, type: "local" };
-  }, [state]);
+  }, [state.currentIndex, unifiedServers]);
 
   // Refresh auth status for all remote servers
   const refreshAuthStatus = useCallback(() => {
@@ -330,71 +363,87 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
   // Handle delete confirmation
   const handleDeleteConfirm = useCallback(() => {
-    const { confirmDelete } = state;
-    if (!confirmDelete) return;
+    setState((prev) => {
+      const { confirmDelete } = prev;
+      if (!confirmDelete) return prev;
 
-    const { server, type } = confirmDelete;
-    const result =
-      type === "local"
-        ? configService.removeLocalServer(server.id)
-        : configService.removeRemoteServer(server.id);
+      const { server, type } = confirmDelete;
+      const serverToDeleteId = type === "remote" ? `remote:${server.id}` : server.id;
+      
+      // Build current unified list to find index
+      const currentUnified: UnifiedServer[] = [];
+      prev.localServers.forEach((s) => {
+        currentUnified.push({ server: s, type: "local", id: s.id });
+      });
+      prev.remoteServers.forEach((s) => {
+        currentUnified.push({ server: s, type: "remote", id: `remote:${s.id}` });
+      });
+      const deleteIndex = currentUnified.findIndex((u) => u.id === serverToDeleteId);
+      
+      const result =
+        type === "local"
+          ? configService.removeLocalServer(server.id)
+          : configService.removeRemoteServer(server.id);
 
-    if (result.success) {
-      showMessage(`Server '${server.name}' deleted`, "success");
-      // Restart daemon if running (auto-sync)
-      const daemonService = getDaemonService();
-      const daemonStatus = daemonService.isDaemonRunning();
-      if (daemonStatus.running) {
-        daemonService.stopDaemon();
-        // Small delay to ensure process exits before restarting
-        setTimeout(() => {
-          daemonService.startDaemon();
-        }, 100);
-      }
-      // Adjust index and refresh
-      setState((prev) => {
-        const newLocal = configService.getLocalServers();
-        const newRemote = configService.getRemoteServers();
+      if (result.success) {
+        showMessage(`Server '${server.name}' deleted`, "success");
+        // Restart daemon if running (auto-sync)
+        const daemonService = getDaemonService();
+        const daemonStatus = daemonService.isDaemonRunning();
+        if (daemonStatus.running) {
+          daemonService.stopDaemon();
+          // Small delay to ensure process exits before restarting
+          setTimeout(() => {
+            daemonService.startDaemon();
+          }, 100);
+        }
+        
+        // Get fresh server lists after deletion - create new arrays to ensure React detects the change
+        // Force reload by creating new arrays with new object references
+        const freshLocal = configService.getLocalServers();
+        const freshRemote = configService.getRemoteServers();
+        const newLocal = freshLocal.map((s) => ({ ...s }));
+        const newRemote = freshRemote.map((s) => ({ ...s }));
+        const total = newLocal.length + newRemote.length;
         let newIndex = prev.currentIndex;
-        let newSection = prev.currentSection;
-
-        if (prev.currentSection === "local") {
-          if (newIndex >= newLocal.length) {
-            newIndex = Math.max(0, newLocal.length - 1);
+        
+        // If we deleted the current item or an item before it, adjust the index
+        if (deleteIndex >= 0) {
+          if (deleteIndex < prev.currentIndex) {
+            // Deleted item was before current, so current index shifts down
+            newIndex = prev.currentIndex - 1;
+          } else if (deleteIndex === prev.currentIndex) {
+            // Deleted the current item, stay at same index (which now points to next item)
+            // or move to previous if we're at the end
+            newIndex = Math.min(prev.currentIndex, total - 1);
           }
-          if (newLocal.length === 0 && newRemote.length > 0) {
-            newSection = "remote";
-            newIndex = 0;
-          }
-        } else {
-          if (newIndex >= newRemote.length) {
-            newIndex = Math.max(0, newRemote.length - 1);
-          }
-          if (newRemote.length === 0 && newLocal.length > 0) {
-            newSection = "local";
-            newIndex = 0;
-          }
+        }
+        
+        // Ensure index is valid
+        if (total === 0) {
+          newIndex = 0;
+        } else if (newIndex >= total) {
+          newIndex = Math.max(0, total - 1);
         }
 
         // Remove from selection
         const newSelected = new Set(prev.selectedServers);
-        newSelected.delete(type === "remote" ? `remote:${server.id}` : server.id);
+        newSelected.delete(serverToDeleteId);
 
         return {
           ...prev,
           localServers: newLocal,
           remoteServers: newRemote,
           currentIndex: newIndex,
-          currentSection: newSection,
           selectedServers: newSelected,
           confirmDelete: undefined,
         };
-      });
-    } else {
-      showMessage(result.error || "Failed to delete", "error");
-      setState((prev) => ({ ...prev, confirmDelete: undefined }));
-    }
-  }, [state.confirmDelete, showMessage]);
+      } else {
+        showMessage(result.error || "Failed to delete", "error");
+        return { ...prev, confirmDelete: undefined };
+      }
+    });
+  }, [showMessage]);
 
   // Handle delete cancellation
   const handleDeleteCancel = useCallback(() => {
@@ -453,8 +502,18 @@ export function App({ onExit }: AppProps): React.ReactElement {
             requiresAuth: result.requiresAuth,
           };
         }
+        let updatedRemoteServers = prev.remoteServers;
+        if (type === "remote" && result.requiresAuth) {
+          configService.updateRemoteServer(server.id, {
+            oauth: { enabled: true },
+          });
+          updatedRemoteServers = prev.remoteServers.map((s) =>
+            s.id === server.id ? { ...s, oauth: { ...(s.oauth || {}), enabled: true } } : s
+          );
+        }
         return {
           ...prev,
+          remoteServers: updatedRemoteServers,
           testResults: newResults,
           testingCompleted: prev.testingCompleted + 1,
         };
@@ -488,9 +547,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return;
       }
 
-      const { localServers, remoteServers, confirmDelete } = state;
-      const totalLocal = localServers.length;
-      const totalRemote = remoteServers.length;
+      const { confirmDelete } = state;
 
       // Skip input handling when confirmation dialog is active (ConfirmDialog handles its own input)
       if (confirmDelete) {
@@ -507,20 +564,10 @@ export function App({ onExit }: AppProps): React.ReactElement {
       // Navigation - Up
       if (key.upArrow) {
         setState((prev) => {
-          if (prev.currentSection === "local") {
-            if (prev.currentIndex > 0) {
-              return { ...prev, currentIndex: prev.currentIndex - 1 };
-            } else if (totalRemote > 0) {
-              return { ...prev, currentSection: "remote", currentIndex: totalRemote - 1 };
-            }
-          } else {
-            if (prev.currentIndex > 0) {
-              return { ...prev, currentIndex: prev.currentIndex - 1 };
-            } else if (totalLocal > 0) {
-              return { ...prev, currentSection: "local", currentIndex: totalLocal - 1 };
-            }
-          }
-          return prev;
+          const total = unifiedServers.length;
+          if (total === 0) return prev;
+          const newIndex = prev.currentIndex > 0 ? prev.currentIndex - 1 : total - 1;
+          return { ...prev, currentIndex: newIndex };
         });
         return;
       }
@@ -528,20 +575,10 @@ export function App({ onExit }: AppProps): React.ReactElement {
       // Navigation - Down
       if (key.downArrow) {
         setState((prev) => {
-          if (prev.currentSection === "local") {
-            if (prev.currentIndex < totalLocal - 1) {
-              return { ...prev, currentIndex: prev.currentIndex + 1 };
-            } else if (totalRemote > 0) {
-              return { ...prev, currentSection: "remote", currentIndex: 0 };
-            }
-          } else {
-            if (prev.currentIndex < totalRemote - 1) {
-              return { ...prev, currentIndex: prev.currentIndex + 1 };
-            } else if (totalLocal > 0) {
-              return { ...prev, currentSection: "local", currentIndex: 0 };
-            }
-          }
-          return prev;
+          const total = unifiedServers.length;
+          if (total === 0) return prev;
+          const newIndex = prev.currentIndex < total - 1 ? prev.currentIndex + 1 : 0;
+          return { ...prev, currentIndex: newIndex };
         });
         return;
       }
@@ -567,8 +604,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
             }
             // Update state with refreshed servers and deselect if disabling
             setState((prev) => {
-              const newLocal = configService.getLocalServers();
-              const newRemote = configService.getRemoteServers();
+              const newLocal = configService.getLocalServers().map((s) => ({ ...s }));
+              const newRemote = configService.getRemoteServers().map((s) => ({ ...s }));
               const newSelected = new Set(prev.selectedServers);
 
               // If disabling, remove from selection; if enabling, add to selection
@@ -758,77 +795,63 @@ export function App({ onExit }: AppProps): React.ReactElement {
     const isComplete = testingCompleted >= testingTotal && testingTotal > 0;
     const needsAuthCount = testResults?.filter((r) => r.requiresAuth && !r.success).length ?? 0;
 
+    const title = isComplete
+      ? "Testing Servers - Complete"
+      : `Testing Servers (${testingCompleted}/${testingTotal})`;
+
     return (
-      <Box flexDirection="column">
-        <Header title="MCP Server Manager" version={VERSION} />
+      <ScreenLayout
+        title={title}
+        shortcuts={[
+          ...(isComplete && needsAuthCount > 0 ? [{ key: "O", label: "Auth" }] : []),
+          { key: "Any", label: "Continue" },
+        ]}
+        footer={
+          isComplete && needsAuthCount > 0 ? (
+            <Text color="yellow">
+              {needsAuthCount} server(s) need authentication. Press <Text bold>O</Text> to authenticate.
+            </Text>
+          ) : undefined
+        }
+      >
+        {testResults?.map((result, idx) => {
+          const isTesting = (result as { testing?: boolean }).testing;
 
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
-          <Box gap={1}>
-            <Text bold>Testing Servers</Text>
-            {!isComplete && testingTotal > 0 && (
-              <Text color="cyan">
-                ({testingCompleted}/{testingTotal})
-              </Text>
-            )}
-            {isComplete && (
-              <Text color="green">
-                ✓ Complete
-              </Text>
-            )}
-          </Box>
-
-          <Box flexDirection="column" marginTop={1}>
-            {testResults?.map((result, idx) => {
-              const isTesting = (result as { testing?: boolean }).testing;
-
-              return (
-                <Box key={idx} gap={1}>
-                  {isTesting ? (
-                    <>
-                      <Text color="cyan">
-                        <Spinner type="dots" />
-                      </Text>
-                      <Text dimColor>
-                        {result.name}
-                        {result.type !== "stdio" ? ` (${result.type})` : ""}
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text color={result.success ? "green" : result.requiresAuth ? "yellow" : "red"}>
-                        {result.success ? "✓" : result.requiresAuth ? "○" : "✗"}
-                      </Text>
-                      <Text>
-                        {result.name}
-                        {result.type !== "stdio" ? ` (${result.type})` : ""}
-                      </Text>
-                      <Text dimColor>-</Text>
-                      <Text color={result.success ? "green" : result.requiresAuth ? "yellow" : "red"}>
-                        {result.success
-                          ? `${result.toolCount} tools`
-                          : result.requiresAuth
-                            ? "requires auth"
-                            : result.error}
-                      </Text>
-                    </>
-                  )}
-                </Box>
-              );
-            })}
-          </Box>
-
-          {isComplete && (
-            <Box marginTop={2} flexDirection="column">
-              {needsAuthCount > 0 && (
-                <Text color="yellow">
-                  {needsAuthCount} server(s) need authentication. Press <Text bold>O</Text> to authenticate.
-                </Text>
+          return (
+            <Box key={idx} gap={1} marginBottom={1}>
+              {isTesting ? (
+                <>
+                  <Text color="cyan">
+                    <Spinner type="dots" />
+                  </Text>
+                  <Text dimColor>
+                    {result.name}
+                    {result.type !== "stdio" ? ` (${result.type})` : ""}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text color={result.success ? "green" : result.requiresAuth ? "yellow" : "red"}>
+                    {result.success ? "✓" : result.requiresAuth ? "○" : "✗"}
+                  </Text>
+                  <Text>
+                    {result.name}
+                    {result.type !== "stdio" ? ` (${result.type})` : ""}
+                  </Text>
+                  <Text dimColor>-</Text>
+                  <Text color={result.success ? "green" : result.requiresAuth ? "yellow" : "red"}>
+                    {result.success
+                      ? `${result.toolCount} tools`
+                      : result.requiresAuth
+                        ? "requires auth"
+                        : result.error}
+                  </Text>
+                </>
               )}
-              <Text dimColor>Press any key to continue...</Text>
             </Box>
-          )}
-        </Box>
-      </Box>
+          );
+        })}
+      </ScreenLayout>
     );
   }
 
@@ -836,8 +859,6 @@ export function App({ onExit }: AppProps): React.ReactElement {
   const {
     localServers,
     remoteServers,
-    currentSection,
-    currentIndex,
     selectedServers,
     message,
     messageType,
@@ -848,19 +869,14 @@ export function App({ onExit }: AppProps): React.ReactElement {
   const toolFilters = configService.getToolFilters();
 
   return (
-    <Box flexDirection="column">
-      <Header title="MCP Server Manager" version={VERSION} />
-
-      {/* Status bar */}
-      <Box paddingX={1}>
-        <Text dimColor>
-          Profile: {activeProfile} | Port: {port}
-        </Text>
+    <Box flexDirection="column" paddingX={isCompactLayout ? 0 : 1}>
+      <Box marginX={contentMargin}>
+        <Header title="MCP Server Manager" version={VERSION} profile={activeProfile} port={port} />
       </Box>
 
       {/* Delete confirmation dialog - shown exclusively */}
       {state.confirmDelete ? (
-        <Box paddingX={1} marginTop={2}>
+        <Box marginX={contentMargin} marginTop={1}>
           <ConfirmDialog
             title={`Delete Server`}
             description={`Are you sure you want to delete '${state.confirmDelete.server.name}'? This action cannot be undone.`}
@@ -875,7 +891,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
         <>
           {/* Message */}
           {message && (
-            <Box paddingX={1} marginTop={1}>
+            <Box marginX={contentMargin} marginTop={1}>
               <Text
                 color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}
               >
@@ -884,123 +900,114 @@ export function App({ onExit }: AppProps): React.ReactElement {
             </Box>
           )}
 
-          {/* Main content: Servers + Menu side by side */}
-          <Box marginTop={1} gap={2}>
-        {/* Left panel: Server lists */}
-        <Box flexDirection="column" flexGrow={1}>
-          {hasServers ? (
-            <>
+          {/* Main content: Unified server list */}
+          <Box marginTop={1} flexDirection="column">
+            {hasServers ? (
               <Box
                 flexDirection="column"
                 borderStyle="round"
-                borderColor="cyan"
+                borderColor="green"
                 paddingX={1}
                 paddingY={0}
+                marginX={contentMargin}
               >
-                <Text color="cyan" bold>
-                  Local Servers (STDIO)
+                <Text color="green" bold>
+                  Servers
                 </Text>
-                {localServers.length > 0 ? (
-                  localServers.map((server, idx) => {
-                    const isCurrent = currentSection === "local" && idx === currentIndex;
-                    const isSelected = selectedServers.has(server.id);
-                    const isDisabled = server.disabled;
-                    const filter = toolFilters[server.id];
-                    const totalTools = filter?.allTools?.length ?? 0;
-                    const disabledCount = filter?.disabledTools?.length ?? 0;
-                    const enabledTools = totalTools - disabledCount;
+                {unifiedServers.length > 0 ? (
+                  <ScrollableList
+                    items={unifiedServers}
+                    selectedIndex={state.currentIndex}
+                    emptyMessage="No servers configured."
+                    renderItem={(unified, idx) => {
+                      const isCurrent = idx === state.currentIndex;
+                      const { server, type, id } = unified;
+                      const isSelected = selectedServers.has(id);
+                      const isDisabled = server.disabled;
+                      const filter = toolFilters[id];
+                      const totalTools = filter?.allTools?.length ?? 0;
+                      const disabledCount = filter?.disabledTools?.length ?? 0;
+                      const enabledTools = totalTools - disabledCount;
+                      const estimatedTokens = enabledTools * 1000; // 1k tokens per enabled tool
+                      const needsAuth = type === "remote" && state.serversNeedingAuth.has(server.id);
 
-                    // Disabled servers always show empty brackets
-                    const showCheck = !isDisabled && isSelected;
+                      // Disabled servers always show empty brackets
+                      const showCheck = !isDisabled && isSelected;
+                      const nameColor = isDisabled ? "gray" : isCurrent ? "magenta" : undefined;
+                      const arrowColor = isCurrent ? "magenta" : type === "local" ? "green" : "magenta";
 
-                    return (
-                      <Box key={server.id} gap={1}>
-                        <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                        <Text color={isDisabled ? "yellow" : showCheck ? "green" : "gray"}>
-                          {showCheck ? "[✓]" : "[ ]"}
-                        </Text>
-                        <Text color={isDisabled ? "gray" : isCurrent ? "white" : undefined} bold={isCurrent}>
-                          {server.name || server.id}
-                        </Text>
-                        <Text dimColor>-</Text>
-                        <Text color={isDisabled ? "yellow" : disabledCount > 0 ? "yellow" : "gray"}>
-                          {isDisabled ? "disabled" : `${enabledTools}/${totalTools} tools`}
-                        </Text>
-                      </Box>
-                    );
-                  })
+                      return (
+                        <Box key={id} gap={1} paddingX={1}>
+                          <Text color={arrowColor}>{isCurrent ? "→" : " "}</Text>
+                          <Text color={isDisabled ? "yellow" : showCheck ? "green" : "gray"}>
+                            {showCheck ? "[✓]" : "[ ]"}
+                          </Text>
+                          <Text color={nameColor} bold={isCurrent}>
+                            {server.name || server.id}
+                          </Text>
+                          {!isDisabled && !needsAuth && (
+                            <>
+                              <Text color="green">✓</Text>
+                              <Text color="yellow">
+                                {enabledTools}/{totalTools} tools
+                              </Text>
+                              <Text dimColor>·</Text>
+                              <Text color="yellow">
+                                {(estimatedTokens / 1000).toFixed(1)}k tokens
+                              </Text>
+                            </>
+                          )}
+                          {needsAuth && !isDisabled && (
+                            <>
+                              <Text dimColor>-</Text>
+                              <Text color="red">needs auth</Text>
+                            </>
+                          )}
+                        </Box>
+                      );
+                    }}
+                  />
                 ) : (
-                  <Text dimColor>No local servers</Text>
+                  <Text dimColor>No servers configured.</Text>
                 )}
               </Box>
+            ) : (
+              <Box
+                flexDirection="column"
+                borderStyle="round"
+                borderColor="gray"
+                paddingX={1}
+                paddingY={1}
+                marginX={contentMargin}
+              >
+                <Text dimColor>No servers configured.</Text>
+                <Text dimColor>Press <Text color="green" bold>A</Text> to add a new server.</Text>
+              </Box>
+            )}
+          </Box>
 
-              {remoteServers.length > 0 && (
-                <Box
-                  flexDirection="column"
-                  borderStyle="round"
-                  borderColor="magenta"
-                  paddingX={1}
-                  paddingY={0}
-                  marginTop={1}
-                >
-                  <Text color="magenta" bold>
-                    Remote Servers (HTTP/SSE)
-                  </Text>
-                  {remoteServers.map((server, idx) => {
-                    const isCurrent = currentSection === "remote" && idx === currentIndex;
-                    const isSelected = selectedServers.has(`remote:${server.id}`);
-                    const isDisabled = server.disabled;
-                    const filter = toolFilters[`remote:${server.id}`];
-                    const totalTools = filter?.allTools?.length ?? 0;
-                    const disabledCount = filter?.disabledTools?.length ?? 0;
-                    const enabledTools = totalTools - disabledCount;
-                    const transportType = server.type.toUpperCase();
-                    const needsAuth = state.serversNeedingAuth.has(server.id);
-
-                    // Disabled servers always show empty brackets
-                    const showCheck = !isDisabled && isSelected;
-
-                    return (
-                      <Box key={server.id} gap={1}>
-                        <Text color="magenta">{isCurrent ? "→" : " "}</Text>
-                        <Text color={isDisabled ? "yellow" : showCheck ? "green" : "gray"}>
-                          {showCheck ? "[✓]" : "[ ]"}
-                        </Text>
-                        <Text color={isDisabled ? "gray" : isCurrent ? "white" : undefined} bold={isCurrent}>
-                          {server.name || server.id}
-                        </Text>
-                        <Text color="gray">({transportType})</Text>
-                        <Text dimColor>-</Text>
-                        <Text color={isDisabled ? "yellow" : disabledCount > 0 ? "yellow" : "gray"}>
-                          {isDisabled ? "disabled" : `${enabledTools}/${totalTools} tools`}
-                        </Text>
-                        {needsAuth && !isDisabled && (
-                          <Text color="red">- needs auth</Text>
-                        )}
-                      </Box>
-                    );
-                  })}
-                </Box>
-              )}
-            </>
-          ) : (
-            <Box
-              flexDirection="column"
-              borderStyle="round"
-              borderColor="gray"
-              paddingX={1}
-              paddingY={1}
-            >
-              <Text dimColor>No servers configured.</Text>
-              <Text dimColor>Press <Text color="green" bold>A</Text> to add a new server.</Text>
-            </Box>
-          )}
-        </Box>
-
-          {/* Right panel: Menu */}
-          <MenuPanel />
-        </Box>
-      </>
+          {/* Bottom shortcuts bar */}
+          <Box marginTop={1} flexGrow={1} marginX={contentMargin}>
+            <ShortcutsBar
+              shortcuts={[
+                { key: "↑↓", label: "Navigate" },
+                { key: "Space", label: "Toggle" },
+                { key: "Enter", label: "Daemon" },
+                { key: "A", label: "Add" },
+                { key: "D", label: "Del" },
+                { key: "X", label: "Test" },
+                { key: "T", label: "Tools" },
+                { key: "F", label: "Profiles" },
+                { key: "I", label: "Import" },
+                { key: "C", label: "Clients" },
+                { key: "G", label: "Settings" },
+                { key: "H", label: "Doctor" },
+                { key: "O", label: "Auth" },
+                { key: "Q", label: "Quit" },
+              ]}
+            />
+          </Box>
+        </>
       )}
     </Box>
   );

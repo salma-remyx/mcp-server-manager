@@ -6,7 +6,7 @@ import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import SelectInput from "ink-select-input";
-import { Header, MenuPanel } from "../components/index.js";
+import { ScreenLayout } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getImportExportService } from "../../services/import-export.service.js";
 import type { ExportFormat } from "../../services/import-export.service.js";
@@ -489,10 +489,11 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
   // Result view
   if (view === "result" && result) {
     return (
-      <Box flexDirection="column">
-        <Header title="Import / Export" />
-
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
+      <ScreenLayout
+        title="Import / Export"
+        shortcuts={[{ key: "Any", label: "Continue" }]}
+      >
+        <Box flexDirection="column" paddingY={1}>
           <Box gap={1}>
             <Text color={result.success ? "green" : "red"}>{result.success ? "✓" : "✗"}</Text>
             <Text>{result.message}</Text>
@@ -508,21 +509,21 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
             </Box>
           )}
         </Box>
-
-        <Box paddingX={1} marginTop={2}>
-          <Text dimColor>Press any key to continue...</Text>
-        </Box>
-      </Box>
+      </ScreenLayout>
     );
   }
 
   // Import file path view
   if (view === "import-file-path") {
     return (
-      <Box flexDirection="column">
-        <Header title="Import from File" />
-
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
+      <ScreenLayout
+        title="Import from File"
+        shortcuts={[
+          { key: "Enter", label: "Import" },
+          { key: "ESC", label: "Cancel" },
+        ]}
+      >
+        <Box flexDirection="column" paddingY={1}>
           <Text>Enter file path:</Text>
           <Box marginTop={1}>
             <Text color="cyan">&gt; </Text>
@@ -533,11 +534,7 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
             />
           </Box>
         </Box>
-
-        <Box paddingX={1} marginTop={2}>
-          <Text dimColor>ENTER to import, ESC to cancel</Text>
-        </Box>
-      </Box>
+      </ScreenLayout>
     );
   }
 
@@ -547,10 +544,15 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
     const selectedDecision = conflictDecisions.get(currentConflict.id) || "?";
 
     return (
-      <Box flexDirection="column">
-        <Header title="Import - Resolve Conflicts" />
-
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
+      <ScreenLayout
+        title="Import - Resolve Conflicts"
+        shortcuts={[
+          { key: "↑↓", label: "Navigate" },
+          { key: "S/O/M", label: "Decide" },
+          { key: "ESC", label: "Cancel" },
+        ]}
+      >
+        <Box flexDirection="column" paddingY={1}>
           <Text bold>
             Conflict {conflictIndex + 1}/{conflicts.length} - {currentConflict.name} ({currentConflict.type})
           </Text>
@@ -588,21 +590,21 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
             <Text dimColor>M: Merge (combine fields)</Text>
           </Box>
         </Box>
-
-        <Box paddingX={1} marginTop={2}>
-          <Text dimColor>↑/↓ to navigate, S/O/M to decide, ESC to cancel</Text>
-        </Box>
-      </Box>
+      </ScreenLayout>
     );
   }
 
   // Import preview view
   if (view === "import-preview") {
     return (
-      <Box flexDirection="column">
-        <Header title="Import Servers" />
-
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
+      <ScreenLayout
+        title="Import Servers"
+        shortcuts={[
+          { key: "Enter/Y", label: "Confirm" },
+          { key: "N", label: "Cancel" },
+        ]}
+      >
+        <Box flexDirection="column" paddingY={1}>
           <Text>
             Found {importedServers.length} server(s)
             {importFormat ? ` (${importFormat} format)` : ""}
@@ -620,11 +622,7 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
             )}
           </Box>
         </Box>
-
-        <Box paddingX={1} marginTop={2}>
-          <Text dimColor>ENTER or Y to confirm, N to cancel</Text>
-        </Box>
-      </Box>
+      </ScreenLayout>
     );
   }
 
@@ -632,30 +630,31 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
   // Export format selection view
   if (view === "export-format") {
     return (
-      <Box flexDirection="column">
-        <Header title="Select Export Format" />
-
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
+      <ScreenLayout
+        title="Select Export Format"
+        shortcuts={[{ key: "ESC", label: "Cancel" }]}
+      >
+        <Box flexDirection="column" paddingY={1}>
           <Text>Select format:</Text>
           <Box marginTop={1}>
             <SelectInput items={FORMAT_OPTIONS} onSelect={handleFormatSelect} />
           </Box>
         </Box>
-
-        <Box paddingX={1} marginTop={2}>
-          <Text dimColor>ESC to cancel</Text>
-        </Box>
-      </Box>
+      </ScreenLayout>
     );
   }
 
   // Export file path view
   if (view === "export-file-path") {
     return (
-      <Box flexDirection="column">
-        <Header title="Export to File" />
-
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
+      <ScreenLayout
+        title="Export to File"
+        shortcuts={[
+          { key: "Enter", label: "Export" },
+          { key: "ESC", label: "Cancel" },
+        ]}
+      >
+        <Box flexDirection="column" paddingY={1}>
           <Text>Enter output file path:</Text>
           <Box marginTop={1}>
             <Text color="cyan">&gt; </Text>
@@ -666,11 +665,7 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
             />
           </Box>
         </Box>
-
-        <Box paddingX={1} marginTop={2}>
-          <Text dimColor>ENTER to export, ESC to cancel</Text>
-        </Box>
-      </Box>
+      </ScreenLayout>
     );
   }
 
@@ -682,36 +677,25 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
   });
 
   return (
-    <Box flexDirection="column">
-      <Header title="Import / Export" />
+    <ScreenLayout title="Import / Export" menuSections={importExportMenuSections}>
+      {menuOptions.map((option, idx) => {
+        const isCurrent = idx === currentIndex;
 
-      {/* Main content: Options + Menu side by side */}
-      <Box marginTop={1} gap={2}>
-        {/* Left panel: Menu options */}
-        <Box flexDirection="column" flexGrow={1} paddingX={1}>
-          {menuOptions.map((option, idx) => {
-            const isCurrent = idx === currentIndex;
-
-            return (
-              <Box key={option.id} flexDirection="column" marginBottom={1}>
-                <Box gap={1}>
-                  <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                  <Text color={isCurrent ? "white" : undefined} bold={isCurrent}>
-                    {option.label}
-                  </Text>
-                </Box>
-                <Box marginLeft={4}>
-                  <Text dimColor>{option.description}</Text>
-                </Box>
-              </Box>
-            );
-          })}
-        </Box>
-
-        {/* Right panel: Menu */}
-        <MenuPanel sections={importExportMenuSections} highlightedView="I" />
-      </Box>
-    </Box>
+        return (
+          <Box key={option.id} flexDirection="column" marginBottom={1}>
+            <Box gap={1}>
+              <Text color={isCurrent ? "magenta" : "cyan"}>{isCurrent ? "→" : " "}</Text>
+              <Text color={isCurrent ? "magenta" : undefined} bold={isCurrent}>
+                {option.label}
+              </Text>
+            </Box>
+            <Box marginLeft={4}>
+              <Text dimColor>{option.description}</Text>
+            </Box>
+          </Box>
+        );
+      })}
+    </ScreenLayout>
   );
 }
 

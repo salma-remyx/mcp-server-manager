@@ -5,7 +5,7 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { Header, MenuPanel, ConfirmDialog } from "../components/index.js";
+import { ScreenLayout, ConfirmDialog } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getProfileService } from "../../services/profile.service.js";
 import type { ProfileListItem } from "../../types/index.js";
@@ -185,53 +185,6 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
   const { profiles, currentIndex, view, newProfileName, message, messageType } = state;
 
   // Create profile view
-  if (view === "create") {
-    return (
-      <Box flexDirection="column">
-        <Header title="Create New Profile" />
-
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
-          <Text>Profile name:</Text>
-          <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
-            <TextInput
-              value={newProfileName}
-              onChange={(value) => setState((prev) => ({ ...prev, newProfileName: value }))}
-              onSubmit={handleCreateProfile}
-            />
-          </Box>
-        </Box>
-
-        <Box paddingX={1} marginTop={2}>
-          <Text dimColor>ENTER to create, ESC to cancel</Text>
-        </Box>
-      </Box>
-    );
-  }
-
-  // Confirm delete view
-  if (view === "confirmDelete") {
-    const profile = profiles[currentIndex];
-    return (
-      <Box flexDirection="column">
-        <Header title="Delete Profile" />
-
-        <Box paddingX={1} marginTop={1}>
-          <ConfirmDialog
-            title="Delete Profile"
-            description={`Are you sure you want to delete profile '${profile?.name}'? This action cannot be undone.`}
-            confirmText="Yes, delete"
-            cancelText="No, keep it"
-            titleColor="red"
-            onConfirm={() => handleDeleteProfile(true)}
-            onCancel={() => handleDeleteProfile(false)}
-          />
-        </Box>
-      </Box>
-    );
-  }
-
-  // List view
   const profilesMenuSections = createMenuSections({
     actions: [
       { key: "Enter", label: "Use" },
@@ -242,57 +195,80 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
     showSystem: false,
   });
 
-  return (
-    <Box flexDirection="column">
-      <Header title="Profiles" />
+  if (view === "create") {
+    return (
+      <ScreenLayout title="Create New Profile" menuSections={profilesMenuSections}>
+        <Box flexDirection="column" paddingY={1}>
+          <Text>Profile name:</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={newProfileName}
+              onChange={(value) => setState((prev) => ({ ...prev, newProfileName: value }))}
+              onSubmit={handleCreateProfile}
+            />
+          </Box>
+        </Box>
+        <Box marginTop={2}>
+          <Text dimColor>ENTER para criar, ESC para cancelar</Text>
+        </Box>
+      </ScreenLayout>
+    );
+  }
 
-      {/* Message */}
+  // Confirm delete view
+  if (view === "confirmDelete") {
+    const profile = profiles[currentIndex];
+    return (
+      <ScreenLayout title="Delete Profile" menuSections={profilesMenuSections}>
+        <ConfirmDialog
+          title="Delete Profile"
+          description={`Are you sure you want to delete profile '${profile?.name}'? This action cannot be undone.`}
+          confirmText="Yes, delete"
+          cancelText="No, keep it"
+          titleColor="red"
+          onConfirm={() => handleDeleteProfile(true)}
+          onCancel={() => handleDeleteProfile(false)}
+        />
+      </ScreenLayout>
+    );
+  }
+
+  return (
+    <ScreenLayout title="Profiles" menuSections={profilesMenuSections}>
       {message && (
-        <Box paddingX={1} marginTop={1}>
-          <Text
-            color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}
-          >
+        <Box marginBottom={1}>
+          <Text color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}>
             {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
           </Text>
         </Box>
       )}
 
-      {/* Main content: Profiles + Menu side by side */}
-      <Box marginTop={1} gap={2}>
-        {/* Left panel: Profiles list */}
-        <Box flexDirection="column" flexGrow={1} paddingX={1}>
-          {profiles.length === 0 ? (
-            <Text dimColor>No profiles configured.</Text>
-          ) : (
-            profiles.map((profile, idx) => {
-              const isCurrent = idx === currentIndex;
-              const serverInfo = profile.includesAll
-                ? "all servers"
-                : `${profile.serverCount} server(s)`;
+      {profiles.length === 0 ? (
+        <Text dimColor>No profiles configured.</Text>
+      ) : (
+        profiles.map((profile, idx) => {
+          const isCurrent = idx === currentIndex;
+          const serverInfo = profile.includesAll ? "all servers" : `${profile.serverCount} server(s)`;
 
-              return (
-                <Box key={profile.id} flexDirection="column" marginBottom={1}>
-                  <Box gap={1}>
-                    <Text color="cyan">{isCurrent ? "→" : " "}</Text>
-                    <Text color={isCurrent ? "cyan" : undefined} bold={isCurrent}>
-                      {profile.name}
-                    </Text>
-                    <Text dimColor>[{profile.id}]</Text>
-                    {profile.isActive && <Text color="green">(active)</Text>}
-                  </Box>
-                  <Box marginLeft={4}>
-                    <Text dimColor>{serverInfo}</Text>
-                  </Box>
-                </Box>
-              );
-            })
-          )}
-        </Box>
-
-        {/* Right panel: Menu */}
-        <MenuPanel sections={profilesMenuSections} highlightedView="F" />
-      </Box>
-    </Box>
+          return (
+            <Box key={profile.id} flexDirection="column" marginBottom={1}>
+              <Box gap={1}>
+                <Text color={isCurrent ? "magenta" : "cyan"}>{isCurrent ? "→" : " "}</Text>
+                <Text color={isCurrent ? "magenta" : undefined} bold={isCurrent}>
+                  {profile.name}
+                </Text>
+                <Text dimColor>[{profile.id}]</Text>
+                {profile.isActive && <Text color="green">(active)</Text>}
+              </Box>
+              <Box marginLeft={4}>
+                <Text dimColor>{serverInfo}</Text>
+              </Box>
+            </Box>
+          );
+        })
+      )}
+    </ScreenLayout>
   );
 }
 

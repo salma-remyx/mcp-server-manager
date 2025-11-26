@@ -5,7 +5,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 
-interface Shortcut {
+export interface Shortcut {
   key: string;
   label: string;
 }
@@ -23,13 +23,15 @@ const defaultShortcuts: Shortcut[] = [
 export function ShortcutsBar({ shortcuts = defaultShortcuts }: ShortcutsBarProps): React.ReactElement {
   const renderShortcut = (shortcut: Shortcut) => (
     <Box key={shortcut.key} marginRight={1}>
-      <Text color="green" bold>•{shortcut.key}</Text>
+      <Text color="green" bold>
+        •{shortcut.key}
+      </Text>
       <Text dimColor> {shortcut.label}</Text>
     </Box>
   );
 
   return (
-    <Box paddingX={1} paddingY={0} borderStyle="round" borderColor="gray" marginX={1} flexGrow={1}>
+    <Box paddingX={1} paddingY={0} borderStyle="round" borderColor="gray" width="100%">
       <Box flexWrap="wrap">
         {shortcuts.map(renderShortcut)}
       </Box>
@@ -38,4 +40,3 @@ export function ShortcutsBar({ shortcuts = defaultShortcuts }: ShortcutsBarProps
 }
 
 export default ShortcutsBar;
-
