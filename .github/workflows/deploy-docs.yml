@@ -41,11 +41,9 @@ jobs:
       - name: Prepare deploy folder
         run: |
           mkdir -p deploy
-          # Copy landing page
-          cp landing/index.html deploy/
-          # Copy VitePress build to /docs subfolder
-          mkdir -p deploy/docs
-          cp -r docs/.vitepress/dist/* deploy/docs/
+          # VitePress build includes the landing page at root (index.md -> index.html)
+          # and docs in /docs subfolder
+          cp -r docs/.vitepress/dist/* deploy/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
