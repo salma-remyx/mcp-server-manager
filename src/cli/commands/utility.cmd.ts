@@ -159,7 +159,7 @@ export function registerUtilityCommands(program: Command): void {
 
       try {
         spawnSync(editor, [paths.configPath], { stdio: "inherit" });
-      } catch (_error) {
+      } catch {
         console.log(`${c.cross} Failed to open editor`);
         console.log(`Config file: ${paths.configPath}`);
         process.exit(1);

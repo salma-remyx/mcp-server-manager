@@ -10,7 +10,6 @@ const testConfigDir = path.join(os.tmpdir(), "mcpsm-testing-test-" + Date.now())
 
 describe("TestingService", () => {
   let testingService: TestingService;
-  let configService: ConfigService;
 
   beforeEach(() => {
     process.env.MCP_MANAGER_CONFIG_DIR = testConfigDir;
@@ -55,7 +54,7 @@ describe("TestingService", () => {
       })
     );
 
-    configService = new ConfigService(testConfigDir);
+    new ConfigService(testConfigDir);
     testingService = new TestingService();
   });
 
@@ -83,7 +82,7 @@ describe("TestingService", () => {
     it("should return all servers when no tool filters exist", () => {
       fs.writeFileSync(path.join(testConfigDir, "tool-filters.json"), JSON.stringify({}));
       resetConfigService();
-      configService = new ConfigService(testConfigDir);
+      new ConfigService(testConfigDir);
       testingService = new TestingService();
 
       const { local, remote } = testingService.getServersWithoutTools();
@@ -168,7 +167,7 @@ describe("TestingService", () => {
         })
       );
       resetConfigService();
-      configService = new ConfigService(testConfigDir);
+      new ConfigService(testConfigDir);
       testingService = new TestingService();
 
       // Should complete quickly without testing

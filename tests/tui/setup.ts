@@ -34,7 +34,7 @@ export const mockTestingService = {
   testLocalServer: vi.fn(() => Promise.resolve({ success: true, toolCount: 5 })),
   testRemoteServer: vi.fn(() => Promise.resolve({ success: true, toolCount: 3 })),
   testAllServers: vi.fn(() => Promise.resolve([])),
-  testAllServersStreaming: vi.fn(async (onResult: (result: unknown) => void) => {
+  testAllServersStreaming: vi.fn(async (_onResult: (result: unknown) => void) => {
     // Simulate streaming by calling onResult for each result
     return Promise.resolve([]);
   }),
@@ -65,8 +65,8 @@ export const mockClientService = {
   ]),
   connectClient: vi.fn(() => ({ success: true })),
   disconnectClient: vi.fn(() => ({ success: true })),
-  getConnectionStatus: vi.fn((id: string) => "connected" as const),
-  getClientName: vi.fn((id: string) => id),
+  getConnectionStatus: vi.fn((_id: string) => "connected" as const),
+  getClientName: vi.fn((_id: string) => "client"),
   getClientConfigPath: vi.fn(() => "/path/to/config"),
   isClientInstalled: vi.fn(() => true),
   getSupportedClients: vi.fn(() => ["claude", "cursor", "windsurf"]),

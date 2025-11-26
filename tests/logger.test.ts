@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { logger, createLogger, configureLogger } from "../src/shared/logger.js";
-import type { LogLevel } from "../src/shared/logger.js";
 
 describe("Logger", () => {
   beforeEach(() => {

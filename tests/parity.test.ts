@@ -33,7 +33,7 @@ function getTopLevelCommands(): Set<string> {
  * Get all registered command patterns from features.ts
  * Returns patterns like "list", "clients sync", "daemon start", etc.
  */
-function getRegisteredCommandPatterns(): Set<string> {
+function _getRegisteredCommandPatterns(): Set<string> {
   const patterns = new Set<string>();
 
   for (const feature of FEATURES) {

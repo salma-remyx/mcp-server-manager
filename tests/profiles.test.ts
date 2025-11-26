@@ -4,14 +4,12 @@ import path from "path";
 import os from "os";
 import { ProfileService, resetProfileService } from "../src/services/profile.service.js";
 import { getConfigService, resetConfigService } from "../src/services/config.service.js";
-import type { ConfigService } from "../src/services/config.service.js";
 
 // Test directory setup
 const testConfigDir = path.join(os.tmpdir(), "mcpsm-profiles-test-" + Date.now());
 
 describe("ProfileService", () => {
   let profileService: ProfileService;
-  let configService: ConfigService;
 
   beforeEach(() => {
     process.env.MCP_MANAGER_CONFIG_DIR = testConfigDir;
@@ -35,7 +33,7 @@ describe("ProfileService", () => {
       })
     );
 
-    configService = getConfigService(testConfigDir);
+    getConfigService(testConfigDir);
   });
 
   afterEach(() => {
