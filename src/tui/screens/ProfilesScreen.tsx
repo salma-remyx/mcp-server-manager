@@ -5,7 +5,7 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { Header, MenuPanel } from "../components/index.js";
+import { Header, MenuPanel, ConfirmDialog } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getProfileService } from "../../services/profile.service.js";
 import type { ProfileListItem } from "../../types/index.js";
@@ -110,13 +110,8 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
   useInput((input, key) => {
     const { profiles, currentIndex, view } = state;
 
-    // Handle confirm delete view
+    // Skip input handling when confirmation dialog is active (ConfirmDialog handles its own input)
     if (view === "confirmDelete") {
-      if (input === "y" || input === "Y") {
-        handleDeleteProfile(true);
-      } else if (input === "n" || input === "N" || key.escape) {
-        handleDeleteProfile(false);
-      }
       return;
     }
 
@@ -221,11 +216,16 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
       <Box flexDirection="column">
         <Header title="Delete Profile" />
 
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
-          <Text color="red">Delete profile '{profile?.name}'?</Text>
-          <Box marginTop={1}>
-            <Text>Press Y to confirm, N to cancel</Text>
-          </Box>
+        <Box paddingX={1} marginTop={1}>
+          <ConfirmDialog
+            title="Delete Profile"
+            description={`Are you sure you want to delete profile '${profile?.name}'? This action cannot be undone.`}
+            confirmText="Yes, delete"
+            cancelText="No, keep it"
+            titleColor="red"
+            onConfirm={() => handleDeleteProfile(true)}
+            onCancel={() => handleDeleteProfile(false)}
+          />
         </Box>
       </Box>
     );

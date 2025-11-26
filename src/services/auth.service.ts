@@ -27,6 +27,7 @@ import type {
   RemoteServer,
 } from "../types/index.js";
 import { createLogger } from "../shared/logger.js";
+import { renderCallbackPage } from "./auth-callback.html.js";
 
 const log = createLogger("AuthService");
 
@@ -468,7 +469,7 @@ export class AuthService {
     if (error) {
       // Handle error response
       res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(this.renderCallbackPage("error", errorDescription || error));
+      res.end(renderCallbackPage("error", errorDescription || error));
 
       // Emit error event for pending auth
       if (state) {
@@ -479,7 +480,7 @@ export class AuthService {
 
     if (!code || !state) {
       res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(this.renderCallbackPage("error", "Missing authorization code or state parameter."));
+      res.end(renderCallbackPage("error", "Missing authorization code or state parameter."));
       return;
     }
 
@@ -488,132 +489,17 @@ export class AuthService {
       .then((result) => {
         if (result.success) {
           res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-          res.end(this.renderCallbackPage("success"));
+          res.end(renderCallbackPage("success"));
         } else {
           res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-          res.end(this.renderCallbackPage("error", result.error || "Unknown error"));
+          res.end(renderCallbackPage("error", result.error || "Unknown error"));
         }
       })
       .catch((err) => {
         log.debug("Callback processing error:", err);
         res.writeHead(500, { "Content-Type": "text/html; charset=utf-8" });
-        res.end(this.renderCallbackPage("error", "An unexpected error occurred."));
+        res.end(renderCallbackPage("error", "An unexpected error occurred."));
       });
-  }
-
-  /** Render OAuth callback page HTML */
-  private renderCallbackPage(type: "success" | "error", message?: string): string {
-    const isSuccess = type === "success";
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${isSuccess ? "Authentication Successful" : "Authentication Failed"}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-      color: #fff;
-    }
-    
-    .container {
-      text-align: center;
-      padding: 3rem;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 24px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      max-width: 420px;
-      width: 90%;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    }
-    
-    .icon {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 1.5rem;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.5rem;
-      animation: pop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    }
-    
-    .icon.success {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      box-shadow: 0 0 40px rgba(16, 185, 129, 0.4);
-    }
-    
-    .icon.error {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      box-shadow: 0 0 40px rgba(239, 68, 68, 0.4);
-    }
-    
-    @keyframes pop {
-      0% { transform: scale(0); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    
-    h1 {
-      font-size: 1.75rem;
-      font-weight: 600;
-      margin-bottom: 0.75rem;
-      color: ${isSuccess ? "#10b981" : "#ef4444"};
-    }
-    
-    p {
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 1rem;
-      line-height: 1.6;
-    }
-    
-    .message {
-      margin-top: 1rem;
-      padding: 1rem;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 12px;
-      font-size: 0.875rem;
-      color: rgba(255, 255, 255, 0.6);
-    }
-    
-    .close-hint {
-      margin-top: 2rem;
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.4);
-    }
-    
-    .brand {
-      margin-top: 2rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-      font-size: 0.75rem;
-      color: rgba(255, 255, 255, 0.3);
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="icon ${type}">
-      ${isSuccess ? "✓" : "✕"}
-    </div>
-    <h1>${isSuccess ? "Authentication Successful" : "Authentication Failed"}</h1>
-    <p>${isSuccess ? "You've been authenticated successfully." : "Something went wrong during authentication."}</p>
-    ${message && !isSuccess ? `<div class="message">${message}</div>` : ""}
-    <p class="close-hint">${isSuccess ? "This window will close automatically..." : "You can close this window and try again."}</p>
-    <div class="brand">MCP Server Manager</div>
-  </div>
-  ${isSuccess ? "<script>setTimeout(() => window.close(), 3000);</script>" : ""}
-</body>
-</html>`;
   }
 
   /** Handle auth error from callback */
@@ -822,25 +708,36 @@ export class AuthService {
     return new Promise((resolve) => {
       const startTime = Date.now();
 
+      // Get the pending auth to know which server we're waiting for
+      const initialPendingAuth = this.pendingAuths.get(state);
+      if (!initialPendingAuth) {
+        resolve({ success: false, error: "No pending authorization found" });
+        return;
+      }
+
+      const serverId = initialPendingAuth.serverId;
+      // Track the token state before auth started
+      const tokenBeforeAuth = this.tokens.get(serverId)?.accessToken;
+
       const checkAuth = (): void => {
         // Check if auth is still pending
         const pendingAuth = this.pendingAuths.get(state);
 
         if (!pendingAuth) {
           // Auth completed (either success or failure)
-          // Check if we have tokens for this server
-          for (const [_serverId, tokens] of this.tokens) {
-            // Find the server that matches
-            if (tokens.accessToken) {
-              resolve({
-                success: true,
-                token: tokens.accessToken,
-                expiresAt: tokens.expiresAt,
-                refreshToken: tokens.refreshToken,
-              });
-              return;
-            }
+          // Check if we have a NEW token for this specific server
+          const currentToken = this.tokens.get(serverId);
+          if (currentToken?.accessToken && currentToken.accessToken !== tokenBeforeAuth) {
+            // New token was added - success
+            resolve({
+              success: true,
+              token: currentToken.accessToken,
+              expiresAt: currentToken.expiresAt,
+              refreshToken: currentToken.refreshToken,
+            });
+            return;
           }
+          // No new token - auth was cancelled or failed
           resolve({ success: false, error: "Authorization was cancelled or failed" });
           return;
         }

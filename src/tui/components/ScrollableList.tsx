@@ -1,8 +1,9 @@
 /**
  * ScrollableList - List component with virtual scrolling
+ * Scrolls only when selection reaches the edge of the visible area
  */
 
-import React, { useMemo } from "react";
+import React, { useRef, useEffect } from "react";
 import { Box, Text } from "ink";
 
 interface ScrollableListProps<T> {
@@ -27,30 +28,48 @@ export function ScrollableList<T>({
   visibleCount = DEFAULT_VISIBLE_COUNT,
   emptyMessage = "No items",
 }: ScrollableListProps<T>): React.ReactElement {
-  // Calculate visible range
-  const { startIndex, endIndex, showScrollIndicator } = useMemo(() => {
-    const total = items.length;
+  // Track the viewport start position
+  const viewportStartRef = useRef(0);
+
+  const total = items.length;
+  const showScrollIndicator = total > visibleCount;
+
+  // Calculate visible range - only scroll when selection goes out of view
+  useEffect(() => {
     if (total === 0) {
-      return { startIndex: 0, endIndex: 0, showScrollIndicator: false };
+      viewportStartRef.current = 0;
+      return;
     }
 
-    // Keep selected item in view
-    let start = Math.max(0, selectedIndex - Math.floor(visibleCount / 2));
-    let end = Math.min(total, start + visibleCount);
+    let start = viewportStartRef.current;
 
-    // Adjust if we're near the end
-    if (end === total) {
-      start = Math.max(0, total - visibleCount);
+    // If selected item is above the viewport, scroll up
+    if (selectedIndex < start) {
+      start = selectedIndex;
+    }
+    // If selected item is below the viewport, scroll down
+    else if (selectedIndex >= start + visibleCount) {
+      start = selectedIndex - visibleCount + 1;
     }
 
-    const showIndicator = total > visibleCount;
+    // Clamp to valid range
+    start = Math.max(0, Math.min(start, total - visibleCount));
+    viewportStartRef.current = start;
+  }, [selectedIndex, total, visibleCount]);
 
-    return {
-      startIndex: start,
-      endIndex: end,
-      showScrollIndicator: showIndicator,
-    };
-  }, [items.length, selectedIndex, visibleCount]);
+  // Get current viewport position
+  let startIndex = viewportStartRef.current;
+  
+  // Ensure selection is visible (for initial render)
+  if (selectedIndex < startIndex) {
+    startIndex = selectedIndex;
+  } else if (selectedIndex >= startIndex + visibleCount) {
+    startIndex = selectedIndex - visibleCount + 1;
+  }
+  
+  // Clamp to valid range
+  startIndex = Math.max(0, Math.min(startIndex, Math.max(0, total - visibleCount)));
+  const endIndex = Math.min(total, startIndex + visibleCount);
 
   if (items.length === 0) {
     return (
@@ -64,10 +83,10 @@ export function ScrollableList<T>({
 
   return (
     <Box flexDirection="column">
-      {/* Scroll indicator at top */}
-      {showScrollIndicator && startIndex > 0 && (
+      {/* Scroll indicator at top - always reserve space when scrollable */}
+      {showScrollIndicator && (
         <Box paddingX={1} paddingY={0}>
-          <Text dimColor>↑ {startIndex} more above</Text>
+          <Text dimColor>{startIndex > 0 ? "↑" : " "}</Text>
         </Box>
       )}
 
@@ -83,19 +102,10 @@ export function ScrollableList<T>({
         })}
       </Box>
 
-      {/* Scroll indicator at bottom */}
-      {showScrollIndicator && endIndex < items.length && (
-        <Box paddingX={1} paddingY={0}>
-          <Text dimColor>↓ {items.length - endIndex} more below</Text>
-        </Box>
-      )}
-
-      {/* Position indicator */}
+      {/* Scroll indicator at bottom - always reserve space when scrollable */}
       {showScrollIndicator && (
         <Box paddingX={1} paddingY={0}>
-          <Text dimColor>
-            Showing {startIndex + 1}-{endIndex} of {items.length}
-          </Text>
+          <Text dimColor>{endIndex < items.length ? "↓" : " "}</Text>
         </Box>
       )}
     </Box>

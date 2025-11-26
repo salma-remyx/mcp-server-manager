@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import open from "open";
-import { ScreenLayout, ScrollableList } from "../components/index.js";
+import { ScreenLayout, ScrollableList, ConfirmDialog } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getAuthService } from "../../services/auth.service.js";
@@ -41,7 +41,7 @@ export function AuthScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [currentAuthServer, setCurrentAuthServer] = useState<string | null>(null);
   const [message, setMessage] = useState<string>("");
-  const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState<{ id: string; name: string } | null>(null);
 
   // Load servers and their auth status
   const loadServers = useCallback(async (): Promise<void> => {
@@ -262,14 +262,8 @@ export function AuthScreen({
   // Handle keyboard input
   useInput(
     (input, key) => {
-      // Handle revoke confirmation
+      // Skip input handling when confirmation dialog is active (ConfirmDialog handles its own input)
       if (confirmRevoke) {
-        if (input === "y" || input === "Y") {
-          revokeAuth(confirmRevoke);
-        } else {
-          setConfirmRevoke(null);
-          setMessage("");
-        }
         return;
       }
 
@@ -310,8 +304,7 @@ export function AuthScreen({
         // Revoke selected server's token (if it has one)
         const selected = allServers[selectedIndex];
         if (selected && selected.status.hasToken) {
-          setConfirmRevoke(selected.server.id);
-          setMessage(`Revoke token for ${selected.server.name}? (Y/N)`);
+          setConfirmRevoke({ id: selected.server.id, name: selected.server.name });
         }
       } else if (input === "q" || input === "Q") {
         onBack();
@@ -374,18 +367,11 @@ export function AuthScreen({
     );
   }
 
-  // Footer message
-  const footerMessage = currentAuthServer ? (
+  // Footer message (hide when showing confirmation dialog)
+  const footerMessage = confirmRevoke ? undefined : currentAuthServer ? (
     <Text>
       <Text color="yellow">ESC</Text>
       <Text dimColor>: Cancel authentication</Text>
-    </Text>
-  ) : confirmRevoke ? (
-    <Text>
-      <Text color="green">Y</Text>
-      <Text dimColor>: Confirm  </Text>
-      <Text color="red">N</Text>
-      <Text dimColor>: Cancel</Text>
     </Text>
   ) : message ? (
     <Text color="cyan">{message}</Text>
@@ -397,6 +383,26 @@ export function AuthScreen({
       menuSections={authMenuSections}
       footer={footerMessage}
     >
+      {/* Revoke confirmation dialog */}
+      {confirmRevoke && (
+        <Box paddingX={1} marginBottom={1}>
+          <ConfirmDialog
+            title="Revoke Token"
+            description={`Are you sure you want to revoke the OAuth token for '${confirmRevoke.name}'? You will need to re-authenticate to use this server.`}
+            confirmText="Yes, revoke"
+            cancelText="No, keep it"
+            titleColor="yellow"
+            onConfirm={() => {
+              revokeAuth(confirmRevoke.id);
+            }}
+            onCancel={() => {
+              setConfirmRevoke(null);
+              setMessage("");
+            }}
+          />
+        </Box>
+      )}
+
       <Box flexDirection="column" paddingX={1}>
         {allServers.length === 0 ? (
           <Box flexDirection="column" paddingY={1}>
@@ -448,7 +454,7 @@ export function AuthScreen({
                 <Box key={server.id} flexDirection="column">
                   <Box gap={1}>
                     <Text color={isSelected ? "cyan" : undefined}>
-                      {isSelected ? "▶" : " "}
+                      {isSelected ? "→" : " "}
                     </Text>
                     <Text color={statusColor}>{statusIcon}</Text>
                     <Text bold={isSelected} color={isSelected ? "cyan" : undefined}>

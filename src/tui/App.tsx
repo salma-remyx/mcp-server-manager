@@ -5,11 +5,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import Spinner from "ink-spinner";
-import { Header, MenuPanel } from "./components/index.js";
+import { Header, MenuPanel, ConfirmDialog } from "./components/index.js";
 import { getConfigService } from "../services/config.service.js";
 import { getTestingService } from "../services/testing.service.js";
 import { getProfileService } from "../services/profile.service.js";
 import { getDaemonService } from "../services/daemon.service.js";
+import { getAuthService } from "../services/auth.service.js";
 import type { LocalServer, RemoteServer } from "../types/index.js";
 import { VERSION } from "../shared/version.js";
 
@@ -46,6 +47,7 @@ interface AppState {
   currentIndex: number;
   selectedServers: Set<string>;
   toolCounts: Map<string, number>;
+  serversNeedingAuth: Set<string>; // Remote server IDs that need authentication
   localServers: LocalServer[];
   remoteServers: RemoteServer[];
   message: string | null;
@@ -61,6 +63,7 @@ interface AppState {
   testingTotal: number; // Total servers being tested
   testingCompleted: number; // Servers completed
   authServerId?: string; // Server to auth when going to auth screen
+  confirmDelete?: { server: LocalServer | RemoteServer; type: "local" | "remote" }; // Server pending deletion confirmation
 }
 
 interface AppProps {
@@ -127,6 +130,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
       currentIndex: 0,
       selectedServers,
       toolCounts: new Map<string, number>(),
+      serversNeedingAuth: new Set<string>(),
       localServers,
       remoteServers,
       message: null,
@@ -137,13 +141,46 @@ export function App({ onExit }: AppProps): React.ReactElement {
     };
   });
 
-  // Refresh servers from config
+  // Refresh servers from config and auto-select new enabled servers
   const refreshServers = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      localServers: configService.getLocalServers(),
-      remoteServers: configService.getRemoteServers(),
-    }));
+    const newLocalServers = configService.getLocalServers();
+    const newRemoteServers = configService.getRemoteServers();
+
+    setState((prev) => {
+      const newSelected = new Set(prev.selectedServers);
+      const savedState = configService.getSelectionState();
+
+      // Auto-select new enabled local servers
+      newLocalServers.forEach((server) => {
+        if (!server.disabled && !newSelected.has(server.id)) {
+          newSelected.add(server.id);
+          if (!savedState.local.includes(server.id)) {
+            savedState.local.push(server.id);
+          }
+        }
+      });
+
+      // Auto-select new enabled remote servers
+      newRemoteServers.forEach((server) => {
+        const remoteId = `remote:${server.id}`;
+        if (!server.disabled && !newSelected.has(remoteId)) {
+          newSelected.add(remoteId);
+          if (!savedState.remote.includes(remoteId)) {
+            savedState.remote.push(remoteId);
+          }
+        }
+      });
+
+      // Save updated selection state
+      configService.saveSelectionState(savedState);
+
+      return {
+        ...prev,
+        localServers: newLocalServers,
+        remoteServers: newRemoteServers,
+        selectedServers: newSelected,
+      };
+    });
   }, []);
 
   // Show temporary message
@@ -171,12 +208,13 @@ export function App({ onExit }: AppProps): React.ReactElement {
     };
   }, [messageTimeoutId]);
 
-  // Load tool counts on mount
+  // Load tool counts and auth status on mount
   useEffect(() => {
     let isMounted = true;
 
-    const loadToolCounts = async (): Promise<void> => {
+    const loadToolCountsAndAuthStatus = async (): Promise<void> => {
       const testingService = getTestingService();
+      const authService = getAuthService();
 
       // First try to load from cached tool filters
       const toolFilters = configService.getToolFilters();
@@ -196,8 +234,17 @@ export function App({ onExit }: AppProps): React.ReactElement {
         }
       }
 
+      // Check which remote servers need authentication
+      const needsAuth = new Set<string>();
+      for (const server of state.remoteServers) {
+        // Server needs auth if OAuth is enabled but no valid token
+        if (server.oauth?.enabled && !authService.hasValidToken(server.id)) {
+          needsAuth.add(server.id);
+        }
+      }
+
       if (!isMounted) return;
-      setState((prev) => ({ ...prev, toolCounts: newToolCounts }));
+      setState((prev) => ({ ...prev, toolCounts: newToolCounts, serversNeedingAuth: needsAuth }));
 
       // Auto-test unknown servers in background
       await testingService.autoTestUnknownServers();
@@ -222,11 +269,19 @@ export function App({ onExit }: AppProps): React.ReactElement {
         }
       }
 
+      // Re-check auth status after testing
+      const finalNeedsAuth = new Set<string>();
+      for (const server of state.remoteServers) {
+        if (server.oauth?.enabled && !authService.hasValidToken(server.id)) {
+          finalNeedsAuth.add(server.id);
+        }
+      }
+
       if (!isMounted) return;
-      setState((prev) => ({ ...prev, toolCounts: finalToolCounts }));
+      setState((prev) => ({ ...prev, toolCounts: finalToolCounts, serversNeedingAuth: finalNeedsAuth }));
     };
 
-    loadToolCounts();
+    loadToolCountsAndAuthStatus();
 
     return () => {
       isMounted = false;
@@ -248,9 +303,22 @@ export function App({ onExit }: AppProps): React.ReactElement {
     return { server: null, type: "local" };
   }, [state]);
 
+  // Refresh auth status for all remote servers
+  const refreshAuthStatus = useCallback(() => {
+    const authService = getAuthService();
+    const needsAuth = new Set<string>();
+    for (const server of state.remoteServers) {
+      if (server.oauth?.enabled && !authService.hasValidToken(server.id)) {
+        needsAuth.add(server.id);
+      }
+    }
+    setState((prev) => ({ ...prev, serversNeedingAuth: needsAuth }));
+  }, [state.remoteServers]);
+
   // Navigate back to main screen
   const goBack = useCallback(() => {
     refreshServers();
+    refreshAuthStatus();
     setState((prev) => ({
       ...prev,
       screen: "main",
@@ -258,7 +326,80 @@ export function App({ onExit }: AppProps): React.ReactElement {
       testingTotal: 0,
       testingCompleted: 0,
     }));
-  }, [refreshServers]);
+  }, [refreshServers, refreshAuthStatus]);
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = useCallback(() => {
+    const { confirmDelete } = state;
+    if (!confirmDelete) return;
+
+    const { server, type } = confirmDelete;
+    const result =
+      type === "local"
+        ? configService.removeLocalServer(server.id)
+        : configService.removeRemoteServer(server.id);
+
+    if (result.success) {
+      showMessage(`Server '${server.name}' deleted`, "success");
+      // Restart daemon if running (auto-sync)
+      const daemonService = getDaemonService();
+      const daemonStatus = daemonService.isDaemonRunning();
+      if (daemonStatus.running) {
+        daemonService.stopDaemon();
+        // Small delay to ensure process exits before restarting
+        setTimeout(() => {
+          daemonService.startDaemon();
+        }, 100);
+      }
+      // Adjust index and refresh
+      setState((prev) => {
+        const newLocal = configService.getLocalServers();
+        const newRemote = configService.getRemoteServers();
+        let newIndex = prev.currentIndex;
+        let newSection = prev.currentSection;
+
+        if (prev.currentSection === "local") {
+          if (newIndex >= newLocal.length) {
+            newIndex = Math.max(0, newLocal.length - 1);
+          }
+          if (newLocal.length === 0 && newRemote.length > 0) {
+            newSection = "remote";
+            newIndex = 0;
+          }
+        } else {
+          if (newIndex >= newRemote.length) {
+            newIndex = Math.max(0, newRemote.length - 1);
+          }
+          if (newRemote.length === 0 && newLocal.length > 0) {
+            newSection = "local";
+            newIndex = 0;
+          }
+        }
+
+        // Remove from selection
+        const newSelected = new Set(prev.selectedServers);
+        newSelected.delete(type === "remote" ? `remote:${server.id}` : server.id);
+
+        return {
+          ...prev,
+          localServers: newLocal,
+          remoteServers: newRemote,
+          currentIndex: newIndex,
+          currentSection: newSection,
+          selectedServers: newSelected,
+          confirmDelete: undefined,
+        };
+      });
+    } else {
+      showMessage(result.error || "Failed to delete", "error");
+      setState((prev) => ({ ...prev, confirmDelete: undefined }));
+    }
+  }, [state.confirmDelete, showMessage]);
+
+  // Handle delete cancellation
+  const handleDeleteCancel = useCallback(() => {
+    setState((prev) => ({ ...prev, confirmDelete: undefined }));
+  }, []);
 
   // Run test all servers with streaming results
   const runTestAllServers = useCallback(async () => {
@@ -347,9 +488,14 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return;
       }
 
-      const { localServers, remoteServers } = state;
+      const { localServers, remoteServers, confirmDelete } = state;
       const totalLocal = localServers.length;
       const totalRemote = remoteServers.length;
+
+      // Skip input handling when confirmation dialog is active (ConfirmDialog handles its own input)
+      if (confirmDelete) {
+        return;
+      }
 
       // Quit
       if (input === "q") {
@@ -446,68 +592,11 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return;
       }
 
-      // D - Delete server
+      // D - Delete server (show confirmation)
       if (input === "d" || input === "D") {
         const { server, type } = getCurrentServer();
         if (server) {
-          const result =
-            type === "local"
-              ? configService.removeLocalServer(server.id)
-              : configService.removeRemoteServer(server.id);
-
-          if (result.success) {
-            showMessage(`Server '${server.name}' deleted`, "success");
-            // Restart daemon if running (auto-sync)
-            const daemonService = getDaemonService();
-            const daemonStatus = daemonService.isDaemonRunning();
-            if (daemonStatus.running) {
-              daemonService.stopDaemon();
-              // Small delay to ensure process exits before restarting
-              setTimeout(() => {
-                daemonService.startDaemon();
-              }, 100);
-            }
-            // Adjust index and refresh
-            setState((prev) => {
-              const newLocal = configService.getLocalServers();
-              const newRemote = configService.getRemoteServers();
-              let newIndex = prev.currentIndex;
-              let newSection = prev.currentSection;
-
-              if (prev.currentSection === "local") {
-                if (newIndex >= newLocal.length) {
-                  newIndex = Math.max(0, newLocal.length - 1);
-                }
-                if (newLocal.length === 0 && newRemote.length > 0) {
-                  newSection = "remote";
-                  newIndex = 0;
-                }
-              } else {
-                if (newIndex >= newRemote.length) {
-                  newIndex = Math.max(0, newRemote.length - 1);
-                }
-                if (newRemote.length === 0 && newLocal.length > 0) {
-                  newSection = "local";
-                  newIndex = 0;
-                }
-              }
-
-              // Remove from selection
-              const newSelected = new Set(prev.selectedServers);
-              newSelected.delete(type === "remote" ? `remote:${server.id}` : server.id);
-
-              return {
-                ...prev,
-                localServers: newLocal,
-                remoteServers: newRemote,
-                currentIndex: newIndex,
-                currentSection: newSection,
-                selectedServers: newSelected,
-              };
-            });
-          } else {
-            showMessage(result.error || "Failed to delete", "error");
-          }
+          setState((prev) => ({ ...prev, confirmDelete: { server, type } }));
         }
         return;
       }
@@ -651,6 +740,12 @@ export function App({ onExit }: AppProps): React.ReactElement {
         onAuthComplete={(serverId, success) => {
           if (success) {
             showMessage(`${serverId} authenticated`, "success");
+            // Remove from serversNeedingAuth
+            setState((prev) => {
+              const newNeedsAuth = new Set(prev.serversNeedingAuth);
+              newNeedsAuth.delete(serverId);
+              return { ...prev, serversNeedingAuth: newNeedsAuth };
+            });
           }
         }}
       />
@@ -763,19 +858,34 @@ export function App({ onExit }: AppProps): React.ReactElement {
         </Text>
       </Box>
 
-      {/* Message */}
-      {message && (
-        <Box paddingX={1} marginTop={1}>
-          <Text
-            color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}
-          >
-            {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
-          </Text>
+      {/* Delete confirmation dialog - shown exclusively */}
+      {state.confirmDelete ? (
+        <Box paddingX={1} marginTop={2}>
+          <ConfirmDialog
+            title={`Delete Server`}
+            description={`Are you sure you want to delete '${state.confirmDelete.server.name}'? This action cannot be undone.`}
+            confirmText="Yes, delete"
+            cancelText="No, keep it"
+            titleColor="red"
+            onConfirm={handleDeleteConfirm}
+            onCancel={handleDeleteCancel}
+          />
         </Box>
-      )}
+      ) : (
+        <>
+          {/* Message */}
+          {message && (
+            <Box paddingX={1} marginTop={1}>
+              <Text
+                color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}
+              >
+                {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
+              </Text>
+            </Box>
+          )}
 
-      {/* Main content: Servers + Menu side by side */}
-      <Box marginTop={1} gap={2}>
+          {/* Main content: Servers + Menu side by side */}
+          <Box marginTop={1} gap={2}>
         {/* Left panel: Server lists */}
         <Box flexDirection="column" flexGrow={1}>
           {hasServers ? (
@@ -845,6 +955,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                     const disabledCount = filter?.disabledTools?.length ?? 0;
                     const enabledTools = totalTools - disabledCount;
                     const transportType = server.type.toUpperCase();
+                    const needsAuth = state.serversNeedingAuth.has(server.id);
 
                     // Disabled servers always show empty brackets
                     const showCheck = !isDisabled && isSelected;
@@ -863,6 +974,9 @@ export function App({ onExit }: AppProps): React.ReactElement {
                         <Text color={isDisabled ? "yellow" : disabledCount > 0 ? "yellow" : "gray"}>
                           {isDisabled ? "disabled" : `${enabledTools}/${totalTools} tools`}
                         </Text>
+                        {needsAuth && !isDisabled && (
+                          <Text color="red">- needs auth</Text>
+                        )}
                       </Box>
                     );
                   })}
@@ -883,9 +997,11 @@ export function App({ onExit }: AppProps): React.ReactElement {
           )}
         </Box>
 
-        {/* Right panel: Menu */}
-        <MenuPanel />
-      </Box>
+          {/* Right panel: Menu */}
+          <MenuPanel />
+        </Box>
+      </>
+      )}
     </Box>
   );
 }

@@ -147,7 +147,7 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     if (input.toLowerCase() === "a" && tools.length > 0 && serverId) {
       configService.enableAllTools(serverId);
       restartDaemonIfRunning();
-      reloadTools();
+      reloadTools(true);
       showMessage("All tools enabled", "success");
       return;
     }
@@ -156,23 +156,11 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     if (input.toLowerCase() === "n" && tools.length > 0 && serverId) {
       configService.disableAllTools(serverId);
       restartDaemonIfRunning();
-      reloadTools();
+      reloadTools(true);
       showMessage("All tools disabled", "success");
       return;
     }
 
-    // Reset filters - R
-    if (input.toLowerCase() === "r" && serverId) {
-      const result = configService.resetToolFilters(serverId);
-      if (result.success) {
-        restartDaemonIfRunning();
-        showMessage("Filters reset", "success");
-        reloadTools();
-      } else {
-        showMessage(result.error || "Failed to reset", "error");
-      }
-      return;
-    }
   });
 
   const { serverName, tools, currentToolIndex, filter, message, messageType } = state;
@@ -200,8 +188,8 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
       { key: "Space", label: "Toggle" },
       { key: "A", label: "Enable all" },
       { key: "N", label: "Disable all" },
-      { key: "R", label: "Reset" },
     ],
+    showData: false,
     showConfig: false,
     showSystem: false,
   });

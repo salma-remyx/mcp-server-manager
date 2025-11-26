@@ -7,12 +7,14 @@ import { Box, Text, useInput, useApp } from "ink";
 import TextInput from "ink-text-input";
 import SelectInput from "ink-select-input";
 import Spinner from "ink-spinner";
+import open from "open";
 import { Header } from "../components/index.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getTestingService } from "../../services/testing.service.js";
+import { getAuthService } from "../../services/auth.service.js";
 import type { LocalServer, RemoteServer, TransportType } from "../../types/index.js";
 
-type Step = "name" | "type" | "command" | "args" | "url" | "token" | "testing" | "done";
+type Step = "name" | "type" | "command" | "args" | "url" | "token" | "testing" | "authenticating" | "done";
 type ServerType = "stdio" | "http" | "sse";
 
 interface AddServerScreenProps {
@@ -57,10 +59,9 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
   });
 
   const [isTesting, setIsTesting] = useState(false);
-  const [shouldTest, setShouldTest] = useState<boolean | null>(null);
 
   // Handle escape to go back
-  useInput((input, key) => {
+  useInput((_input, key) => {
     if (key.escape) {
       if (state.step === "name") {
         onBack();
@@ -80,54 +81,11 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       return;
     }
 
-    // Handle test confirmation
-    if (state.step === "done" && shouldTest === null && !isTesting) {
-      if (input === "y" || input === "Y") {
-        setShouldTest(true);
-        runTest();
-      } else if (input === "n" || input === "N" || key.return) {
-        onBack();
-      }
-    }
-
     // Any key after test result to go back
     if (state.step === "done" && state.testResult !== null && !isTesting) {
       onBack();
     }
   });
-
-  // Run server test
-  const runTest = useCallback(async () => {
-    setIsTesting(true);
-    try {
-      let result: { success: boolean; toolCount?: number; error?: string };
-      if (state.serverType === "stdio") {
-        const server: LocalServer = {
-          id: state.serverId,
-          name: state.name,
-          command: state.command,
-          args: state.args ? state.args.split(/\s+/).filter(Boolean) : [],
-        };
-        result = await testingService.testLocalServer(server);
-      } else {
-        const server: RemoteServer = {
-          id: state.serverId,
-          name: state.name,
-          type: state.serverType as TransportType,
-          url: state.url,
-          ...(state.token ? { bearerToken: state.token } : {}),
-        };
-        result = await testingService.testRemoteServer(server);
-      }
-      setState((prev) => ({ ...prev, testResult: result }));
-    } catch (e) {
-      setState((prev) => ({
-        ...prev,
-        testResult: { success: false, error: e instanceof Error ? e.message : "Unknown error" },
-      }));
-    }
-    setIsTesting(false);
-  }, [state, testingService]);
 
   // Handle name submission
   const handleNameSubmit = useCallback(
@@ -136,10 +94,25 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         setState((prev) => ({ ...prev, error: "Name is required" }));
         return;
       }
-      const serverId = configService.generateServerId(value.trim());
+      
+      const name = value.trim();
+      const nameLower = name.toLowerCase();
+      
+      // Check for duplicate server name (case-insensitive)
+      const localServers = configService.getLocalServers();
+      const remoteServers = configService.getRemoteServers();
+      const existsLocal = localServers.some((s) => s.name.toLowerCase() === nameLower);
+      const existsRemote = remoteServers.some((s) => s.name.toLowerCase() === nameLower);
+      
+      if (existsLocal || existsRemote) {
+        setState((prev) => ({ ...prev, error: `Server '${name}' already exists` }));
+        return;
+      }
+      
+      const serverId = configService.generateServerId(name);
       setState((prev) => ({
         ...prev,
-        name: value.trim(),
+        name,
         serverId,
         step: "type",
         error: null,
@@ -175,7 +148,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
 
   // Handle args submission
   const handleArgsSubmit = useCallback(
-    (value: string) => {
+    async (value: string) => {
       const args = value.trim();
       setState((prev) => ({ ...prev, args }));
 
@@ -193,9 +166,22 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         return;
       }
 
-      setState((prev) => ({ ...prev, step: "done", error: null }));
+      // Auto-test the server
+      setState((prev) => ({ ...prev, step: "testing", error: null }));
+      setIsTesting(true);
+      try {
+        const testResult = await testingService.testLocalServer(server);
+        setState((prev) => ({ ...prev, step: "done", testResult }));
+      } catch (e) {
+        setState((prev) => ({
+          ...prev,
+          step: "done",
+          testResult: { success: false, error: e instanceof Error ? e.message : "Unknown error" },
+        }));
+      }
+      setIsTesting(false);
     },
-    [state.serverId, state.name, state.command, configService]
+    [state.serverId, state.name, state.command, configService, testingService]
   );
 
   // Handle URL submission
@@ -214,7 +200,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
 
   // Handle token submission
   const handleTokenSubmit = useCallback(
-    (value: string) => {
+    async (value: string) => {
       const token = value.trim();
       setState((prev) => ({ ...prev, token }));
 
@@ -233,9 +219,67 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         return;
       }
 
-      setState((prev) => ({ ...prev, step: "done", error: null }));
+      // Auto-test the server
+      setState((prev) => ({ ...prev, step: "testing", error: null }));
+      setIsTesting(true);
+      try {
+        const testResult = await testingService.testRemoteServer(server, true);
+        
+        // If auth is required, start OAuth flow automatically
+        if (testResult.requiresAuth) {
+          setState((prev) => ({ ...prev, step: "authenticating" }));
+          
+          // Enable OAuth on the server
+          configService.updateRemoteServer(server.id, { oauth: { enabled: true } });
+          const updatedServer = { ...server, oauth: { enabled: true } };
+          
+          // Start OAuth flow
+          const authService = getAuthService();
+          const flow = await authService.startOAuthFlow(updatedServer, testResult.authRequirements);
+          
+          if (flow) {
+            // Open browser for authentication
+            try {
+              await open(flow.authUrl);
+            } catch {
+              // Ignore browser open errors
+            }
+            
+            // Wait for auth to complete
+            const authResult = await authService.waitForAuth(flow.state);
+            authService.stopCallbackServer();
+            
+            if (authResult.success) {
+              // Re-test with new token
+              const retestResult = await testingService.testRemoteServer(updatedServer);
+              setState((prev) => ({ ...prev, step: "done", testResult: retestResult }));
+            } else {
+              setState((prev) => ({
+                ...prev,
+                step: "done",
+                testResult: { success: false, error: authResult.error || "Authentication failed" },
+              }));
+            }
+          } else {
+            setState((prev) => ({
+              ...prev,
+              step: "done",
+              testResult: { success: false, error: "Could not start OAuth flow" },
+            }));
+          }
+        } else {
+          setState((prev) => ({ ...prev, step: "done", testResult }));
+        }
+      } catch (e) {
+        setState((prev) => ({
+          ...prev,
+          step: "done",
+          testResult: { success: false, error: e instanceof Error ? e.message : "Unknown error" },
+        }));
+      }
+      setIsTesting(false);
     },
-    [state.serverId, state.name, state.serverType, state.url, configService]
+    [state.serverId, state.name, state.serverType, state.url, configService, testingService]
   );
 
   return (
@@ -329,6 +373,45 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
           </Box>
         )}
 
+        {/* Testing step */}
+        {state.step === "testing" && (
+          <Box flexDirection="column">
+            <Box>
+              <Text color="green">✓</Text>
+              <Text> Server '{state.name}' added!</Text>
+            </Box>
+            <Box marginTop={1}>
+              <Text color="cyan">
+                <Spinner type="dots" />
+              </Text>
+              <Text> Testing {state.name}...</Text>
+            </Box>
+          </Box>
+        )}
+
+        {/* Authenticating step */}
+        {state.step === "authenticating" && (
+          <Box flexDirection="column">
+            <Box>
+              <Text color="green">✓</Text>
+              <Text> Server '{state.name}' added!</Text>
+            </Box>
+            <Box marginTop={1}>
+              <Text color="yellow">○</Text>
+              <Text> Server requires authentication</Text>
+            </Box>
+            <Box marginTop={1}>
+              <Text color="cyan">
+                <Spinner type="dots" />
+              </Text>
+              <Text> Opening browser for authentication...</Text>
+            </Box>
+            <Box marginTop={1}>
+              <Text dimColor>Complete the authentication in your browser</Text>
+            </Box>
+          </Box>
+        )}
+
         {/* Done step */}
         {state.step === "done" && (
           <Box flexDirection="column">
@@ -336,21 +419,6 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
               <Text color="green">✓</Text>
               <Text> Server '{state.name}' added!</Text>
             </Box>
-
-            {shouldTest === null && !state.testResult && (
-              <Box marginTop={1}>
-                <Text>Test this server now? [y/N] </Text>
-              </Box>
-            )}
-
-            {isTesting && (
-              <Box marginTop={1}>
-                <Text color="cyan">
-                  <Spinner type="dots" />
-                </Text>
-                <Text> Testing {state.name}...</Text>
-              </Box>
-            )}
 
             {state.testResult && (
               <Box flexDirection="column" marginTop={1}>
@@ -370,12 +438,6 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
                 </Box>
               </Box>
             )}
-
-            {shouldTest === false && !state.testResult && (
-              <Box marginTop={1}>
-                <Text dimColor>Press any key to continue...</Text>
-              </Box>
-            )}
           </Box>
         )}
 
@@ -387,7 +449,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         )}
 
         {/* Help */}
-        {state.step !== "done" && (
+        {state.step !== "done" && state.step !== "testing" && state.step !== "authenticating" && (
           <Box marginTop={2}>
             <Text dimColor>ESC to go back</Text>
           </Box>
