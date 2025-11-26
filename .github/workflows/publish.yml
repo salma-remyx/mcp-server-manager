@@ -1,5 +1,15 @@
 name: Publish to npm
 
+# Note: This workflow requires either:
+# 1. NPM_TOKEN secret configured in GitHub repository settings
+#    (Settings > Secrets and variables > Actions > New repository secret)
+#    Get your token from: https://www.npmjs.com/settings/YOUR_USERNAME/tokens
+# 2. OR OIDC configured for npm (requires package to exist first)
+#
+# For first-time publishing, you may need to publish manually once:
+# npm login
+# npm publish --access public
+
 on:
   push:
     tags:
@@ -31,8 +41,26 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Publish to npm (OIDC - no token needed)
-        run: npm publish --provenance --access public
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NODE_AUTH_TOKEN" ]; then
+            echo "Using NPM_TOKEN for authentication"
+            npm publish --access public || {
+              echo "Publish failed. If this is the first time publishing, you may need to:"
+              echo "1. Create the package manually on npmjs.com, OR"
+              echo "2. Ensure NPM_TOKEN has publish permissions"
+              exit 1
+            }
+          else
+            echo "Attempting OIDC authentication with provenance"
+            npm publish --access public --provenance || {
+              echo "OIDC publish failed. Please configure NPM_TOKEN secret in repository settings."
+              echo "Get your token from: https://www.npmjs.com/settings/YOUR_USERNAME/tokens"
+              exit 1
+            }
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
