@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js->=18-green)](https://nodejs.org)
 
-**[🌐 Website & Documentation](https://mateustorquato.github.io/mcp-server-manager/guide/getting-started.html)**
+**[🌐 Website & Documentation](https://mateustorquato.github.io/mcp-server-manager)**
 
 </div>
 

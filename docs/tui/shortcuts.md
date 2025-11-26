@@ -44,7 +44,6 @@ Available on all screens:
 | `I` | Import/Export |
 | `G` | Settings      |
 | `H` | Doctor        |
-| `K` | Tokens        |
 
 ---
 
@@ -146,7 +145,7 @@ When entering text:
 ║  C  Clients      │                                ║
 ║  F  Profiles     │  System                        ║
 ║  I  Import/Exp   │  H  Doctor                     ║
-║  G  Settings     │  K  Tokens                     ║
+║  G  Settings     │                                ║
 ║                  │  Q  Quit                       ║
 ╚════════════════════════════════════════════════════╝
 ```

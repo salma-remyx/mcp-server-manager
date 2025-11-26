@@ -19,7 +19,7 @@ const defaultGroups: ShortcutGroup[] = [
   { label: "Server", shortcuts: ["A Add", "E Edit", "D Delete", "Space Enable/Disable", "X Test", "T Tools"] },
   {
     label: "Global",
-    shortcuts: ["C Clients", "F Profiles", "G Settings", "I Import", "H Doctor", "K Tokens", "P Port", "M Daemon"],
+    shortcuts: ["C Clients", "F Profiles", "G Settings", "I Import", "H Doctor", "P Port", "M Daemon"],
   },
 ];
 

@@ -14,7 +14,7 @@ export interface CreateMenuSectionsOptions {
   showData?: boolean;
   /** Show "Config" section (Clients, Settings) */
   showConfig?: boolean;
-  /** Show "System" section (Doctor, Tokens) */
+  /** Show "System" section (Doctor) */
   showSystem?: boolean;
   /** Show "Daemon" in system section */
   showDaemon?: boolean;
@@ -79,7 +79,6 @@ export function createMenuSections(options: CreateMenuSectionsOptions = {}): Men
     if (showDaemon) {
       systemItems.push({ key: "M", label: "Daemon" });
     }
-    systemItems.push({ key: "K", label: "Tokens" });
 
     sections.push({
       title: "System",

@@ -53,7 +53,6 @@ const defaultSections: MenuSection[] = [
     title: "System",
     items: [
       { key: "H", label: "Doctor" },
-      { key: "K", label: "Tokens" },
       { key: "O", label: "OAuth" },
     ],
   },

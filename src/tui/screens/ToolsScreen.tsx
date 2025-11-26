@@ -9,6 +9,8 @@ import { createMenuSections } from "../utils/menu.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getDaemonService } from "../../services/daemon.service.js";
 import type { ServerToolFilter } from "../../types/index.js";
+import { formatTokens } from "../../shared/formatters.js";
+import { getEnabledTokenTotal } from "../utils/tokenTotals.js";
 
 interface ToolsScreenProps {
   onBack: () => void;
@@ -161,6 +163,15 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
 
   const { serverName, tools, currentToolIndex, filter, message, messageType } = state;
   const disabledTools = new Set(filter?.disabledTools || []);
+  const allTools = filter?.allTools || [];
+  const enabledCount = allTools.length - disabledTools.size;
+  const enabledTokens = getEnabledTokenTotal(filter);
+  const subtitle =
+    allTools.length > 0
+      ? `Enabled: ${enabledCount}/${allTools.length} | Tokens: ${
+          enabledTokens !== null ? `${formatTokens(enabledTokens)} tokens` : "—"
+        }`
+      : undefined;
 
   // No server selected
   if (!state.serverId) {
@@ -191,16 +202,26 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
   });
 
   const footer = message ? (
-    <Text
-      color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}
-    >
-      {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
+    <Box flexDirection="column">
+      <Text color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}>
+        {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
+      </Text>
+      <Text dimColor>
+        Enabled: {enabledCount}/{allTools.length} · Tokens:{" "}
+        {enabledTokens !== null ? `${formatTokens(enabledTokens)} tokens` : "—"}
+      </Text>
+    </Box>
+  ) : (
+    <Text dimColor>
+      Enabled: {enabledCount}/{allTools.length} · Tokens:{" "}
+      {enabledTokens !== null ? `${formatTokens(enabledTokens)} tokens` : "—"}
     </Text>
-  ) : undefined;
+  );
 
   return (
     <ScreenLayout
       title={`Tools: ${serverName}`}
+      subtitle={subtitle}
       menuSections={toolsMenuSections}
       highlightedView="T"
       footer={footer}
@@ -218,6 +239,8 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
           renderItem={(tool, idx) => {
             const isCurrent = idx === currentToolIndex;
             const isEnabled = !disabledTools.has(tool);
+            const tokens = filter?.toolsData?.[tool]?.tokens;
+            const tokenLabel = typeof tokens === "number" ? `${formatTokens(tokens)} tokens` : null;
 
             return (
               <Box key={tool} gap={1} paddingX={1}>
@@ -229,6 +252,12 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
                 >
                   {tool}
                 </Text>
+                {tokenLabel && (
+                  <>
+                    <Text dimColor>·</Text>
+                    <Text color="yellow">{tokenLabel}</Text>
+                  </>
+                )}
               </Box>
             );
           }}

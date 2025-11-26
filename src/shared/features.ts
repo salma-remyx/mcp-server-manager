@@ -281,7 +281,7 @@ export const FEATURES: Feature[] = [
     name: "Token usage report",
     category: "utilities",
     cliCommands: ["tokens"],
-    tuiImplementation: "TokensScreen.tsx",
+    tuiImplementation: "ToolsScreen.tsx",
     requiredInTui: true,
   },
 

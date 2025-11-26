@@ -199,25 +199,22 @@ When you change the port setting:
 Configure which tools are enabled per server.
 
 ```
-Tool Filters for filesystem:
+Tools for deepwiki:
 
-  [x] read_file           Read file contents         380 tokens
-  [x] write_file          Write content to file      420 tokens
-  [x] list_directory      List directory contents    350 tokens
-  [ ] delete_file         Delete a file              300 tokens
-  [ ] move_file           Move/rename a file         320 tokens
-  [x] create_directory    Create new directory       280 tokens
+  [x] ask_question        Ask anything about the wiki    108 tokens
+  [x] read_wiki_structure Get available pages             90 tokens
+  [x] read_wiki_contents  Read a specific page            86 tokens
 
-  Enabled: 4/6 tools  |  Total: 1,430 tokens
+  Enabled: 3/3 tools  |  Total: 284 tokens
 
   ↑↓: Navigate  |  SPACE: Toggle  |  A: All  |  N: None  |  ESC: Save
 ```
 
 ### Features
 
-- View all available tools
-- See tool descriptions
-- See per-tool token counts
+- View all available tools per server
+- See tool descriptions and per-tool token counts
+- Get the server's total token usage directly in the footer (no separate Tokens screen)
 - Enable/disable individual tools
 - Bulk enable/disable
 

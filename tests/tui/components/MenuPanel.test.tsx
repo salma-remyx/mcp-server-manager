@@ -46,7 +46,7 @@ describe("MenuPanel Component", () => {
 
       expect(lastFrame()).toContain("System");
       expect(lastFrame()).toContain("Doctor");
-      expect(lastFrame()).toContain("Tokens");
+      expect(lastFrame()).toContain("OAuth");
     });
   });
 

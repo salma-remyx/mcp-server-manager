@@ -195,15 +195,6 @@ describe("App Component", () => {
       expect(lastFrame()).toContain("System Health Check");
     });
 
-    it("should navigate to tokens screen on K key", async () => {
-      const { lastFrame, stdin } = render(<App />);
-
-      stdin.write("k");
-      await waitForStateUpdate();
-
-      expect(lastFrame()).toContain("Token Usage");
-    });
-
     it("should return to main screen from sub-screen", async () => {
       const { lastFrame, stdin } = render(<App />);
 

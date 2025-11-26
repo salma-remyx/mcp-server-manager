@@ -12,8 +12,10 @@ import { getProfileService } from "../services/profile.service.js";
 import { getDaemonService } from "../services/daemon.service.js";
 import { getAuthService } from "../services/auth.service.js";
 import { createLogger } from "../shared/logger.js";
+import { formatTokens } from "../shared/formatters.js";
 import type { LocalServer, RemoteServer, ServerToolFilter } from "../types/index.js";
 import { VERSION } from "../shared/version.js";
+import { getEnabledTokenTotal } from "./utils/tokenTotals.js";
 
 const log = createLogger("App");
 
@@ -26,7 +28,6 @@ import { SettingsScreen } from "./screens/SettingsScreen.js";
 import { DaemonScreen } from "./screens/DaemonScreen.js";
 import { ImportExportScreen } from "./screens/ImportExportScreen.js";
 import { DoctorScreen } from "./screens/DoctorScreen.js";
-import { TokensScreen } from "./screens/TokensScreen.js";
 import { AuthScreen } from "./screens/AuthScreen.js";
 import { useTerminalSize } from "./hooks/useTerminalSize.js";
 
@@ -40,7 +41,6 @@ type Screen =
   | "daemon"
   | "import-export"
   | "doctor"
-  | "tokens"
   | "auth"
   | "testing";
 
@@ -699,12 +699,6 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return;
       }
 
-      // K - Tokens
-      if (input === "k" || input === "K") {
-        setState((prev) => ({ ...prev, screen: "tokens" }));
-        return;
-      }
-
       // O - OAuth Authentication
       if (input === "o" || input === "O") {
         // Check if current server is remote and needs auth
@@ -764,10 +758,6 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
   if (screen === "doctor") {
     return <DoctorScreen onBack={goBack} />;
-  }
-
-  if (screen === "tokens") {
-    return <TokensScreen onBack={goBack} />;
   }
 
   if (screen === "auth") {
@@ -868,11 +858,35 @@ export function App({ onExit }: AppProps): React.ReactElement {
   const activeProfile = profileService.getActiveProfileId();
   const port = configService.getPort();
   const toolFilters = configService.getToolFilters();
+  const totalTokens = (() => {
+    let total = 0;
+    let hasData = false;
+
+    const accumulate = (filterId: string, disabled?: boolean) => {
+      if (disabled) return;
+      const tokens = getEnabledTokenTotal(toolFilters[filterId]);
+      if (tokens !== null) {
+        total += tokens;
+        hasData = true;
+      }
+    };
+
+    localServers.forEach((server) => accumulate(server.id, server.disabled));
+    remoteServers.forEach((server) => accumulate(`remote:${server.id}`, server.disabled));
+
+    return hasData ? total : null;
+  })();
 
   return (
     <Box flexDirection="column" paddingX={isCompactLayout ? 0 : 1}>
       <Box marginX={contentMargin}>
-        <Header title="MCP Server Manager" version={VERSION} profile={activeProfile} port={port} />
+        <Header
+          title="MCP Server Manager"
+          version={VERSION}
+          profile={activeProfile}
+          port={port}
+          totalTokens={totalTokens}
+        />
       </Box>
 
       {/* Delete confirmation dialog - shown exclusively */}
@@ -929,7 +943,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
                       const totalTools = filter?.allTools?.length ?? 0;
                       const disabledCount = filter?.disabledTools?.length ?? 0;
                       const enabledTools = totalTools - disabledCount;
-                      const estimatedTokens = enabledTools * 1000; // 1k tokens per enabled tool
+                      const tokenTotal = getEnabledTokenTotal(filter);
+                      const tokenLabel = tokenTotal !== null ? `${formatTokens(tokenTotal)} tokens` : "— tokens";
                       const needsAuth = type === "remote" && state.serversNeedingAuth.has(server.id);
 
                       // Disabled servers always show empty brackets
@@ -953,9 +968,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                                 {enabledTools}/{totalTools} tools
                               </Text>
                               <Text dimColor>·</Text>
-                              <Text color="yellow">
-                                {(estimatedTokens / 1000).toFixed(1)}k tokens
-                              </Text>
+                              <Text color="yellow">{tokenLabel}</Text>
                             </>
                           )}
                           {needsAuth && !isDisabled && (
