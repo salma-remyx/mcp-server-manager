@@ -1,0 +1,217 @@
+{
+  "servers": [
+    {
+      "id": "sardineinternalsandbox",
+      "name": "sardineInternalSandbox",
+      "command": "npx",
+      "args": [
+        "@sardine-ai/internal-mcp",
+        "--project-id",
+        "sandbox-sardine-ai",
+        "--location",
+        "US",
+        "--bigquery-project-id",
+        "sandbox-sardine-users-bq"
+      ],
+      "disabled": true
+    },
+    {
+      "id": "sardineinternalproduction",
+      "name": "sardineInternalProduction",
+      "command": "npx",
+      "args": [
+        "@sardine-ai/internal-mcp",
+        "--project-id",
+        "prod-sardine-ai",
+        "--location",
+        "US",
+        "--bigquery-project-id",
+        "prod-sardine-users-bq"
+      ],
+      "disabled": true
+    },
+    {
+      "id": "browsermcp",
+      "name": "browsermcp",
+      "command": "npx",
+      "args": ["@browsermcp/mcp@latest"],
+      "disabled": true
+    },
+    {
+      "id": "gemini-mcp-tool",
+      "name": "gemini-mcp-tool",
+      "command": "npx",
+      "args": ["-y", "gemini-mcp-tool"],
+      "disabled": true
+    },
+    {
+      "id": "brave-search",
+      "name": "brave-search",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "disabled": true
+    },
+    {
+      "id": "filesystem",
+      "name": "filesystem",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/example/Sardine/",
+        "/Users/example/Projects/",
+        "/Users/example/Documents/",
+        "/Users/example/Desktop/",
+        "/Users/example/Downloads/"
+      ],
+      "disabled": true
+    },
+    {
+      "id": "fetch",
+      "name": "fetch",
+      "command": "uvx",
+      "args": ["mcp-server-fetch", "--ignore-robots-txt"],
+      "disabled": true
+    },
+    {
+      "id": "sequential-thinking",
+      "name": "sequential-thinking",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "disabled": true
+    },
+    {
+      "id": "playwright",
+      "name": "playwright",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"],
+      "disabled": true
+    },
+    {
+      "id": "chrome-devtools",
+      "name": "chrome-devtools",
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest"],
+      "disabled": true
+    },
+    {
+      "id": "metamcp",
+      "name": "metamcp",
+      "command": "uvx",
+      "args": [
+        "mcp-proxy",
+        "--transport",
+        "streamablehttp",
+        "http://localhost:12008/metamcp/default/mcp"
+      ],
+      "env": {
+        "API_ACCESS_TOKEN": "TOKEN_SHOULD_BE_REDACTED"
+      }
+    }
+  ],
+  "remoteServers": [
+    {
+      "id": "deepwiki",
+      "name": "deepwiki",
+      "type": "http",
+      "url": "https://mcp.deepwiki.com/mcp",
+      "disabled": true
+    },
+    {
+      "id": "datadog",
+      "name": "datadog",
+      "type": "http",
+      "url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp",
+      "oauth": {
+        "enabled": true
+      },
+      "disabled": true
+    },
+    {
+      "id": "asana",
+      "name": "asana",
+      "type": "sse",
+      "url": "https://mcp.asana.com/sse",
+      "oauth": {
+        "enabled": true
+      },
+      "disabled": false
+    },
+    {
+      "id": "stripe",
+      "name": "stripe",
+      "type": "http",
+      "url": "https://mcp.stripe.com",
+      "oauth": {
+        "enabled": true
+      },
+      "disabled": true
+    },
+    {
+      "id": "postman-full",
+      "name": "postman-full",
+      "type": "http",
+      "url": "https://mcp.postman.com/mcp",
+      "bearerToken": "TOKEN_SHOULD_BE_REDACTED",
+      "disabled": true
+    },
+    {
+      "id": "postman-minimal",
+      "name": "postman-minimal",
+      "type": "http",
+      "url": "https://mcp.postman.com/minimal",
+      "bearerToken": "TOKEN_SHOULD_BE_REDACTED",
+      "disabled": true
+    },
+    {
+      "id": "ref",
+      "name": "ref",
+      "type": "http",
+      "url": "https://api.ref.tools/mcp?apiKey=ref-2094be6700c76d394242",
+      "disabled": true
+    },
+    {
+      "id": "notion",
+      "name": "notion",
+      "type": "http",
+      "url": "https://mcp.notion.com/mcp",
+      "oauth": {
+        "enabled": true
+      },
+      "disabled": true
+    },
+    {
+      "id": "context7",
+      "name": "context7",
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "disabled": true
+    },
+    {
+      "id": "figma-desktop",
+      "name": "figma-desktop",
+      "type": "http",
+      "url": "http://127.0.0.1:3845/mcp",
+      "disabled": true
+    },
+    {
+      "id": "sentry",
+      "name": "sentry",
+      "type": "http",
+      "url": "https://mcp.sentry.dev/mcp",
+      "oauth": {
+        "enabled": true
+      },
+      "disabled": true
+    },
+    {
+      "id": "devin",
+      "name": "devin",
+      "type": "sse",
+      "url": "https://mcp.devin.ai/sse",
+      "bearerToken": "TOKEN_SHOULD_BE_REDACTED",
+      "disabled": false
+    }
+  ],
+  "port": 8850
+}

@@ -29,11 +29,13 @@ import { DaemonScreen } from "./screens/DaemonScreen.js";
 import { ImportExportScreen } from "./screens/ImportExportScreen.js";
 import { DoctorScreen } from "./screens/DoctorScreen.js";
 import { AuthScreen } from "./screens/AuthScreen.js";
+import { EditServerScreen } from "./screens/EditServerScreen.js";
 import { useTerminalSize } from "./hooks/useTerminalSize.js";
 
 type Screen =
   | "main"
   | "add-server"
+  | "edit-server"
   | "tools"
   | "clients"
   | "profiles"
@@ -72,6 +74,7 @@ interface AppState {
   testingCompleted: number; // Servers completed
   authServerId?: string; // Server to auth when going to auth screen
   confirmDelete?: { server: LocalServer | RemoteServer; type: "local" | "remote" }; // Server pending deletion confirmation
+  editTarget?: { server: LocalServer | RemoteServer; type: "local" | "remote" };
 }
 
 interface AppProps {
@@ -159,6 +162,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
       testResults: null,
       testingTotal: 0,
       testingCompleted: 0,
+      editTarget: undefined,
     };
   });
 
@@ -374,6 +378,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
       testResults: null,
       testingTotal: 0,
       testingCompleted: 0,
+      editTarget: undefined,
     }));
   }, [refreshServers, refreshAuthStatus]);
 
@@ -647,13 +652,12 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
       // E - Edit server
       if (input === "e" || input === "E") {
-        const { type } = getCurrentServer();
-        if (type !== "remote") {
-          showMessage("Edit only available for remote servers", "info");
-          return;
+        const { server, type } = getCurrentServer();
+        if (server) {
+          setState((prev) => ({ ...prev, screen: "edit-server", editTarget: { server, type } }));
+        } else {
+          showMessage("No server selected to edit", "info");
         }
-        // For edit, show message for now
-        showMessage("Use CLI: mcpsm edit <server>", "info");
         return;
       }
 
@@ -726,6 +730,24 @@ export function App({ onExit }: AppProps): React.ReactElement {
   const { screen } = state;
 
   // Sub-screens
+  if (screen === "edit-server" && state.editTarget) {
+    const { server, type } = state.editTarget;
+    return (
+      <EditServerScreen
+        server={server}
+        type={type}
+        onBack={goBack}
+        onSaved={(updatedServer) => {
+          refreshServers();
+          refreshAuthStatus();
+          showMessage(`Server '${updatedServer.name}' updated`, "success");
+          setState((prev) => ({ ...prev, screen: "main", editTarget: undefined }));
+          refreshDaemonIfRunning("editing server");
+        }}
+      />
+    );
+  }
+
   if (screen === "add-server") {
     return <AddServerScreen onBack={goBack} />;
   }

@@ -10,6 +10,7 @@ import { getConfigService } from "../../services/config.service.js";
 import { getTestingService } from "../../services/testing.service.js";
 import { getAuthService } from "../../services/auth.service.js";
 import type { LocalServer, RemoteServer, TransportType, OAuthConfig } from "../../types/index.js";
+import { redactServerForOutput } from "../../shared/redaction.js";
 
 /** Register server commands */
 export function registerServerCommands(program: Command): void {
@@ -21,24 +22,31 @@ export function registerServerCommands(program: Command): void {
     .option("--json", "Output in JSON format")
     .option("--tokens", "Show token counts per server")
     .action(async (options) => {
+      const showJson = options.json ?? program.opts().json ?? false;
       const configService = getConfigService();
       const servers = configService.getLocalServers();
       const remoteServers = configService.getRemoteServers();
       const toolFilters = configService.getToolFilters();
 
-      if (options.json) {
+      if (showJson) {
         outputJson({
-          servers: servers.map((s) => ({
-            ...s,
-            type: "stdio",
-            toolCount: toolFilters[s.id]?.allTools?.length || 0,
-            tokens: toolFilters[s.id]?.totalTokens || 0,
-          })),
-          remoteServers: remoteServers.map((s) => ({
-            ...s,
-            toolCount: toolFilters[`remote:${s.id}`]?.allTools?.length || 0,
-            tokens: toolFilters[`remote:${s.id}`]?.totalTokens || 0,
-          })),
+          servers: servers.map((s) => {
+            const redacted = redactServerForOutput(s) as LocalServer;
+            return {
+              ...redacted,
+              type: "stdio",
+              toolCount: toolFilters[s.id]?.allTools?.length || 0,
+              tokens: toolFilters[s.id]?.totalTokens || 0,
+            };
+          }),
+          remoteServers: remoteServers.map((s) => {
+            const redacted = redactServerForOutput(s) as RemoteServer;
+            return {
+              ...redacted,
+              toolCount: toolFilters[`remote:${s.id}`]?.allTools?.length || 0,
+              tokens: toolFilters[`remote:${s.id}`]?.totalTokens || 0,
+            };
+          }),
         });
         return;
       }
