@@ -26,6 +26,7 @@ import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { getConfigService } from "./config.service.js";
 import { getAuthService } from "./auth.service.js";
+import { createTransportAuthProvider } from "./oauth-transport.provider.js";
 import { createLogger } from "../shared/logger.js";
 import { VERSION } from "../shared/version.js";
 import type { LocalServer, RemoteServer } from "../types/index.js";
@@ -142,34 +143,32 @@ async function connectRemoteServer(server: RemoteServer): Promise<ConnectedServe
 
     const url = new URL(server.url);
     const headers: Record<string, string> = {};
+    const transportOptions: {
+      requestInit?: { headers: Record<string, string> };
+      authProvider?: ReturnType<typeof createTransportAuthProvider>;
+    } = {};
 
     // Check for static bearer token first
     if (server.bearerToken) {
       headers["Authorization"] = `Bearer ${server.bearerToken}`;
+    } else if (server.oauth?.enabled) {
+      // Use SDK auth provider to auto-refresh OAuth tokens
+      transportOptions.authProvider = createTransportAuthProvider(server, authService);
+      logger.debug(`Using OAuth provider for ${server.name}`);
     }
-    // Then check for OAuth token
-    else if (server.oauth?.enabled) {
-      const token = await authService.getValidToken(server);
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-        logger.debug(`Using OAuth token for ${server.name}`);
-      } else {
-        logger.warn(`OAuth enabled for ${server.name} but no valid token found`);
-      }
+
+    if (Object.keys(headers).length > 0) {
+      transportOptions.requestInit = { headers };
     }
 
     // Create appropriate transport based on server type
     let transport: RemoteTransport;
 
     if (server.type === "sse") {
-      transport = new SSEClientTransport(url, {
-        requestInit: { headers },
-      });
+      transport = new SSEClientTransport(url, transportOptions);
     } else {
       // HTTP type uses StreamableHTTP
-      transport = new StreamableHTTPClientTransport(url, {
-        requestInit: { headers },
-      });
+      transport = new StreamableHTTPClientTransport(url, transportOptions);
     }
 
     const client = new Client({ name: "mcpsm-gateway", version: VERSION }, { capabilities: {} });

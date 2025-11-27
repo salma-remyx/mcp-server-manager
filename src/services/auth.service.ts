@@ -556,6 +556,8 @@ export class AuthService {
         tokenType: tokenResponse.token_type || "Bearer",
         refreshToken: tokenResponse.refresh_token,
         scopes: tokenResponse.scope?.split(" "),
+        clientId: pendingAuth.clientId,
+        clientSecret: pendingAuth.clientSecret,
         expiresAt: tokenResponse.expires_in
           ? Date.now() + tokenResponse.expires_in * 1000
           : undefined,
@@ -765,6 +767,12 @@ export class AuthService {
     return this.tokens.get(serverId) || null;
   }
 
+  /** Save/overwrite stored tokens for a server */
+  saveTokensForServer(serverId: string, tokens: StoredOAuthTokens): void {
+    this.tokens.set(serverId, tokens);
+    this.saveTokens();
+  }
+
   /** Get valid access token for a server (refreshes if needed) */
   async getValidToken(server: RemoteServer): Promise<string | null> {
     const stored = this.tokens.get(server.id);
@@ -809,11 +817,14 @@ export class AuthService {
         refresh_token: stored.refreshToken,
       });
 
-      // Add client_id if we have one configured
-      if (server.oauth?.clientId) {
-        params.set("client_id", server.oauth.clientId);
-        if (server.oauth.clientSecret) {
-          params.set("client_secret", server.oauth.clientSecret);
+      // Add client credentials if available (server config takes precedence)
+      const clientId = server.oauth?.clientId || stored.clientId;
+      const clientSecret = server.oauth?.clientSecret || stored.clientSecret;
+
+      if (clientId) {
+        params.set("client_id", clientId);
+        if (clientSecret) {
+          params.set("client_secret", clientSecret);
         }
       }
 
@@ -838,6 +849,8 @@ export class AuthService {
         tokenType: tokenResponse.token_type || "Bearer",
         refreshToken: tokenResponse.refresh_token || stored.refreshToken,
         scopes: tokenResponse.scope?.split(" ") || stored.scopes,
+        clientId,
+        clientSecret,
         expiresAt: tokenResponse.expires_in
           ? Date.now() + tokenResponse.expires_in * 1000
           : undefined,

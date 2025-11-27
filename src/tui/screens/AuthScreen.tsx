@@ -202,6 +202,8 @@ export function AuthScreen({
                     ...s.status,
                     hasToken: true,
                     requiresAuth: false,
+                    isExpired: false,
+                    expiresAt: authResult.expiresAt ?? authService.getToken(server.id)?.expiresAt,
                     tokenPreview: authService.getTokenPreview(server.id) || undefined,
                   },
                 }
@@ -219,6 +221,8 @@ export function AuthScreen({
               s.server.id === server.id ? { ...s, phase: "idle" as AuthPhase } : s
             )
           );
+          // Refresh from source of truth to clear any stale "expired" flags
+          void loadServers();
         }, 1500);
       } else {
         setAllServers((prev) =>

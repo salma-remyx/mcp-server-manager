@@ -28,6 +28,10 @@ export interface StoredOAuthTokens {
   accessToken: string;
   /** Refresh token (if available) */
   refreshToken?: string;
+  /** Client ID used when the token was issued (for refresh) */
+  clientId?: string;
+  /** Client secret (if applicable) */
+  clientSecret?: string;
   /** Token expiration timestamp (ms since epoch) */
   expiresAt?: number;
   /** Token type (usually "Bearer") */
