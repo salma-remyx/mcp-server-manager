@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { execSync } from "child_process";
 import fs from "fs";
 import os from "os";
@@ -7,6 +7,8 @@ import configFixture from "./fixtures/sardine-config.json";
 import { REDACTED_PLACEHOLDER } from "../src/shared/redaction.js";
 
 const CLI = "node bin/cli.js";
+const TEST_TIMEOUT = process.platform === "win32" ? 20000 : 10000;
+vi.setConfig({ testTimeout: TEST_TIMEOUT });
 
 describe("CLI CRUD flows with sardine config", () => {
   let testConfigDir: string;
@@ -113,5 +115,21 @@ describe("CLI CRUD flows with sardine config", () => {
 
     const devinOutput = parsed.remoteServers.find((s: any) => s.id === "devin");
     expect(devinOutput.bearerToken).toBe(REDACTED_PLACEHOLDER);
+  });
+
+  it("edits env vars on a stdio server via CLI", () => {
+    execSync(`${CLI} edit metamcp --env API_ACCESS_TOKEN=UPDATED,FOO=bar`, {
+      cwd: process.cwd(),
+      env: cliEnv(),
+      stdio: "pipe",
+    });
+
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    const metamcp = config.servers.find((s: any) => s.id === "metamcp");
+    expect(metamcp).toBeDefined();
+    expect(metamcp.env).toEqual({
+      API_ACCESS_TOKEN: "UPDATED",
+      FOO: "bar",
+    });
   });
 });

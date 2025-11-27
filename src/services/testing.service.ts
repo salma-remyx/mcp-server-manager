@@ -3,6 +3,7 @@
  */
 
 import { spawn, ChildProcess } from "child_process";
+import { TextDecoder } from "util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import type {
@@ -509,33 +510,61 @@ export class TestingService {
       const contentType = toolsResponse.headers.get("content-type") || "";
 
       if (contentType.includes("text/event-stream")) {
-        // Parse SSE response - extract JSON from data: field
-        // Following MCP SDK pattern: event-source automatically handles SSE format
-        const text = await toolsResponse.text();
-        let jsonStr: string | null = null;
+        // Read only the first SSE data event so we don't wait for long-lived streams
+        const reader = toolsResponse.body?.getReader();
+        if (!reader) {
+          const error = "No response body for SSE";
+          this.updateToolFilter(filterId, [], error);
+          return { success: false, error, toolCount: 0 };
+        }
 
-        // Process lines to find first data line with JSON object
-        const lines = text.split("\n");
-        for (const line of lines) {
-          if (line.startsWith("data: {")) {
-            jsonStr = line.slice(6); // Remove "data: " prefix
-            break;
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let parsed: McpToolsResponse | null = null;
+
+        try {
+          while (!parsed) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith("data:")) continue;
+
+              const data = trimmed.slice(5).trim();
+              if (!data || data === "[DONE]") continue;
+
+              if (data.startsWith("{")) {
+                try {
+                  parsed = JSON.parse(data) as McpToolsResponse;
+                  break;
+                } catch (error) {
+                  // Keep reading if first chunk is not parseable JSON
+                  log.debug("Failed to parse SSE chunk, continuing:", error);
+                }
+              }
+            }
+          }
+        } finally {
+          // Stop reading the stream after first event to avoid waiting for a long-lived connection
+          try {
+            await reader.cancel();
+          } catch {
+            // Ignore cancellation errors
           }
         }
 
-        if (!jsonStr) {
+        if (!parsed) {
           const error = "No JSON data in SSE response";
           this.updateToolFilter(filterId, [], error);
           return { success: false, error, toolCount: 0 };
         }
 
-        try {
-          result = JSON.parse(jsonStr);
-        } catch (parseError) {
-          const error = `Failed to parse SSE data: ${parseError instanceof Error ? parseError.message : "unknown error"}`;
-          this.updateToolFilter(filterId, [], error);
-          return { success: false, error, toolCount: 0 };
-        }
+        result = parsed;
       } else {
         // Parse JSON response
         result = (await toolsResponse.json()) as McpToolsResponse;

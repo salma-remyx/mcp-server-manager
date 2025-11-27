@@ -400,6 +400,10 @@ export function registerServerCommands(program: Command): void {
     .option("--auth-server <url>", "OAuth authorization server URL (remote only)")
     .option("-c, --command <command>", "New command (local only)")
     .option("-a, --args <args>", "New arguments (local only)")
+    .option(
+      "-e, --env <env...>",
+      "Environment variable(s) for stdio servers (KEY=VALUE, space/comma separated)"
+    )
     .action(async (nameOrId, options) => {
       const configService = getConfigService();
       const result = configService.findServer(nameOrId);
@@ -416,6 +420,15 @@ export function registerServerCommands(program: Command): void {
         if (options.name) updates.name = options.name;
         if (options.command) updates.command = options.command;
         if (options.args) updates.args = options.args.split(/[\s,]+/).filter(Boolean);
+        if (options.env !== undefined) {
+          const parsedEnv = parseEnvInput(options.env);
+          if (!parsedEnv.success) {
+            console.log(`${c.cross} ${parsedEnv.error}`);
+            process.exit(1);
+          }
+          const env = normalizeEnv(parsedEnv.data);
+          updates.env = env && Object.keys(env).length > 0 ? env : undefined;
+        }
 
         if (Object.keys(updates).length === 0) {
           console.log(`${colors.yellow}No changes specified${colors.reset}`);

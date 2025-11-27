@@ -884,8 +884,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
     let total = 0;
     let hasData = false;
 
-    const accumulate = (filterId: string, disabled?: boolean) => {
-      if (disabled) return;
+    const accumulate = (filterId: string) => {
       const tokens = getEnabledTokenTotal(toolFilters[filterId]);
       if (tokens !== null) {
         total += tokens;
@@ -893,8 +892,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
       }
     };
 
-    localServers.forEach((server) => accumulate(server.id, server.disabled));
-    remoteServers.forEach((server) => accumulate(`remote:${server.id}`, server.disabled));
+    localServers.forEach((server) => accumulate(server.id));
+    remoteServers.forEach((server) => accumulate(`remote:${server.id}`));
 
     return hasData ? total : null;
   })();
@@ -983,22 +982,28 @@ export function App({ onExit }: AppProps): React.ReactElement {
                           <Text color={nameColor} bold={isCurrent}>
                             {server.name || server.id}
                           </Text>
-                          {!isDisabled && !needsAuth && (
-                            <>
-                              <Text color="green">✓</Text>
-                              <Text color="yellow">
-                                {enabledTools}/{totalTools} tools
-                              </Text>
-                              <Text dimColor>·</Text>
-                              <Text color="yellow">{tokenLabel}</Text>
-                            </>
-                          )}
-                          {needsAuth && !isDisabled && (
-                            <>
-                              <Text dimColor>-</Text>
-                              <Text color="red">needs auth</Text>
-                            </>
-                          )}
+                          <>
+                            <Text color={needsAuth ? "red" : isDisabled ? "gray" : "green"}>
+                              {needsAuth ? "!" : "✓"}
+                            </Text>
+                            <Text color={isDisabled ? "gray" : "yellow"}>
+                              {enabledTools}/{totalTools} tools
+                            </Text>
+                            <Text dimColor>·</Text>
+                            <Text color={isDisabled ? "gray" : "yellow"}>{tokenLabel}</Text>
+                            {filter?.error && (
+                              <>
+                                <Text dimColor>·</Text>
+                                <Text color="red">{filter.error}</Text>
+                              </>
+                            )}
+                            {needsAuth && (
+                              <>
+                                <Text dimColor>·</Text>
+                                <Text color="red">needs auth</Text>
+                              </>
+                            )}
+                          </>
                         </Box>
                       );
                     }}

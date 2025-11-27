@@ -12,8 +12,9 @@ import { getConfigService } from "../../services/config.service.js";
 import { getDaemonService } from "../../services/daemon.service.js";
 import type { LocalServer, RemoteServer, TransportType } from "../../types/index.js";
 import { REDACTED_PLACEHOLDER } from "../../shared/redaction.js";
+import { parseEnvInput, normalizeEnv } from "../../shared/env.js";
 
-type Step = "name" | "type" | "command" | "args" | "url" | "token";
+type Step = "name" | "type" | "command" | "args" | "env" | "url" | "token";
 
 interface EditServerScreenProps {
   server: LocalServer | RemoteServer;
@@ -40,6 +41,13 @@ export function EditServerScreen({
   const [name, setName] = useState(server.name);
   const [command, setCommand] = useState(type === "local" ? (server as LocalServer).command : "");
   const [args, setArgs] = useState(type === "local" ? (server as LocalServer).args.join(" ") : "");
+  const [env, setEnv] = useState(
+    type === "local" && (server as LocalServer).env
+      ? Object.entries((server as LocalServer).env!)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(" ")
+      : ""
+  );
   const [transport, setTransport] = useState<TransportType>(
     type === "remote" ? (server as RemoteServer).type : "http"
   );
@@ -71,6 +79,8 @@ export function EditServerScreen({
         setStep("name");
       } else if (step === "args") {
         setStep("command");
+      } else if (step === "env") {
+        setStep("args");
       }
     } else {
       if (step === "type") {
@@ -95,10 +105,18 @@ export function EditServerScreen({
       return;
     }
 
+    const parsedEnv = parseEnvInput(env.trim());
+    if (!parsedEnv.success) {
+      setError(parsedEnv.error || "Invalid environment variable");
+      return;
+    }
+    const normalizedEnv = normalizeEnv(parsedEnv.data);
+
     const updates: Partial<LocalServer> = {
       name: trimmedName,
       command: trimmedCommand,
       args: args.trim() ? args.trim().split(/\s+/).filter(Boolean) : [],
+      env: normalizedEnv && Object.keys(normalizedEnv).length > 0 ? normalizedEnv : undefined,
     };
 
     const result = configService.updateLocalServer(server.id, updates);
@@ -109,7 +127,7 @@ export function EditServerScreen({
 
     refreshDaemonIfRunning();
     onSaved({ ...(server as LocalServer), ...updates });
-  }, [args, command, configService, name, onSaved, refreshDaemonIfRunning, server]);
+  }, [args, command, configService, env, name, onSaved, refreshDaemonIfRunning, server]);
 
   const saveRemoteServer = useCallback(() => {
     const trimmedName = name.trim();
@@ -192,6 +210,18 @@ export function EditServerScreen({
             <TextInput
               value={args}
               onChange={setArgs}
+              onSubmit={() => setStep("env")}
+            />
+          </>
+        )}
+
+        {type === "local" && step === "env" && (
+          <>
+            <Text color="green">Environment variables</Text>
+            <Text dimColor>Format: KEY=VALUE pairs, separated by space or comma. Leave blank to clear.</Text>
+            <TextInput
+              value={env}
+              onChange={setEnv}
               onSubmit={handleSubmit}
             />
           </>

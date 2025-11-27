@@ -268,4 +268,54 @@ describe("TUI CRUD with sardine config", () => {
     expect(String(payload.url)).toContain("mcp.devin.ai");
     expect(onSaved).toHaveBeenCalled();
   });
+
+  it("allows editing stdio env vars through the edit flow", async () => {
+    const localWithEnv = localServers.find((s) => s.id === "metamcp") as LocalServer;
+    const initialEnvString = localWithEnv.env
+      ? Object.entries(localWithEnv.env)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(" ")
+      : "";
+    const onSaved = vi.fn();
+
+    const { stdin, lastFrame } = render(
+      <EditServerScreen server={{ ...localWithEnv }} type="local" onBack={() => {}} onSaved={onSaved} />
+    );
+
+    await waitForStateUpdate(50);
+
+    // name -> command
+    stdin.write(KEYS.ENTER);
+    await waitForStateUpdate(50);
+
+    // keep existing command
+    stdin.write(KEYS.ENTER);
+    await waitForStateUpdate(50);
+
+    // args -> env
+    stdin.write(KEYS.ENTER);
+    await waitForStateUpdate(50);
+    expect(lastFrame()).toContain("Environment variables");
+
+    // env input
+    stdin.write(KEYS.BACKSPACE.repeat(initialEnvString.length + 5));
+    await waitForStateUpdate(30);
+    stdin.write(" API_ACCESS_TOKEN=UPDATED_ENV FOO=bar");
+    await waitForStateUpdate(30);
+    expect(lastFrame()).toContain("UPDATED_ENV");
+    stdin.write(KEYS.ENTER);
+    await waitForStateUpdate(150);
+
+    expect(mockConfigService.updateLocalServer).toHaveBeenCalled();
+    const [, payload] = mockConfigService.updateLocalServer.mock.calls.at(-1) as [
+      string,
+      Partial<LocalServer>
+    ];
+    expect(payload.env).toEqual({
+      API_ACCESS_TOKEN: "UPDATED_ENV",
+      FOO: "bar",
+    });
+    expect(payload.command).toBe(localWithEnv.command);
+    expect(onSaved).toHaveBeenCalled();
+  });
 });
