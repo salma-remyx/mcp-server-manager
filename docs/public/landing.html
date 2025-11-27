@@ -1703,6 +1703,30 @@
       runCLISequence()
     }
 
+    // Version (pulled from package.json when available)
+    let APP_VERSION = "";
+    (async () => {
+      const candidates = [
+        "https://raw.githubusercontent.com/MateusTorquato/mcp-server-manager/main/package.json",
+        "../package.json",
+        "./package.json",
+        "/package.json",
+      ];
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url, { cache: "no-store" });
+          if (!res.ok) continue;
+          const pkg = await res.json();
+          if (pkg?.version) {
+            APP_VERSION = pkg.version;
+            break;
+          }
+        } catch (err) {
+          console.debug("Version fetch failed for", url, err);
+        }
+      }
+    })();
+
     // TUI Animation with typing and keypress indicators
     let tuiAnimationInterval = null
     let tuiStep = 0
@@ -1719,6 +1743,7 @@
       
       // Helper function to render TUI main screen
       function renderTUIScreen(servers, selectedIndex) {
+        const versionLabel = APP_VERSION ? ` v${APP_VERSION}` : "";
         const shortcuts = '<strong style="color: #8b949e;">Shortcuts:</strong> <span style="color: #00ff88;">↑↓</span> Navigate • <span style="color: #00ff88;">Space</span> Toggle • <span style="color: #00ff88;">A</span> Add • <span style="color: #00ff88;">C</span> Clients'
         
         let serversHTML = servers.map((server, index) => {
@@ -1744,13 +1769,13 @@
         
         return `
           <div class="tui-header">
-            <div class="tui-title">MCP Server Manager v2.2.3</div>
-  <div class="tui-subtitle">Profile: default | Port: 8850 | Total: 8.6k tokens</div>
-</div>
-<div class="tui-panel">
+            <div class="tui-title">MCP Server Manager${versionLabel}</div>
+            <div class="tui-subtitle">Profile: default | Port: 8850 | Total: 8.6k tokens</div>
+          </div>
+          <div class="tui-panel">
             <div class="tui-panel-title">Servers</div>
             ${serversHTML}
-</div>
+          </div>
           <div class="tui-shortcuts">${shortcuts}</div>
         `
       }
