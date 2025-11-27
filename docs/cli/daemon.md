@@ -30,12 +30,14 @@ The **daemon** is the core of MCP Server Manager. It runs a **gateway server** t
 
 When you connect clients, they communicate with the daemon's gateway server. The daemon manages all your servers and proxies requests between clients and servers.
 
-## start
+---
+
+## daemon start
 
 Start the gateway daemon.
 
 ```bash
-mcpsm start [servers...] [options]
+mcpsm daemon start [servers...] [options]
 ```
 
 ### Options
@@ -43,22 +45,22 @@ mcpsm start [servers...] [options]
 | Option             | Description                           |
 | ------------------ | ------------------------------------- |
 | `--profile <name>` | Start servers from a specific profile |
-| `--fg`             | Run in foreground (not as daemon)     |
+| `--foreground`     | Run in foreground (not as daemon)     |
 
 ### Examples
 
 ```bash
 # Start all enabled servers
-mcpsm start
+mcpsm daemon start
 
 # Start specific servers
-mcpsm start filesystem github
+mcpsm daemon start filesystem github
 
 # Start with a profile
-mcpsm start --profile work
+mcpsm daemon start --profile work
 
 # Run in foreground (useful for debugging)
-mcpsm start --fg
+mcpsm daemon start --foreground
 ```
 
 ### What Happens
@@ -72,12 +74,12 @@ mcpsm start --fg
 
 ---
 
-## stop
+## daemon stop
 
 Stop the running daemon.
 
 ```bash
-mcpsm stop
+mcpsm daemon stop
 ```
 
 This gracefully shuts down:
@@ -87,12 +89,24 @@ This gracefully shuts down:
 
 ---
 
-## status
+## daemon refresh
+
+Refresh the running daemon configuration without restarting it.
+
+```bash
+mcpsm daemon refresh
+```
+
+Use this after editing servers or tool filters to push changes to the running gateway.
+
+---
+
+## daemon status
 
 Show daemon status.
 
 ```bash
-mcpsm status
+mcpsm daemon status
 ```
 
 ### Output
@@ -117,12 +131,12 @@ Gateway Status: STOPPED
 
 ---
 
-## logs
+## daemon logs
 
 View or manage daemon logs.
 
 ```bash
-mcpsm logs [options]
+mcpsm daemon logs [options]
 ```
 
 ### Options
@@ -137,16 +151,16 @@ mcpsm logs [options]
 
 ```bash
 # View last 50 lines
-mcpsm logs
+mcpsm daemon logs
 
 # View last 100 lines
-mcpsm logs -n 100
+mcpsm daemon logs -n 100
 
 # Follow logs in real-time
-mcpsm logs -f
+mcpsm daemon logs -f
 
 # Clear logs
-mcpsm logs --clear
+mcpsm daemon logs --clear
 ```
 
 ### Log Location
@@ -155,18 +169,18 @@ Logs are stored in `~/.mcp-manager/daemon.log`
 
 ---
 
-## startup
+## daemon startup
 
 Manage auto-start on system boot.
 
 ```bash
-mcpsm startup <enable|disable|status>
+mcpsm daemon startup <enable|disable|status>
 ```
 
 ### Enable Auto-Start
 
 ```bash
-mcpsm startup enable
+mcpsm daemon startup enable
 ```
 
 This creates:
@@ -178,13 +192,13 @@ This creates:
 ### Disable Auto-Start
 
 ```bash
-mcpsm startup disable
+mcpsm daemon startup disable
 ```
 
 ### Check Status
 
 ```bash
-mcpsm startup status
+mcpsm daemon startup status
 ```
 
 ---
@@ -201,14 +215,14 @@ mcpsm profile add production filesystem
 mcpsm profile add production api-server
 
 # Start with profile
-mcpsm start --profile production
+mcpsm daemon start --profile production
 
 # Enable auto-start
-mcpsm startup enable
+mcpsm daemon startup enable
 
 # Verify
-mcpsm status
-mcpsm startup status
+mcpsm daemon status
+mcpsm daemon startup status
 ```
 
 ---
@@ -219,10 +233,10 @@ mcpsm startup status
 
 ```bash
 # Check logs
-mcpsm logs -n 100
+mcpsm daemon logs -n 100
 
 # Try foreground mode
-mcpsm start --fg
+mcpsm daemon start --foreground
 ```
 
 ### Port Already in Use
@@ -232,8 +246,8 @@ mcpsm start --fg
 mcpsm port 9000
 
 # Restart daemon
-mcpsm stop
-mcpsm start
+mcpsm daemon stop
+mcpsm daemon start
 ```
 
 When you change the port, all connected clients are automatically updated with the new port.
@@ -258,23 +272,12 @@ When you connect clients using `mcpsm clients connect`, each client gets a gatew
 {
   "mcpsm": {
     "command": "npx",
-    "args": ["-y", "supergateway", "--streamableHttp", "http://localhost:8850/mcp"]
+    "args": ["mcp-server-manager", "daemon", "start"],
+    "env": {
+      "MCP_GATEWAY_URL": "http://localhost:{port}/mcp"
+    }
   }
 }
 ```
 
-The `8850` port in client configs **matches the daemon's port**. When you change the port:
-
-1. Daemon restarts on the new port
-2. All connected clients are automatically updated with the new port
-3. Clients can immediately access the daemon on the new port
-
-This ensures all clients always connect to the daemon, no matter how many times you change the port.
-
----
-
-## Next Steps
-
-- [Client Connections](/guide/client-connections) - How to connect clients
-- [Architecture](/guide/architecture) - Deep dive into daemon and gateway design
-- [Settings](/cli/settings) - Configure daemon port and other settings
+Keep the daemon running so clients can reach all your servers through the gateway.

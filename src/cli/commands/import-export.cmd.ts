@@ -4,6 +4,8 @@
 
 import { Command } from "commander";
 import path from "path";
+import { createInterface } from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
 import { colors } from "../../shared/colors.js";
 import { outputJson } from "../../shared/formatters.js";
 import { getImportExportService } from "../../services/import-export.service.js";
@@ -135,39 +137,56 @@ async function handleImport(
     const hasConflictFlag = options.overwrite || options.skip || options.merge || options.force;
 
     if (!hasConflictFlag) {
-      // No flag provided - error and require user to specify a strategy
-      console.error(`\n${colors.red}Error: Conflict resolution strategy required.${colors.reset}`);
-      console.log(`\nProvide one of the following options:`);
+      const rl = createInterface({ input, output });
+
+      console.log(`\nNo strategy flags provided. Choose per-conflict action:`);
       console.log(
-        `  ${colors.cyan}--skip${colors.reset}      Skip conflicting servers (keep existing)`
+        `  [s] skip (keep existing) · [o] overwrite (use incoming) · [m] merge (combine fields)`
       );
+
+      for (const conflict of conflicts.conflicts) {
+        while (true) {
+          const answer = (
+            await rl.question(`Action for ${conflict.name} (${conflict.type}) [s/o/m]: `)
+          )
+            .trim()
+            .toLowerCase();
+          if (answer === "o") {
+            decisions.set(conflict.id, "overwrite");
+            break;
+          }
+          if (answer === "m") {
+            decisions.set(conflict.id, "merge");
+            break;
+          }
+          if (answer === "s" || answer === "") {
+            decisions.set(conflict.id, "skip");
+            break;
+          }
+          console.log(`Please enter s, o, or m.`);
+        }
+      }
+
+      rl.close();
+    } else {
+      // Apply the specified strategy to all conflicts
+      let strategy: ConflictResolution = "skip"; // default
+
+      if (options.overwrite || options.force) {
+        strategy = "overwrite";
+      } else if (options.merge) {
+        strategy = "merge";
+      }
+
+      for (const conflict of conflicts.conflicts) {
+        decisions.set(conflict.id, strategy);
+      }
+
+      // Show which conflicts will be handled
       console.log(
-        `  ${colors.cyan}--overwrite${colors.reset}  Overwrite conflicting servers (use incoming)`
+        `\n${colors.cyan}Applying "${strategy}" strategy to all conflicts${colors.reset}`
       );
-      console.log(
-        `  ${colors.cyan}--merge${colors.reset}     Merge conflicting servers (combine fields)`
-      );
-      console.log(`\nExample:`);
-      console.log(`  mcpsm import servers.json --merge`);
-      console.log(`  mcpsm import --from cursor --overwrite`);
-      process.exit(1);
     }
-
-    // Apply the specified strategy to all conflicts
-    let strategy: ConflictResolution = "skip"; // default
-
-    if (options.overwrite || options.force) {
-      strategy = "overwrite";
-    } else if (options.merge) {
-      strategy = "merge";
-    }
-
-    for (const conflict of conflicts.conflicts) {
-      decisions.set(conflict.id, strategy);
-    }
-
-    // Show which conflicts will be handled
-    console.log(`\n${colors.cyan}Applying "${strategy}" strategy to all conflicts${colors.reset}`);
   }
 
   // Merge with decisions

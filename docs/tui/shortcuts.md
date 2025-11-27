@@ -26,24 +26,26 @@ Available on all screens:
 
 ### Server Actions
 
-| Key     | Action                    |
-| ------- | ------------------------- |
-| `A`     | Add new server            |
-| `D`     | Delete current server     |
-| `E`     | Edit server (remote only) |
-| `SPACE` | Enable/disable server     |
-| `X`     | Test all servers          |
+| Key     | Action                |
+| ------- | --------------------- |
+| `A`     | Add new server        |
+| `D`     | Delete current server |
+| `E`     | Edit server           |
+| `SPACE` | Enable/disable server |
+| `X`     | Test all servers      |
 
 ### Screen Navigation
 
-| Key | Screen        |
-| --- | ------------- |
-| `T` | Tools         |
-| `C` | Clients       |
-| `F` | Profiles      |
-| `I` | Import/Export |
-| `G` | Settings      |
-| `H` | Doctor        |
+| Key     | Screen        |
+| ------- | ------------- |
+| `T`     | Tools         |
+| `C`     | Clients       |
+| `F`     | Profiles      |
+| `I`     | Import/Export |
+| `G`     | Settings      |
+| `H`     | Doctor        |
+| `O`     | Auth (remote) |
+| `ENTER` | Daemon        |
 
 ---
 
@@ -65,33 +67,26 @@ Available on all screens:
 | ------- | -------------------------------------------- |
 | `↑/↓`   | Navigate between clients                     |
 | `ENTER` | Toggle connect/disconnect for current client |
-| `O`     | Open client config in editor                 |
+| `R`     | Refresh detected clients                     |
 | `ESC`   | Return to main menu                          |
 
 ---
 
 ## Profiles Screen
 
-| Key   | Action                     |
-| ----- | -------------------------- |
-| `1-9` | Switch to numbered profile |
-| `N`   | Create new profile         |
-| `D`   | Delete a profile           |
-| `ESC` | Return to main menu        |
+| Key     | Action               |
+| ------- | -------------------- |
+| `↑/↓`   | Navigate profiles    |
+| `ENTER` | Use selected profile |
+| `N`     | Create new profile   |
+| `D`     | Delete selected      |
+| `ESC`   | Return to main menu  |
 
 ---
 
 ## Import/Export Screen
 
-| Key   | Action                         |
-| ----- | ------------------------------ |
-| `1`   | Import from Claude Desktop     |
-| `2`   | Import from Cursor             |
-| `3`   | Import from JSON file          |
-| `4`   | Export to JSON (MCPSM format)  |
-| `5`   | Export to JSON (Claude format) |
-| `6`   | Preview export                 |
-| `ESC` | Return to main menu            |
+Navigate with `↑/↓` and select with `ENTER`. Options are dynamic based on installed clients (e.g., Import from Claude/Cursor/Windsurf/VS Code), plus import from file and export options.
 
 ---
 

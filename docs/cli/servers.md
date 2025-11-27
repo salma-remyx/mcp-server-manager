@@ -49,44 +49,41 @@ Remote Servers (HTTP/SSE):
 Add a new MCP server.
 
 ```bash
-mcpsm add [name] [options]
+mcpsm add <name> --type <stdio|http|sse> [options]
 ```
-
-### Interactive Mode
-
-```bash
-mcpsm add
-```
-
-Prompts for all required information.
 
 ### Options
 
-| Option            | Description                            |
-| ----------------- | -------------------------------------- |
-| `--type <type>`   | Server type: `stdio`, `http`, or `sse` |
-| `--command <cmd>` | Command to run (STDIO only)            |
-| `--args <args>`   | Command arguments (STDIO only)         |
-| `--env <env...>`  | Env vars for STDIO servers (`KEY=VAL`) |
-| `--url <url>`     | Server URL (HTTP/SSE only)             |
-| `--token <token>` | Bearer token for auth (HTTP/SSE only)  |
-
-Use spaces or commas to pass multiple `--env` values, e.g. `--env "FOO=bar BAR=baz"`.
+| Option                | Description                                           |
+| --------------------- | ----------------------------------------------------- |
+| `--type <type>`       | Server type: `stdio`, `http`, or `sse` (required)     |
+| `--command <cmd>`     | Command to run (stdio only)                           |
+| `--args <args>`       | Command arguments (stdio only, space/comma separated) |
+| `--env <env...>`      | Env vars for stdio servers (`KEY=VAL`, space/comma)   |
+| `--url <url>`         | Server URL (http/sse only)                            |
+| `--token <token>`     | Bearer token for auth (http/sse only)                 |
+| `--oauth`             | Enable OAuth for http/sse servers                     |
+| `--client-id <id>`    | OAuth client ID (remote only)                         |
+| `--client-secret <s>` | OAuth client secret (remote only)                     |
+| `--scopes <scopes>`   | OAuth scopes, comma-separated (remote only)           |
+| `--auth-server <url>` | OAuth authorization server URL (remote only)          |
+| `--test`              | Test the server immediately after adding              |
 
 ### Examples
 
 ```bash
-# Add local STDIO server
-mcpsm add filesystem --type stdio --command "npx" --args "-y @modelcontextprotocol/server-filesystem /home/user"
+# Add local stdio server (filesystem)
+mcpsm add filesystem -t stdio -c "npx" -a "-y @modelcontextprotocol/server-filesystem /tmp" --test
 
-# Add local STDIO server that needs an auth token
-mcpsm add github --type stdio --command "npx" --args "-y @modelcontextprotocol/server-github" --env "GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx"
+# Add local stdio server with PAT
+mcpsm add github -t stdio -c "npx" -a "-y @modelcontextprotocol/server-github" -e "GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx"
 
-# Add remote HTTP server
-mcpsm add my-api --type http --url "https://api.example.com/mcp"
+# Add remote HTTP server with OAuth
+mcpsm add asana -t http -u "https://asana.example.com/mcp" --oauth --scopes "tasks:read" --auth-server "https://auth.asana.com"
+mcpsm auth login asana
 
-# Add with authentication
-mcpsm add secure-api --type http --url "https://api.example.com/mcp" --token "your-bearer-token"
+# Add SSE server with bearer token
+mcpsm add stream-api -t sse -u "https://api.example.com/mcp/sse" --token "mytoken"
 ```
 
 ---
@@ -133,8 +130,15 @@ mcpsm edit <name|id> [options]
 | Option            | Description                       |
 | ----------------- | --------------------------------- |
 | `--name <name>`   | Change server name                |
+| `--type <type>`   | Change remote type (`http`/`sse`) |
 | `--url <url>`     | Change URL (remote only)          |
 | `--token <token>` | Change bearer token (remote only) |
+| `--oauth`         | Enable OAuth (remote only)        |
+| `--no-oauth`      | Disable OAuth (remote only)       |
+| `--client-id`     | OAuth client ID (remote only)     |
+| `--client-secret` | OAuth client secret (remote only) |
+| `--scopes`        | OAuth scopes (remote only)        |
+| `--auth-server`   | OAuth auth server URL (remote)    |
 | `--command <cmd>` | Change command (local only)       |
 | `--args <args>`   | Change arguments (local only)     |
 
@@ -149,6 +153,30 @@ mcpsm edit my-api --url "https://new-api.example.com/mcp"
 
 # Update command args
 mcpsm edit filesystem --args "-y @modelcontextprotocol/server-filesystem /new/path"
+```
+
+---
+
+## enable / disable
+
+Enable or disable a server without deleting it.
+
+```bash
+mcpsm enable <name|id>
+mcpsm disable <name|id> [--yes]
+```
+
+### Examples
+
+```bash
+# Disable a server
+mcpsm disable filesystem
+
+# Disable non-interactively (CI)
+mcpsm disable api --yes
+
+# Re-enable
+mcpsm enable api
 ```
 
 ---

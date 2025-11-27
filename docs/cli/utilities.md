@@ -206,7 +206,7 @@ Documentation:
 # Start your day
 mcpsm                     # Launch TUI
 # or
-mcpsm start               # Start daemon in background
+mcpsm daemon start        # Start daemon in background
 ```
 
 ### Debugging

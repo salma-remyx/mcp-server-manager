@@ -78,6 +78,14 @@ export const FEATURES: Feature[] = [
     tuiImplementation: "key:x",
     requiredInTui: true,
   },
+  {
+    id: "server-enable-disable",
+    name: "Enable/disable server",
+    category: "servers",
+    cliCommands: ["enable", "disable"],
+    tuiImplementation: "key:space",
+    requiredInTui: true,
+  },
 
   // === Tools ===
   {

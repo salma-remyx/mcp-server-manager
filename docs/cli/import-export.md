@@ -24,6 +24,26 @@ mcpsm import --from <client>
 
 Supported clients: `claude`, `cursor`, `windsurf`, `vscode`
 
+### Conflict Handling
+
+If incoming servers conflict with existing ones, you can:
+
+- Provide a global strategy flag: `--overwrite`, `--skip`, or `--merge`
+- Or choose per-server interactively (default). You will be prompted to `[s] skip`, `[o] overwrite`, or `[m] merge` each conflict.
+
+Examples:
+
+```bash
+# Interactive per-conflict prompts
+mcpsm import servers.json
+
+# Overwrite all conflicts automatically
+mcpsm import servers.json --overwrite
+
+# Merge incoming fields with existing
+mcpsm import servers.json --merge
+```
+
 ### Examples
 
 ```bash
@@ -39,9 +59,9 @@ mcpsm import ./my-servers.json
 
 ### Import Behavior
 
-- Servers with duplicate names are skipped
+- When no strategy is provided, you are prompted per conflict
 - Server IDs are regenerated on import
-- Tool filters are reset (need to re-discover tools)
+- Tool filters are reset (run `mcpsm test` to re-discover tools)
 
 ---
 
