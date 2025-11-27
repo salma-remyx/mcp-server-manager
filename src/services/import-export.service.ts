@@ -55,19 +55,34 @@ export class ImportExportService {
       return null;
     }
 
+    const serversValue = (data as McpsmFormat).servers;
+    const remoteServersValue = (data as McpsmFormat).remoteServers;
+    const hasMcpsmShape = Array.isArray(serversValue) || Array.isArray(remoteServersValue);
+
+    // MCPSM format: { servers: [], remoteServers: [] }
+    if (hasMcpsmShape) {
+      return {
+        format: "mcpsm",
+        servers: this.parseMcpsmFormat(data as McpsmFormat),
+      };
+    }
+
+    // VS Code format: { servers: { id: { type, command, args } } }
+    if ("servers" in data && serversValue && !Array.isArray(serversValue)) {
+      const serversRecord = (serversValue ?? {}) as ClaudeFormat["mcpServers"];
+      if (serversRecord && typeof serversRecord === "object") {
+        return {
+          format: "vscode",
+          servers: this.parseClaudeFormat({ mcpServers: serversRecord } as ClaudeFormat),
+        };
+      }
+    }
+
     // Claude Desktop format: { mcpServers: { id: { command, args } } }
     if ("mcpServers" in data && typeof (data as ClaudeFormat).mcpServers === "object") {
       return {
         format: "claude",
         servers: this.parseClaudeFormat(data as ClaudeFormat),
-      };
-    }
-
-    // MCPSM format: { servers: [], remoteServers: [] }
-    if ("servers" in data || "remoteServers" in data) {
-      return {
-        format: "mcpsm",
-        servers: this.parseMcpsmFormat(data as McpsmFormat),
       };
     }
 

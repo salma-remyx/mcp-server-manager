@@ -96,15 +96,14 @@ Each client has a connection state:
 
 Some clients support **real-time config loading** - they pick up changes instantly without restart:
 
-| Client         | Real-Time | Behavior                                            |
-| -------------- | --------- | --------------------------------------------------- |
-| Cursor         | ✓ Yes     | Changes appear immediately                          |
-| Windsurf       | ✓ Yes     | Changes appear immediately                          |
-| VS Code        | ✓ Yes     | Changes appear immediately                          |
-| Claude         | ✓ Yes     | Changes appear immediately (if using native config) |
-| Claude Desktop | No        | Requires restart after connection                   |
-| Codex          | No        | Requires restart after connection                   |
-| Gemini         | No        | Requires restart after connection                   |
+| Client         | Real-Time | Behavior                          |
+| -------------- | --------- | --------------------------------- |
+| Cursor         | ✓ Yes     | Changes appear immediately        |
+| Windsurf       | ✓ Yes     | Changes appear immediately        |
+| VS Code        | ✓ Yes     | Changes appear immediately        |
+| Claude Desktop | No        | Requires restart after connection |
+| Codex          | No        | Requires restart after connection |
+| Gemini         | No        | Requires restart after connection |
 
 ### Real-Time Config Paths
 
@@ -112,9 +111,8 @@ mcpsm writes to special config paths for clients that support real-time loading:
 
 ```
 Cursor:   ~/.cursor/mcp.json
-Windsurf: ~/.windsurf/mcp.json
-VS Code:  ~/.continue/mcp.json
-Claude:   ~/.claude/mcp.json
+Windsurf: ~/.codeium/windsurf/mcp_config.json
+VS Code:  ~/Library/Application Support/Code/User/mcp.json
 ```
 
 When you connect a real-time client, mcpsm writes to **both** the primary config and the real-time path, ensuring instant updates.
@@ -184,7 +182,7 @@ When you connect or disconnect a client, all other servers in the config remain 
 Claude Desktop:    ~/Library/Application Support/Claude/claude_desktop_config.json
 Cursor:           ~/Library/Application Support/Cursor/User/globalStorage/cursor.mcp/config.json
 Windsurf:         ~/Library/Application Support/Windsurf/User/globalStorage/windsurf.mcp/config.json
-VS Code:          ~/.continue/config.json
+VS Code:          ~/Library/Application Support/Code/User/mcp.json
 ```
 
 #### Windows
@@ -193,7 +191,7 @@ VS Code:          ~/.continue/config.json
 Claude Desktop:    %APPDATA%\Claude\claude_desktop_config.json
 Cursor:           %APPDATA%\Cursor\User\globalStorage\cursor.mcp\config.json
 Windsurf:         %APPDATA%\Windsurf\User\globalStorage\windsurf.mcp\config.json
-VS Code:          %USERPROFILE%\.continue\config.json
+VS Code:          %APPDATA%\Code\User\mcp.json
 ```
 
 #### Linux
@@ -202,7 +200,7 @@ VS Code:          %USERPROFILE%\.continue\config.json
 Claude Desktop:    ~/.config/Claude/claude_desktop_config.json
 Cursor:           ~/.config/Cursor/User/globalStorage/cursor.mcp/config.json
 Windsurf:         ~/.config/Windsurf/User/globalStorage/windsurf.mcp/config.json
-VS Code:          ~/.continue/config.json
+VS Code:          ~/.config/Code/User/mcp.json
 ```
 
 ## View Client Status

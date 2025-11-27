@@ -5,6 +5,7 @@
 import { Command } from "commander";
 import { colors, c } from "../../shared/colors.js";
 import { outputJson } from "../../shared/formatters.js";
+import { parseEnvInput, normalizeEnv } from "../../shared/env.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getTestingService } from "../../services/testing.service.js";
 import { getAuthService } from "../../services/auth.service.js";
@@ -118,6 +119,10 @@ export function registerServerCommands(program: Command): void {
     .option("-t, --type <type>", "Server type: stdio, http, sse")
     .option("-c, --command <command>", "Command to run (for stdio)")
     .option("-a, --args <args>", "Command arguments (for stdio)")
+    .option(
+      "-e, --env <env...>",
+      "Environment variable(s) for stdio servers (KEY=VALUE, space/comma separated)"
+    )
     .option("-u, --url <url>", "Server URL (for http/sse)")
     .option("--token <token>", "Bearer token (for http/sse)")
     .option("--oauth", "Enable OAuth authentication (for http/sse)")
@@ -160,11 +165,19 @@ export function registerServerCommands(program: Command): void {
           args = options.args.split(/[\s,]+/).filter(Boolean);
         }
 
+        const parsedEnv = parseEnvInput(options.env);
+        if (!parsedEnv.success) {
+          console.log(`${c.cross} ${parsedEnv.error}`);
+          process.exit(1);
+        }
+        const env = normalizeEnv(parsedEnv.data);
+
         const server: LocalServer = {
           id: serverId,
           name,
           command,
           args,
+          ...(env ? { env } : {}),
         };
 
         const result = configService.addLocalServer(server);
@@ -188,6 +201,12 @@ export function registerServerCommands(program: Command): void {
         }
       } else {
         // Remote server
+        if (options.env) {
+          console.log(
+            `${colors.yellow}Warning:${colors.reset} --env is only used for stdio servers and will be ignored for remote servers.`
+          );
+        }
+
         const url = options.url;
         if (!url) {
           console.log(`${c.cross} URL is required for remote servers`);

@@ -36,9 +36,9 @@ mcpsm import --from windsurf
 
 This reads from:
 
-- **All platforms:** `~/.codeium/windsurf/mcp_settings.json`
+- **All platforms:** `~/.codeium/windsurf/mcp_config.json`
 
-### From VS Code (Continue Extension)
+### From VS Code
 
 ```bash
 mcpsm import --from vscode
@@ -46,9 +46,9 @@ mcpsm import --from vscode
 
 This reads from:
 
-- **macOS:** `~/Library/Application Support/Code/User/globalStorage/continue.continue/config.json`
-- **Linux:** `~/.config/Code/User/globalStorage/continue.continue/config.json`
-- **Windows:** `%APPDATA%\Code\User\globalStorage\continue.continue\config.json`
+- **macOS:** `~/Library/Application Support/Code/User/mcp.json`
+- **Linux:** `~/.config/Code/User/mcp.json`
+- **Windows:** `%APPDATA%\Code\User\mcp.json`
 
 ## Migrating from JSON Files
 

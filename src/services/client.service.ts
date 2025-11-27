@@ -53,9 +53,9 @@ const CLIENT_PATHS: ClientPathsConfig = {
     linux: path.join(os.homedir(), ".config/Windsurf/User/globalStorage/windsurf.mcp/config.json"),
   },
   vscode: {
-    darwin: path.join(os.homedir(), ".continue/config.json"),
-    win32: path.join(os.homedir(), ".continue/config.json"),
-    linux: path.join(os.homedir(), ".continue/config.json"),
+    darwin: path.join(os.homedir(), "Library/Application Support/Code/User/mcp.json"),
+    win32: path.join(process.env.APPDATA || "", "Code/User/mcp.json"),
+    linux: path.join(os.homedir(), ".config/Code/User/mcp.json"),
   },
   "claude-code": {
     darwin: path.join(os.homedir(), ".claude.json"),
@@ -74,12 +74,23 @@ const CLIENT_PATHS: ClientPathsConfig = {
   },
 };
 
+const getVscodeAdditionalPath = (): string => {
+  const platform = process.platform as Platform;
+  if (platform === "darwin") {
+    return path.join(os.homedir(), "Library/Application Support/Code/User/mcp.json");
+  }
+  if (platform === "win32") {
+    return path.join(process.env.APPDATA || "", "Code/User/mcp.json");
+  }
+  return path.join(os.homedir(), ".config/Code/User/mcp.json");
+};
+
 /** Additional MCP config paths for real-time loading (per client) */
 const ADDITIONAL_MCP_PATHS: Record<ClientId, string | null> = {
   cursor: path.join(os.homedir(), ".cursor/mcp.json"),
-  windsurf: path.join(os.homedir(), ".windsurf/mcp.json"),
-  vscode: path.join(os.homedir(), ".continue/mcp.json"),
-  claude: path.join(os.homedir(), ".claude/mcp.json"),
+  windsurf: path.join(os.homedir(), ".codeium/windsurf/mcp_config.json"),
+  vscode: getVscodeAdditionalPath(),
+  claude: null,
   "claude-code": null,
   codex: null,
   gemini: null,
@@ -308,14 +319,17 @@ export class ClientService {
         status = "not-installed";
       } else {
         // Check if connected (has mcpsm gateway)
-        const connected = !!currentConfig?.mcpServers?.mcpsm;
+        const connected = !!(currentConfig?.mcpServers?.mcpsm || currentConfig?.servers?.mcpsm);
         status = connected ? "connected" : "disconnected";
       }
 
       // Count servers: all servers in config (including mcpsm when connected)
       let serverCount = 0;
       if (currentConfig?.mcpServers) {
-        serverCount = Object.keys(currentConfig.mcpServers).length;
+        serverCount += Object.keys(currentConfig.mcpServers).length;
+      }
+      if (currentConfig?.servers) {
+        serverCount += Object.keys(currentConfig.servers).length;
       }
 
       clients.push({
@@ -358,15 +372,27 @@ export class ClientService {
         }
 
         // Initialize mcpServers if not present
-        if (!clientConfig.mcpServers) {
-          clientConfig.mcpServers = {};
-        }
+        const useServersKey = clientId === "vscode";
+        if (useServersKey) {
+          if (!clientConfig.servers) {
+            clientConfig.servers = {};
+          }
+          clientConfig.servers.mcpsm = {
+            type: "stdio",
+            command: "npx",
+            args: ["-y", "supergateway", "--streamableHttp", `http://localhost:${port}/mcp`],
+          };
+        } else {
+          if (!clientConfig.mcpServers) {
+            clientConfig.mcpServers = {};
+          }
 
-        // Add mcpsm gateway server using supergateway (stdio wrapper for HTTP/SSE)
-        clientConfig.mcpServers.mcpsm = {
-          command: "npx",
-          args: ["-y", "supergateway", "--streamableHttp", `http://localhost:${port}/mcp`],
-        };
+          // Add mcpsm gateway server using supergateway (stdio wrapper for HTTP/SSE)
+          clientConfig.mcpServers.mcpsm = {
+            command: "npx",
+            args: ["-y", "supergateway", "--streamableHttp", `http://localhost:${port}/mcp`],
+          };
+        }
 
         // Write to additional MCP path only (the source of truth)
         const dir = path.dirname(additionalMcpPath);
@@ -423,13 +449,23 @@ export class ClientService {
           }
         }
 
+        const useServersKey = clientId === "vscode";
+
         // If no config or no mcpsm, already disconnected
-        if (!currentConfig || !currentConfig.mcpServers || !currentConfig.mcpServers.mcpsm) {
+        const hasGateway = useServersKey
+          ? !!currentConfig?.servers?.mcpsm
+          : !!currentConfig?.mcpServers?.mcpsm;
+
+        if (!currentConfig || !hasGateway) {
           return { success: true };
         }
 
         // Remove mcpsm gateway
-        delete currentConfig.mcpServers.mcpsm;
+        if (useServersKey && currentConfig.servers) {
+          delete currentConfig.servers.mcpsm;
+        } else if (currentConfig.mcpServers) {
+          delete currentConfig.mcpServers.mcpsm;
+        }
 
         // Write to additional MCP path only (the source of truth)
         const dir = path.dirname(additionalMcpPath);
@@ -449,11 +485,17 @@ export class ClientService {
     try {
       const currentConfig = this.readClientConfig(clientId);
 
-      if (!currentConfig || !currentConfig.mcpServers || !currentConfig.mcpServers.mcpsm) {
+      const hasGateway = currentConfig?.mcpServers?.mcpsm || currentConfig?.servers?.mcpsm;
+      if (!currentConfig || !hasGateway) {
         return { success: true };
       }
 
-      delete currentConfig.mcpServers.mcpsm;
+      if (currentConfig.servers?.mcpsm) {
+        delete currentConfig.servers.mcpsm;
+      }
+      if (currentConfig.mcpServers?.mcpsm) {
+        delete currentConfig.mcpServers.mcpsm;
+      }
 
       const success = this.writeClientConfig(clientId, currentConfig);
       return {
@@ -475,7 +517,7 @@ export class ClientService {
 
     const currentConfig = this.readClientConfig(clientId);
 
-    if (currentConfig?.mcpServers?.mcpsm) {
+    if (currentConfig?.mcpServers?.mcpsm || currentConfig?.servers?.mcpsm) {
       return "connected";
     }
 

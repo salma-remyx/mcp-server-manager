@@ -51,12 +51,14 @@ export interface DetectedClient {
 export interface ClaudeServerConfig {
   command: string;
   args: string[];
+  type?: string;
   env?: Record<string, string>;
 }
 
 /** Client MCP configuration */
 export interface ClientMcpConfig {
   mcpServers?: Record<string, ClaudeServerConfig>;
+  servers?: Record<string, ClaudeServerConfig>;
   [key: string]: unknown;
 }
 

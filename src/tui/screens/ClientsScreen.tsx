@@ -220,10 +220,10 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
                   {client.serverCount} {client.serverCount === 1 ? "server" : "servers"}
                 </Text>
               </Box>
-              {/* Second line: config path */}
-              {client.mcpConfigPath && (
+              {/* Second line: config path (prefer real-time path, fallback to primary) */}
+              {(client.mcpConfigPath || client.configPath) && (
                 <Box marginLeft={3}>
-                  <Text dimColor>{shortenPath(client.mcpConfigPath)}</Text>
+                  <Text dimColor>{shortenPath(client.mcpConfigPath || client.configPath || "")}</Text>
                 </Box>
               )}
             </Box>

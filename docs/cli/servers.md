@@ -67,14 +67,20 @@ Prompts for all required information.
 | `--type <type>`   | Server type: `stdio`, `http`, or `sse` |
 | `--command <cmd>` | Command to run (STDIO only)            |
 | `--args <args>`   | Command arguments (STDIO only)         |
+| `--env <env...>`  | Env vars for STDIO servers (`KEY=VAL`) |
 | `--url <url>`     | Server URL (HTTP/SSE only)             |
 | `--token <token>` | Bearer token for auth (HTTP/SSE only)  |
+
+Use spaces or commas to pass multiple `--env` values, e.g. `--env "FOO=bar BAR=baz"`.
 
 ### Examples
 
 ```bash
 # Add local STDIO server
 mcpsm add filesystem --type stdio --command "npx" --args "-y @modelcontextprotocol/server-filesystem /home/user"
+
+# Add local STDIO server that needs an auth token
+mcpsm add github --type stdio --command "npx" --args "-y @modelcontextprotocol/server-github" --env "GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx"
 
 # Add remote HTTP server
 mcpsm add my-api --type http --url "https://api.example.com/mcp"

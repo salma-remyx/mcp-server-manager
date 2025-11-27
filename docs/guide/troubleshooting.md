@@ -100,7 +100,7 @@ MCP Server Manager auto-detects clients based on config file locations. If a cli
 | Claude Desktop | `~/Library/Application Support/Claude/` (macOS)       |
 | Claude Desktop | `%APPDATA%\Claude\` (Windows)                         |
 | Cursor         | `~/.cursor/`                                          |
-| Windsurf       | `~/.codeium/windsurf/`                                |
+| Windsurf       | `~/.codeium/windsurf/mcp_config.json`                 |
 | VS Code        | `~/.vscode/` or `~/Library/Application Support/Code/` |
 | Claude Code    | `~/.claude/`                                          |
 | Codex          | `~/.codex/`                                           |

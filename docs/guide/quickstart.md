@@ -17,6 +17,7 @@ Press `A` to add a new server. You'll be prompted for:
 1. **Server name** - A friendly name (e.g., `filesystem`)
 2. **Server type** - `stdio` for local, `http`/`sse` for remote
 3. **Command** - The command to run the server
+4. **Environment variables (optional)** - For stdio servers that need tokens or API keys
 
 ### Example: Filesystem Server
 

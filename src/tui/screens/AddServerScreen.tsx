@@ -13,9 +13,20 @@ import { getConfigService } from "../../services/config.service.js";
 import { getTestingService } from "../../services/testing.service.js";
 import { getAuthService } from "../../services/auth.service.js";
 import { getDaemonService } from "../../services/daemon.service.js";
+import { parseEnvInput, normalizeEnv } from "../../shared/env.js";
 import type { LocalServer, RemoteServer, TransportType } from "../../types/index.js";
 
-type Step = "name" | "type" | "command" | "args" | "url" | "token" | "testing" | "authenticating" | "done";
+type Step =
+  | "name"
+  | "type"
+  | "command"
+  | "args"
+  | "env"
+  | "url"
+  | "token"
+  | "testing"
+  | "authenticating"
+  | "done";
 type ServerType = "stdio" | "http" | "sse";
 
 interface AddServerScreenProps {
@@ -29,6 +40,7 @@ interface FormState {
   serverType: ServerType | null;
   command: string;
   args: string;
+  env: string;
   url: string;
   token: string;
   testResult: { success: boolean; toolCount?: number; error?: string } | null;
@@ -61,6 +73,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
     serverType: null,
     command: "",
     args: "",
+    env: "",
     url: "",
     token: "",
     testResult: null,
@@ -80,6 +93,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         setState((prev) => ({ ...prev, step: "type" }));
       } else if (state.step === "args") {
         setState((prev) => ({ ...prev, step: "command" }));
+      } else if (state.step === "env") {
+        setState((prev) => ({ ...prev, step: "args" }));
       } else if (state.step === "url") {
         setState((prev) => ({ ...prev, step: "type" }));
       } else if (state.step === "token") {
@@ -156,17 +171,28 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
   }, []);
 
   // Handle args submission
-  const handleArgsSubmit = useCallback(
-    async (value: string) => {
-      const args = value.trim();
-      setState((prev) => ({ ...prev, args }));
+  const handleArgsSubmit = useCallback((value: string) => {
+    const args = value.trim();
+    setState((prev) => ({ ...prev, args, step: "env", error: null }));
+  }, []);
 
-      // Save the server
+  const saveLocalServer = useCallback(
+    async (envInput: string) => {
+      const parsedEnv = parseEnvInput(envInput);
+      if (!parsedEnv.success) {
+        setState((prev) => ({ ...prev, error: parsedEnv.error || "Invalid environment variable" }));
+        return;
+      }
+
+      const env = normalizeEnv(parsedEnv.data);
+      const argsArray = state.args ? state.args.split(/\s+/).filter(Boolean) : [];
+
       const server: LocalServer = {
         id: state.serverId,
         name: state.name,
         command: state.command,
-        args: args ? args.split(/\s+/).filter(Boolean) : [],
+        args: argsArray,
+        ...(env ? { env } : {}),
       };
 
       const result = configService.addLocalServer(server);
@@ -187,11 +213,29 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
           step: "done",
           testResult: { success: false, error: e instanceof Error ? e.message : "Unknown error" },
         }));
+      } finally {
+        setIsTesting(false);
+        refreshDaemonIfRunning();
       }
-      setIsTesting(false);
-      refreshDaemonIfRunning();
     },
-    [configService, refreshDaemonIfRunning, state.command, state.name, state.serverId, testingService]
+    [
+      configService,
+      refreshDaemonIfRunning,
+      state.args,
+      state.command,
+      state.name,
+      state.serverId,
+      testingService,
+    ]
+  );
+
+  const handleEnvSubmit = useCallback(
+    (value: string) => {
+      const envInput = value.trim();
+      setState((prev) => ({ ...prev, env: envInput, error: null }));
+      void saveLocalServer(envInput);
+    },
+    [saveLocalServer]
   );
 
   // Handle URL submission
@@ -357,6 +401,22 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
               value={state.args}
               onChange={(value) => setState((prev) => ({ ...prev, args: value }))}
               onSubmit={handleArgsSubmit}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {/* Env step (local) */}
+      {state.step === "env" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Text>Environment variables (optional):</Text>
+          <Text dimColor>Format: KEY=VALUE pairs, separated by space or comma. Leave blank to skip.</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={state.env}
+              onChange={(value) => setState((prev) => ({ ...prev, env: value }))}
+              onSubmit={handleEnvSubmit}
             />
           </Box>
         </Box>

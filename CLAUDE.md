@@ -120,10 +120,10 @@ All business logic is encapsulated in singleton services:
 
 Each client has its own config location where the `mcpsm` gateway server is registered:
 
-- **Claude Desktop**: `~/.claude/claude_desktop_config.json`
+- **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Cursor**: `~/.cursor/globalStorage/cursor.mcp/config.json` (with real-time: `~/.cursor/mcp.json`)
-- **Windsurf**: `~/.config/Windsurf/User/globalStorage/windsurf.mcp/config.json` (with real-time: `~/.windsurf/mcp.json`)
-- **VS Code (Continue)**: `~/.continue/config.json` (with real-time: `~/.continue/mcp.json`)
+- **Windsurf**: `~/.config/Windsurf/User/globalStorage/windsurf.mcp/config.json` (with real-time: `~/.codeium/windsurf/mcp_config.json`)
+- **VS Code**: `~/Library/Application Support/Code/User/mcp.json` (real-time)
 - **Claude Code**: `~/.claude/claude_code_config.json`
 - **Codex CLI**: `~/.codex/config.toml`
 - **Gemini CLI**: `~/.gemini/settings.json`
