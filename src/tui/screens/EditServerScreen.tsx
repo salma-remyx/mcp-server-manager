@@ -12,6 +12,7 @@ import { getConfigService } from "../../services/config.service.js";
 import { getDaemonService } from "../../services/daemon.service.js";
 import type { LocalServer, RemoteServer, TransportType } from "../../types/index.js";
 import { REDACTED_PLACEHOLDER } from "../../shared/redaction.js";
+import { useTheme } from "../theme/index.js";
 import {
   createServerFormFields,
   prepareLocalServerUpdates,
@@ -51,6 +52,7 @@ export function EditServerScreen({
   onBack,
   onSaved,
 }: EditServerScreenProps): React.ReactElement {
+  const { theme } = useTheme();
   const configService = getConfigService();
   const daemonService = getDaemonService();
 
@@ -200,7 +202,7 @@ export function EditServerScreen({
       <Box flexDirection="column" gap={1}>
         {step === "name" && (
           <>
-            <Text color="green">Server name</Text>
+            <Text color={theme.colors.success}>Server name</Text>
             <TextInput
               value={form.name}
               onChange={(value) => updateForm({ name: value })}
@@ -211,7 +213,7 @@ export function EditServerScreen({
 
         {type === "local" && step === "command" && (
           <>
-            <Text color="green">Command</Text>
+            <Text color={theme.colors.success}>Command</Text>
             <TextInput
               value={form.command}
               onChange={(value) => updateForm({ command: value })}
@@ -222,7 +224,7 @@ export function EditServerScreen({
 
         {type === "local" && step === "args" && (
           <>
-            <Text color="green">Arguments</Text>
+            <Text color={theme.colors.success}>Arguments</Text>
             <TextInput
               value={form.args}
               onChange={(value) => updateForm({ args: value })}
@@ -233,7 +235,7 @@ export function EditServerScreen({
 
         {type === "local" && step === "env" && (
           <>
-            <Text color="green">Environment variables</Text>
+            <Text color={theme.colors.success}>Environment variables</Text>
             <Text dimColor>Format: KEY=VALUE pairs, separated by space or comma. Leave blank to clear.</Text>
             <TextInput value={form.env} onChange={(value) => updateForm({ env: value })} onSubmit={handleSubmit} />
           </>
@@ -241,7 +243,7 @@ export function EditServerScreen({
 
         {type === "remote" && step === "type" && (
           <>
-            <Text color="green">Transport</Text>
+            <Text color={theme.colors.success}>Transport</Text>
             <SelectInput
               items={REMOTE_TYPE_OPTIONS}
               initialIndex={REMOTE_TYPE_OPTIONS.findIndex(
@@ -257,7 +259,7 @@ export function EditServerScreen({
 
         {type === "remote" && step === "url" && (
           <>
-            <Text color="green">URL</Text>
+            <Text color={theme.colors.success}>URL</Text>
             <TextInput
               value={form.url}
               onChange={(value) => updateForm({ url: value })}
@@ -268,7 +270,7 @@ export function EditServerScreen({
 
         {type === "remote" && step === "token" && (
           <>
-            <Text color="green">Bearer token (optional)</Text>
+            <Text color={theme.colors.success}>Bearer token (optional)</Text>
             <TextInput
               value={form.token}
               onChange={(value) => updateForm({ token: value })}
@@ -279,7 +281,7 @@ export function EditServerScreen({
 
         {type === "remote" && step === "oauthToggle" && (
           <>
-            <Text color="green">Enable OAuth? (y/N)</Text>
+            <Text color={theme.colors.success}>Enable OAuth? (y/N)</Text>
             <TextInput
               value={form.oauthEnabled ? "y" : ""}
               onChange={(value) => updateForm({ oauthEnabled: value.trim().toLowerCase().startsWith("y") })}
@@ -297,7 +299,7 @@ export function EditServerScreen({
 
         {type === "remote" && step === "clientId" && (
           <>
-            <Text color="green">OAuth Client ID (optional)</Text>
+            <Text color={theme.colors.success}>OAuth Client ID (optional)</Text>
             <TextInput
               value={form.clientId}
               onChange={(value) => updateForm({ clientId: value })}
@@ -308,7 +310,7 @@ export function EditServerScreen({
 
         {type === "remote" && step === "clientSecret" && (
           <>
-            <Text color="green">OAuth Client Secret (optional)</Text>
+            <Text color={theme.colors.success}>OAuth Client Secret (optional)</Text>
             <TextInput
               value={form.clientSecret}
               onChange={(value) => updateForm({ clientSecret: value })}
@@ -319,7 +321,7 @@ export function EditServerScreen({
 
         {type === "remote" && step === "scopes" && (
           <>
-            <Text color="green">OAuth Scopes (comma or space separated, optional)</Text>
+            <Text color={theme.colors.success}>OAuth Scopes (comma or space separated, optional)</Text>
             <TextInput
               value={form.scopes}
               onChange={(value) => updateForm({ scopes: value })}
@@ -330,7 +332,7 @@ export function EditServerScreen({
 
         {type === "remote" && step === "authServer" && (
           <>
-            <Text color="green">Auth Server URL (optional)</Text>
+            <Text color={theme.colors.success}>Auth Server URL (optional)</Text>
             <TextInput
               value={form.authServerUrl}
               onChange={(value) => updateForm({ authServerUrl: value })}
@@ -340,7 +342,7 @@ export function EditServerScreen({
         )}
 
         {error && (
-          <Text color="red">
+          <Text color={theme.colors.error}>
             ✗ {error}
           </Text>
         )}

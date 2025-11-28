@@ -13,6 +13,7 @@ import { getConfigService } from "../../services/config.service.js";
 import { getTestingService } from "../../services/testing.service.js";
 import { getAuthService } from "../../services/auth.service.js";
 import { getDaemonService } from "../../services/daemon.service.js";
+import { useTheme } from "../theme/index.js";
 import {
   createServerFormFields,
   prepareLocalServer,
@@ -48,6 +49,7 @@ const SERVER_TYPE_OPTIONS = [
 ];
 
 export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactElement {
+  const { theme } = useTheme();
   useApp(); // keep the Ink app alive
 
   const configService = getConfigService();
@@ -373,7 +375,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         <Box flexDirection="column" paddingY={1}>
           <Text>Server name:</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={form.name}
               onChange={(value) => updateForm({ name: value })}
@@ -397,7 +399,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
           <Text>Command executable:</Text>
           <Text dimColor>Examples: npx, node, python, uvx</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={form.command}
               onChange={(value) => updateForm({ command: value })}
@@ -411,7 +413,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         <Box flexDirection="column" paddingY={1}>
           <Text>Arguments (space separated, optional):</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={form.args}
               onChange={(value) => updateForm({ args: value })}
@@ -428,7 +430,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
             Format: KEY=VALUE pairs, separated by space or comma. Leave blank to skip.
           </Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={form.env}
               onChange={(value) => updateForm({ env: value })}
@@ -442,7 +444,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         <Box flexDirection="column" paddingY={1}>
           <Text>Server URL:</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={form.url}
               onChange={(value) => updateForm({ url: value })}
@@ -456,7 +458,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         <Box flexDirection="column" paddingY={1}>
           <Text>Bearer token (optional):</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={form.token}
               onChange={(value) => updateForm({ token: value })}
@@ -470,7 +472,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         <Box flexDirection="column" paddingY={1}>
           <Text>Enable OAuth? (y/N)</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={form.oauthEnabled ? "y" : ""}
               onChange={(value) =>
@@ -489,7 +491,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         <Box flexDirection="column" paddingY={1}>
           <Text>OAuth Client ID (optional):</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={form.clientId}
               onChange={(value) => updateForm({ clientId: value })}
@@ -503,7 +505,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         <Box flexDirection="column" paddingY={1}>
           <Text>OAuth Client Secret (optional):</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={form.clientSecret}
               onChange={(value) => updateForm({ clientSecret: value })}
@@ -517,7 +519,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         <Box flexDirection="column" paddingY={1}>
           <Text>OAuth Scopes (comma or space separated, optional):</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={form.scopes}
               onChange={(value) => updateForm({ scopes: value })}
@@ -531,7 +533,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         <Box flexDirection="column" paddingY={1}>
           <Text>Auth Server URL (optional, overrides discovery):</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={form.authServerUrl}
               onChange={(value) => updateForm({ authServerUrl: value })}
@@ -544,11 +546,11 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       {step === "testing" && (
         <Box flexDirection="column" paddingY={1}>
           <Box>
-            <Text color="green">✓</Text>
+            <Text color={theme.colors.success}>✓</Text>
             <Text> Server '{form.name}' added!</Text>
           </Box>
           <Box marginTop={1}>
-            <Text color="cyan">
+            <Text color={theme.colors.primary}>
               <Spinner type="dots" />
             </Text>
             <Text> Testing {form.name}...</Text>
@@ -559,15 +561,15 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       {step === "authenticating" && (
         <Box flexDirection="column" paddingY={1}>
           <Box>
-            <Text color="green">✓</Text>
+            <Text color={theme.colors.success}>✓</Text>
             <Text> Server '{form.name}' added!</Text>
           </Box>
           <Box marginTop={1}>
-            <Text color="yellow">○</Text>
+            <Text color={theme.colors.warning}>○</Text>
             <Text> Server requires authentication</Text>
           </Box>
           <Box marginTop={1}>
-            <Text color="cyan">
+            <Text color={theme.colors.primary}>
               <Spinner type="dots" />
             </Text>
             <Text> Opening browser for authentication...</Text>
@@ -581,19 +583,19 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       {step === "done" && (
         <Box flexDirection="column" paddingY={1}>
           <Box>
-            <Text color="green">✓</Text>
+            <Text color={theme.colors.success}>✓</Text>
             <Text> Server '{form.name}' added!</Text>
           </Box>
           {testResult && (
             <Box flexDirection="column" marginTop={1}>
               {testResult.success ? (
                 <Box>
-                  <Text color="green">✓ OK</Text>
+                  <Text color={theme.colors.success}>✓ OK</Text>
                   <Text> ({testResult.toolCount} tools)</Text>
                 </Box>
               ) : (
                 <Box>
-                  <Text color="red">✗ FAILED</Text>
+                  <Text color={theme.colors.error}>✗ FAILED</Text>
                   <Text> - {testResult.error}</Text>
                 </Box>
               )}
@@ -607,7 +609,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
 
       {error && (
         <Box marginTop={1}>
-          <Text color="red">Error: {error}</Text>
+          <Text color={theme.colors.error}>Error: {error}</Text>
         </Box>
       )}
     </ScreenLayout>

@@ -12,6 +12,7 @@ import { getImportExportService } from "../../services/import-export.service.js"
 import type { ExportFormat } from "../../services/import-export.service.js";
 import { getClientService } from "../../services/client.service.js";
 import type { ClientId, ImportedServer, ServerConflict, ConflictResolution } from "../../types/index.js";
+import { useTheme } from "../theme/index.js";
 
 type View =
   | "menu"
@@ -87,6 +88,7 @@ const FORMAT_OPTIONS = [
 ];
 
 export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.ReactElement {
+  const { theme } = useTheme();
   const importExportService = getImportExportService();
 
   const [state, setState] = useState<ImportExportState>({
@@ -526,7 +528,7 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
         <Box flexDirection="column" paddingY={1}>
           <Text>Enter file path:</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={filePath}
               onChange={(value) => setState((prev) => ({ ...prev, filePath: value }))}
@@ -560,12 +562,12 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
           {/* Side-by-side comparison */}
           <Box marginTop={1} gap={4}>
             <Box flexDirection="column" flexGrow={1}>
-              <Text bold color="red">Existing</Text>
+              <Text bold color={theme.colors.error}>Existing</Text>
               <Text dimColor>{JSON.stringify(currentConflict.existing, null, 2)}</Text>
             </Box>
 
             <Box flexDirection="column" flexGrow={1}>
-              <Text bold color="green">Incoming</Text>
+              <Text bold color={theme.colors.success}>Incoming</Text>
               <Text dimColor>{JSON.stringify(currentConflict.incoming, null, 2)}</Text>
             </Box>
           </Box>
@@ -573,7 +575,7 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
           {/* Differences summary */}
           {currentConflict.differences.length > 0 && (
             <Box flexDirection="column" marginTop={1}>
-              <Text bold color="yellow">Differences:</Text>
+              <Text bold color={theme.colors.warning}>Differences:</Text>
               {currentConflict.differences.map((diff, idx) => (
                 <Text key={idx} dimColor>
                   • {diff.field}: {JSON.stringify(diff.existing)} → {JSON.stringify(diff.incoming)}
@@ -657,7 +659,7 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
         <Box flexDirection="column" paddingY={1}>
           <Text>Enter output file path:</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={filePath}
               onChange={(value) => setState((prev) => ({ ...prev, filePath: value }))}
@@ -684,8 +686,8 @@ export function ImportExportScreen({ onBack }: ImportExportScreenProps): React.R
         return (
           <Box key={option.id} flexDirection="column" marginBottom={1}>
             <Box gap={1}>
-              <Text color={isCurrent ? "magenta" : "cyan"}>{isCurrent ? "→" : " "}</Text>
-              <Text color={isCurrent ? "magenta" : undefined} bold={isCurrent}>
+              <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>{isCurrent ? "→" : " "}</Text>
+              <Text color={isCurrent ? theme.colors.highlightText : undefined} bold={isCurrent}>
                 {option.label}
               </Text>
             </Box>

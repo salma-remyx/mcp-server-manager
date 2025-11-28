@@ -4,6 +4,7 @@
 
 import React from "react";
 import { Box, Text } from "ink";
+import { useTheme } from "../theme/index.js";
 
 interface MenuSection {
   title: string;
@@ -59,6 +60,7 @@ const defaultSections: MenuSection[] = [
 ];
 
 export function MenuPanel({ sections = defaultSections, highlightedView }: MenuPanelProps): React.ReactElement {
+  const { theme } = useTheme();
   return (
     <Box
       flexDirection="column"
@@ -68,14 +70,14 @@ export function MenuPanel({ sections = defaultSections, highlightedView }: MenuP
       paddingY={0}
     >
       <Box marginBottom={0}>
-        <Text color="cyan" bold>
+        <Text color={theme.colors.primary} bold>
           Shortcuts
         </Text>
       </Box>
 
       {sections.map((section, sIdx) => (
         <Box key={section.title} flexDirection="column" marginTop={sIdx === 0 ? 0 : 1}>
-          <Text color="yellow" dimColor>
+          <Text color={theme.colors.warning} dimColor>
             {section.title}
           </Text>
           {section.items.map((item) => {

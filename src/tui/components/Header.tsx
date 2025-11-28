@@ -5,6 +5,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { formatTokens } from "../../shared/formatters.js";
+import { useTheme } from "../theme/index.js";
 
 interface HeaderProps {
   title?: string;
@@ -21,6 +22,8 @@ export function Header({
   port,
   totalTokens,
 }: HeaderProps): React.ReactElement {
+  const { theme } = useTheme();
+
   const subtitleParts: string[] = [];
   if (profile) subtitleParts.push(`Profile: ${profile}`);
   if (port) subtitleParts.push(`Port: ${port}`);
@@ -31,8 +34,8 @@ export function Header({
   }
 
   return (
-    <Box paddingX={2} paddingY={0} borderStyle="round" borderColor="cyan" flexDirection="column">
-      <Text color="cyan" bold>
+    <Box paddingX={2} paddingY={0} borderStyle="round" borderColor={theme.colors.headerBorder} flexDirection="column">
+      <Text color={theme.colors.primary} bold>
         {title} {version && `v${version}`}
       </Text>
       {subtitleParts.length > 0 && <Text dimColor>{subtitleParts.join(" | ")}</Text>}

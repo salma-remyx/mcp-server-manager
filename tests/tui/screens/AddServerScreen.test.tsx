@@ -4,7 +4,7 @@
 
 import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render } from "ink-testing-library";
+import { render } from "../setup.js";
 import {
   mockConfigService,
   mockTestingService,

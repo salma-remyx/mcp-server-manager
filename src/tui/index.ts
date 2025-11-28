@@ -7,6 +7,7 @@
 import React from "react";
 import { render } from "ink";
 import { App } from "./App.js";
+import { ThemeProvider } from "./theme/index.js";
 
 const ENTER_ALT_SCREEN = "\x1b[?1049h";
 const EXIT_ALT_SCREEN = "\x1b[?1049l";
@@ -54,7 +55,9 @@ export async function startTui(): Promise<void> {
   signals.forEach((signal) => process.once(signal, handleSignal));
   process.once("exit", cleanup);
 
-  const { waitUntilExit } = render(React.createElement(App));
+  const { waitUntilExit } = render(
+    React.createElement(ThemeProvider, null, React.createElement(App))
+  );
 
   const handleResize = (): void => {
     if (shouldUseAlternateScreen) {

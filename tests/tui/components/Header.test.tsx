@@ -4,7 +4,7 @@
 
 import React from "react";
 import { describe, it, expect } from "vitest";
-import { render } from "ink-testing-library";
+import { render } from "../setup.js";
 import { Header } from "../../../src/tui/components/Header.js";
 
 describe("Header Component", () => {

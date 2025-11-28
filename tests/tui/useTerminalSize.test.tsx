@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { EventEmitter } from "node:events";
-import { render } from "ink-testing-library";
+import { render } from "./setup.js";
 
 const mockStdout = new (class extends EventEmitter {
   columns = 80;

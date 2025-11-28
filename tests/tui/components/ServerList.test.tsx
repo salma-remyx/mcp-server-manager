@@ -4,7 +4,7 @@
 
 import React from "react";
 import { describe, it, expect } from "vitest";
-import { render } from "ink-testing-library";
+import { render } from "../setup.js";
 import { ServerList } from "../../../src/tui/components/ServerList.js";
 import type { LocalServer, RemoteServer } from "../../../src/types/index.js";
 

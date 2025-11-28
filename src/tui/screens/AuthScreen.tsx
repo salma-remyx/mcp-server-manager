@@ -13,6 +13,7 @@ import { getAuthService } from "../../services/auth.service.js";
 import { getTestingService } from "../../services/testing.service.js";
 import { getDaemonService } from "../../services/daemon.service.js";
 import type { RemoteServer, AuthStatus } from "../../types/index.js";
+import { useTheme } from "../theme/index.js";
 
 interface AuthScreenProps {
   onBack: () => void;
@@ -39,6 +40,7 @@ export function AuthScreen({
   serverId: _serverId,
   onAuthComplete,
 }: AuthScreenProps): React.ReactElement {
+  const { theme } = useTheme();
   const [allServers, setAllServers] = useState<ServerAuthState[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -372,7 +374,7 @@ export function AuthScreen({
     return (
       <ScreenLayout title="OAuth Management" menuSections={authMenuSections}>
         <Box paddingX={1} paddingY={1} gap={1}>
-          <Text color="cyan">
+          <Text color={theme.colors.primary}>
             <Spinner type="dots" />
           </Text>
           <Text>Checking OAuth servers...</Text>
@@ -389,7 +391,7 @@ export function AuthScreen({
         menuSections={authMenuSections}
         footer={
           <Text>
-            <Text color="yellow">ESC</Text>
+            <Text color={theme.colors.warning}>ESC</Text>
             <Text dimColor>: Back to main</Text>
           </Text>
         }
@@ -414,11 +416,11 @@ export function AuthScreen({
   // Footer message (hide when showing confirmation dialog)
   const footerMessage = confirmRevoke ? undefined : currentAuthServer ? (
     <Text>
-      <Text color="yellow">ESC</Text>
+      <Text color={theme.colors.warning}>ESC</Text>
       <Text dimColor>: Cancel authentication</Text>
     </Text>
   ) : message ? (
-    <Text color="cyan">{message}</Text>
+    <Text color={theme.colors.primary}>{message}</Text>
   ) : undefined;
 
   return (
@@ -508,7 +510,7 @@ export function AuthScreen({
                     </Text>
                     <Text color={statusColor} dimColor={!isSelected}>({statusText})</Text>
                   {phase === "waiting" && (
-                    <Text color="cyan">
+                    <Text color={theme.colors.primary}>
                       <Spinner type="dots" />
                     </Text>
                   )}

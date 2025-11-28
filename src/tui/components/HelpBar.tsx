@@ -4,6 +4,7 @@
 
 import React from "react";
 import { Box, Text } from "ink";
+import { useTheme } from "../theme/index.js";
 
 interface ShortcutGroup {
   label: string;
@@ -24,11 +25,12 @@ const defaultGroups: ShortcutGroup[] = [
 ];
 
 export function HelpBar({ groups = defaultGroups }: HelpBarProps): React.ReactElement {
+  const { theme } = useTheme();
   return (
     <Box flexDirection="column" marginTop={1} paddingX={1}>
       {groups.map((group) => (
         <Box key={group.label} gap={1}>
-          <Text color="cyan" bold>
+          <Text color={theme.colors.primary} bold>
             {group.label}:
           </Text>
           <Text dimColor>{group.shortcuts.join("  ")}</Text>

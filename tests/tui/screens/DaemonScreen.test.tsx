@@ -3,7 +3,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render } from "ink-testing-library";
+import { render } from "../setup.js";
 import { mockConfigService, mockDaemonService, waitForStateUpdate, KEYS } from "../setup.js";
 
 // Setup mocks before importing component

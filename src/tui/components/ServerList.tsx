@@ -5,6 +5,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import type { LocalServer, RemoteServer } from "../../types/index.js";
+import { useTheme } from "../theme/index.js";
 
 interface ServerListProps {
   title: string;
@@ -25,12 +26,14 @@ export function ServerList({
   toolCounts = new Map(),
   isRemote = false,
 }: ServerListProps): React.ReactElement | null {
+  const { theme } = useTheme();
+
   if (servers.length === 0) return null;
 
   return (
     <Box flexDirection="column" paddingX={1}>
       <Box marginBottom={1}>
-        <Text color="cyan" bold>
+        <Text color={theme.colors.primary} bold>
           {title}
         </Text>
       </Box>
@@ -55,7 +58,7 @@ export function ServerList({
 
         return (
           <Box key={server.id} gap={1}>
-            <Text color={isCurrent ? "magenta" : "cyan"}>{isCurrent ? "→" : " "}</Text>
+            <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>{isCurrent ? "→" : " "}</Text>
             <Text color={checkboxColor}>{checkbox}</Text>
             <Text color={nameColor} bold={isCurrent}>
               {server.name || server.id}

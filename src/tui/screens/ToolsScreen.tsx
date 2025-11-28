@@ -12,6 +12,7 @@ import { getTestingService } from "../../services/testing.service.js";
 import type { ServerToolFilter } from "../../types/index.js";
 import { formatTokens } from "../../shared/formatters.js";
 import { getEnabledTokenTotal } from "../utils/tokenTotals.js";
+import { useTheme } from "../theme/index.js";
 
 interface ToolsScreenProps {
   onBack: () => void;
@@ -32,6 +33,7 @@ interface ToolsState {
 }
 
 export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): React.ReactElement {
+  const { theme } = useTheme();
   const configService = getConfigService();
   const daemonService = getDaemonService();
   const testingService = getTestingService();
@@ -328,13 +330,13 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
               const isCurrent = idx === globalIndex;
               return (
                 <Box key={id} gap={1} paddingX={1}>
-                  <Text color={isCurrent ? "magenta" : "cyan"}>{isCurrent ? "→" : " "}</Text>
-                  <Text color={isCurrent ? "magenta" : undefined} bold={isCurrent}>
+                  <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>{isCurrent ? "→" : " "}</Text>
+                  <Text color={isCurrent ? theme.colors.highlightText : undefined} bold={isCurrent}>
                     {item.name}
                   </Text>
                   <Text dimColor>[{item.type}]</Text>
                   <Text dimColor>·</Text>
-                  <Text color="yellow">{formatTokens(item.totalTokens)} tokens</Text>
+                  <Text color={theme.colors.warning}>{formatTokens(item.totalTokens)} tokens</Text>
                   <Text dimColor>·</Text>
                   <Text dimColor>{item.toolCount} tools</Text>
                 </Box>
@@ -372,7 +374,7 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
 
   const footer = message ? (
     <Box flexDirection="column">
-      <Text color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}>
+      <Text color={messageType === "success" ? theme.colors.success : messageType === "error" ? theme.colors.error : theme.colors.warning}>
         {messageType === "success" ? "✓" : messageType === "error" ? "✗" : isTesting ? "…" : "ℹ"} {message}
       </Text>
       <Text dimColor>
@@ -413,8 +415,8 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
 
             return (
               <Box key={tool} gap={1} paddingX={1}>
-                <Text color={isCurrent ? "magenta" : "cyan"}>{isCurrent ? "→" : " "}</Text>
-                <Text color={isEnabled ? "green" : "red"}>{isEnabled ? "[✓]" : "[ ]"}</Text>
+                <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>{isCurrent ? "→" : " "}</Text>
+                <Text color={isEnabled ? theme.colors.success : theme.colors.error}>{isEnabled ? "[✓]" : "[ ]"}</Text>
                 <Text
                   color={isCurrent ? "magenta" : isEnabled ? undefined : "gray"}
                   bold={isCurrent}
@@ -424,7 +426,7 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
                 {tokenLabel && (
                   <>
                     <Text dimColor>·</Text>
-                    <Text color="yellow">{tokenLabel}</Text>
+                    <Text color={theme.colors.warning}>{tokenLabel}</Text>
                   </>
                 )}
               </Box>

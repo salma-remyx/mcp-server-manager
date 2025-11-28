@@ -2,7 +2,11 @@
  * Shared TUI test setup and mocks
  */
 
+import React from "react";
 import { vi } from "vitest";
+import { render as inkRender } from "ink-testing-library";
+import type { RenderOptions } from "ink-testing-library";
+import { ThemeProvider } from "../../src/tui/theme/ThemeContext.js";
 
 // Mock config service
 export const mockConfigService = {
@@ -93,8 +97,11 @@ export const mockProfileService = {
 // Mock settings service
 export const mockSettings = {
   autoTest: true,
-  theme: "dark",
+  theme: "default",
   logLevel: "info",
+  port: 8850,
+  editor: "vi",
+  defaultProfile: "default",
 };
 
 export const mockSettingsService = {
@@ -106,9 +113,17 @@ export const mockSettingsService = {
   isDefault: vi.fn(() => true),
   getInfo: vi.fn(() => ({
     autoTest: { description: "Auto test new servers", type: "boolean" },
-    theme: { description: "UI theme", type: "string", options: ["dark", "light"] },
+    theme: { description: "UI theme", type: "string", options: ["default", "minimal", "colorful"] },
     logLevel: { description: "Log level", type: "string" },
+    port: { description: "Gateway port", type: "number" },
+    editor: { description: "Preferred editor", type: "string" },
+    defaultProfile: { description: "Default profile", type: "string" },
   })),
+  getOptions: vi.fn((key: string) => {
+    if (key === "theme") return ["default", "minimal", "colorful"];
+    if (key === "defaultProfile") return ["default", "dev"];
+    return undefined;
+  }),
 };
 
 // Mock daemon service
@@ -264,3 +279,14 @@ export const KEYS = {
   TAB: "\t",
   BACKSPACE: "\x7F",
 };
+
+/**
+ * Render a component with ThemeProvider wrapper
+ * This ensures all components have access to the theme context
+ */
+export function render(
+  component: React.ReactElement,
+  options?: RenderOptions
+): ReturnType<typeof inkRender> {
+  return inkRender(React.createElement(ThemeProvider, null, component), options);
+}

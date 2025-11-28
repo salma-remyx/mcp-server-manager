@@ -9,6 +9,7 @@ import { execSync } from "child_process";
 import fs from "fs";
 import { ScreenLayout } from "../components/index.js";
 import { getConfigService } from "../../services/config.service.js";
+import { useTheme } from "../theme/index.js";
 
 interface DoctorScreenProps {
   onBack: () => void;
@@ -41,6 +42,7 @@ function getVersion(cmd: string): string | null {
 }
 
 export function DoctorScreen({ onBack }: DoctorScreenProps): React.ReactElement {
+  const { theme } = useTheme();
   const [checks, setChecks] = useState<HealthCheck[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -142,7 +144,7 @@ export function DoctorScreen({ onBack }: DoctorScreenProps): React.ReactElement 
         shortcuts={[{ key: "Any", label: "Go back" }]}
       >
         <Box paddingY={1} gap={1}>
-          <Text color="cyan">
+          <Text color={theme.colors.info}>
             <Spinner type="dots" />
           </Text>
           <Text>Running health checks...</Text>
@@ -159,17 +161,17 @@ export function DoctorScreen({ onBack }: DoctorScreenProps): React.ReactElement 
       shortcuts={[{ key: "Any", label: "Go back" }]}
       footer={
         allOk ? (
-          <Text color="green">✓ All checks passed!</Text>
+          <Text color={theme.colors.success}>✓ All checks passed!</Text>
         ) : (
-          <Text color="yellow">⚠ Some checks failed. See above for details.</Text>
+          <Text color={theme.colors.warning}>⚠ Some checks failed. See above for details.</Text>
         )
       }
     >
       {checks.map((check) => (
         <Box key={check.name} gap={1} marginBottom={1}>
-          <Text color={check.status ? "green" : "yellow"}>{check.status ? "✓" : "✗"}</Text>
+          <Text color={check.status ? theme.colors.success : theme.colors.warning}>{check.status ? "✓" : "✗"}</Text>
           <Text>{check.name}:</Text>
-          <Text color={check.status ? "green" : "yellow"}>{check.info}</Text>
+          <Text color={check.status ? theme.colors.success : theme.colors.warning}>{check.info}</Text>
         </Box>
       ))}
     </ScreenLayout>

@@ -31,6 +31,7 @@ import { DoctorScreen } from "./screens/DoctorScreen.js";
 import { AuthScreen } from "./screens/AuthScreen.js";
 import { EditServerScreen } from "./screens/EditServerScreen.js";
 import { useTerminalSize } from "./hooks/useTerminalSize.js";
+import { useTheme } from "./theme/index.js";
 
 type Screen =
   | "main"
@@ -94,6 +95,7 @@ function filterIndicatesAuth(filter?: ServerToolFilter): boolean {
 
 export function App({ onExit }: AppProps): React.ReactElement {
   const { exit } = useApp();
+  const { theme } = useTheme();
   const configService = getConfigService();
   const profileService = getProfileService();
   const daemonService = getDaemonService();
@@ -856,7 +858,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
         ]}
         footer={
           isComplete && needsAuthCount > 0 ? (
-            <Text color="yellow">
+            <Text color={theme.colors.warning}>
               {needsAuthCount} server(s) need authentication. Press <Text bold>O</Text> to authenticate.
             </Text>
           ) : undefined
@@ -869,7 +871,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
             <Box key={idx} gap={1} marginBottom={1}>
               {isTesting ? (
                 <>
-                  <Text color="cyan">
+                  <Text color={theme.colors.info}>
                     <Spinner type="dots" />
                   </Text>
                   <Text dimColor>
@@ -879,7 +881,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                 </>
               ) : (
                 <>
-                  <Text color={result.success ? "green" : result.requiresAuth ? "yellow" : "red"}>
+                  <Text color={result.success ? theme.colors.success : result.requiresAuth ? theme.colors.warning : theme.colors.error}>
                     {result.success ? "✓" : result.requiresAuth ? "○" : "✗"}
                   </Text>
                   <Text>
@@ -887,7 +889,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                     {result.type !== "stdio" ? ` (${result.type})` : ""}
                   </Text>
                   <Text dimColor>-</Text>
-                  <Text color={result.success ? "green" : result.requiresAuth ? "yellow" : "red"}>
+                  <Text color={result.success ? theme.colors.success : result.requiresAuth ? theme.colors.warning : theme.colors.error}>
                     {result.success
                       ? `${result.toolCount} tools`
                       : result.requiresAuth
@@ -964,7 +966,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
           {message && (
             <Box marginX={contentMargin} marginTop={1}>
               <Text
-                color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}
+                color={messageType === "success" ? theme.colors.success : messageType === "error" ? theme.colors.error : theme.colors.warning}
               >
                 {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
               </Text>
@@ -977,12 +979,12 @@ export function App({ onExit }: AppProps): React.ReactElement {
               <Box
                 flexDirection="column"
                 borderStyle="round"
-                borderColor="green"
+                borderColor={theme.colors.border}
                 paddingX={1}
                 paddingY={0}
                 marginX={contentMargin}
               >
-                <Text color="green" bold>
+                <Text color={theme.colors.border} bold>
                   Servers
                 </Text>
                 {unifiedServers.length > 0 ? (
@@ -1005,37 +1007,41 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
                       // Disabled servers always show empty brackets
                       const showCheck = !isDisabled && isSelected;
-                      const nameColor = isCurrent ? "magenta" : isDisabled ? "gray" : undefined;
-                      const arrowColor = isCurrent ? "magenta" : type === "local" ? "green" : "magenta";
+                      const nameColor = isCurrent ? theme.colors.highlightText : isDisabled ? theme.colors.disabled : undefined;
+                      const arrowColor = isCurrent
+                        ? theme.colors.serverArrowSelected
+                        : type === "local"
+                          ? theme.colors.serverArrowLocal
+                          : theme.colors.serverArrowRemote;
 
                       return (
                         <Box key={id} gap={1} paddingX={1}>
                           <Text color={arrowColor}>{isCurrent ? "→" : " "}</Text>
-                          <Text color={isDisabled ? "yellow" : showCheck ? "green" : "gray"}>
+                          <Text color={isDisabled ? theme.colors.warning : showCheck ? theme.colors.serverCheckEnabled : theme.colors.serverCheckDisabled}>
                             {showCheck ? "[✓]" : "[ ]"}
                           </Text>
                           <Text color={nameColor} bold={isCurrent}>
                             {server.name || server.id}
                           </Text>
                           <>
-                            <Text color={needsAuth ? "red" : isDisabled ? "gray" : "green"}>
+                            <Text color={needsAuth ? theme.colors.serverNeedsAuth : isDisabled ? theme.colors.disabled : theme.colors.serverStatus}>
                               {needsAuth ? "!" : "✓"}
                             </Text>
-                            <Text color={isDisabled ? "gray" : "yellow"}>
+                            <Text color={isDisabled ? theme.colors.disabled : theme.colors.accent}>
                               {enabledTools}/{totalTools} tools
                             </Text>
                             <Text dimColor>·</Text>
-                            <Text color={isDisabled ? "gray" : "yellow"}>{tokenLabel}</Text>
+                            <Text color={isDisabled ? theme.colors.disabled : theme.colors.accent}>{tokenLabel}</Text>
                             {filter?.error && (
                               <>
                                 <Text dimColor>·</Text>
-                                <Text color="red">{filter.error}</Text>
+                                <Text color={theme.colors.serverStatusError}>{filter.error}</Text>
                               </>
                             )}
                             {needsAuth && (
                               <>
                                 <Text dimColor>·</Text>
-                                <Text color="red">needs auth</Text>
+                                <Text color={theme.colors.serverNeedsAuth}>needs auth</Text>
                               </>
                             )}
                           </>
@@ -1051,13 +1057,13 @@ export function App({ onExit }: AppProps): React.ReactElement {
               <Box
                 flexDirection="column"
                 borderStyle="round"
-                borderColor="gray"
+                borderColor={theme.colors.disabled}
                 paddingX={1}
                 paddingY={1}
                 marginX={contentMargin}
               >
                 <Text dimColor>No servers configured.</Text>
-                <Text dimColor>Press <Text color="green" bold>A</Text> to add a new server.</Text>
+                <Text dimColor>Press <Text color={theme.colors.border} bold>A</Text> to add a new server.</Text>
               </Box>
             )}
           </Box>

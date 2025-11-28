@@ -9,6 +9,7 @@ import fs from "fs";
 import { ScreenLayout } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getDaemonService } from "../../services/daemon.service.js";
+import { useTheme } from "../theme/index.js";
 
 type View = "menu" | "logs" | "action";
 
@@ -41,6 +42,7 @@ interface DaemonState {
 }
 
 export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement {
+  const { theme } = useTheme();
   const daemonService = getDaemonService();
 
   const [state, setState] = useState<DaemonState>({
@@ -240,7 +242,7 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
     return (
       <ScreenLayout title="Daemon Management" menuSections={daemonMenuSections}>
         <Box paddingY={1} gap={1}>
-          <Text color="cyan">
+          <Text color={theme.colors.primary}>
             <Spinner type="dots" />
           </Text>
           <Text>Starting daemon...</Text>
@@ -303,7 +305,7 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
         </Text>
         <Text dimColor>|</Text>
         <Text>Port:</Text>
-        <Text color="cyan">{status.port}</Text>
+        <Text color={theme.colors.primary}>{status.port}</Text>
         <Text dimColor>|</Text>
         <Text>Auto-start:</Text>
         <Text color={status.startupEnabled ? "green" : "gray"}>
@@ -318,8 +320,8 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
         return (
           <Box key={option.id} flexDirection="column" marginBottom={1}>
             <Box gap={1}>
-              <Text color={isCurrent ? "magenta" : "cyan"}>{isCurrent ? "→" : " "}</Text>
-              <Text color={isCurrent ? "magenta" : undefined} bold={isCurrent}>
+              <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>{isCurrent ? "→" : " "}</Text>
+              <Text color={isCurrent ? theme.colors.highlightText : undefined} bold={isCurrent}>
                 {option.label}
               </Text>
               <Text dimColor>-</Text>

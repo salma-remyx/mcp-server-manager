@@ -12,6 +12,7 @@ import { getSettingsService } from "../../services/settings.service.js";
 import { getClientService } from "../../services/client.service.js";
 import { getConfigService } from "../../services/config.service.js";
 import type { Settings, ClientId } from "../../types/index.js";
+import { useTheme } from "../theme/index.js";
 
 type View = "list" | "edit" | "confirmReset";
 
@@ -31,6 +32,7 @@ interface SettingsState {
 }
 
 export function SettingsScreen({ onBack, initialKey }: SettingsScreenProps): React.ReactElement {
+  const { theme } = useTheme();
   const settingsService = getSettingsService();
   const configService = getConfigService();
 
@@ -260,7 +262,7 @@ export function SettingsScreen({ onBack, initialKey }: SettingsScreenProps): Rea
         <Box flexDirection="column" paddingY={1}>
           <Text>{settingKey}:</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={editValue}
               onChange={(value) => setState((prev) => ({ ...prev, editValue: value }))}
@@ -281,7 +283,7 @@ export function SettingsScreen({ onBack, initialKey }: SettingsScreenProps): Rea
     return (
       <ScreenLayout title="Reset Settings" menuSections={settingsMenuSections}>
         <Box flexDirection="column" paddingY={1}>
-          <Text color="yellow">Reset all settings to defaults?</Text>
+          <Text color={theme.colors.warning}>Reset all settings to defaults?</Text>
           <Box marginTop={1}>
             <Text>Press Y to confirm, N to cancel</Text>
           </Box>
@@ -295,7 +297,7 @@ export function SettingsScreen({ onBack, initialKey }: SettingsScreenProps): Rea
     <ScreenLayout title="Settings" menuSections={settingsMenuSections}>
       {message && (
         <Box marginBottom={1}>
-          <Text color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}>
+          <Text color={messageType === "success" ? theme.colors.success : messageType === "error" ? theme.colors.error : theme.colors.warning}>
             {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
           </Text>
         </Box>
@@ -309,16 +311,16 @@ export function SettingsScreen({ onBack, initialKey }: SettingsScreenProps): Rea
 
         let valueDisplay: React.ReactElement;
         if (typeof value === "boolean") {
-          valueDisplay = <Text color={value ? "green" : "red"}>{value ? "true" : "false"}</Text>;
+          valueDisplay = <Text color={value ? theme.colors.success : theme.colors.error}>{value ? "true" : "false"}</Text>;
         } else {
-          valueDisplay = <Text color="cyan">{String(value)}</Text>;
+          valueDisplay = <Text color={theme.colors.primary}>{String(value)}</Text>;
         }
 
         return (
           <Box key={settingKey} flexDirection="column" marginBottom={1}>
             <Box gap={1}>
-              <Text color={isCurrent ? "magenta" : "green"}>{isCurrent ? "→" : " "}</Text>
-              <Text color={isCurrent ? "magenta" : undefined} bold={isCurrent}>
+              <Text color={isCurrent ? theme.colors.highlightText : theme.colors.border}>{isCurrent ? "→" : " "}</Text>
+              <Text color={isCurrent ? theme.colors.highlightText : undefined} bold={isCurrent}>
                 {settingKey}:
               </Text>
               {valueDisplay}

@@ -8,6 +8,7 @@ import { Header, ShortcutsBar } from "./index.js";
 import type { MenuSection } from "../utils/menu.js";
 import type { Shortcut } from "./ShortcutsBar.js";
 import { useTerminalSize } from "../hooks/useTerminalSize.js";
+import { useTheme } from "../theme/index.js";
 
 interface ScreenLayoutProps {
   title: string;
@@ -36,6 +37,7 @@ export function ScreenLayout({
   footer,
   customHeader,
 }: ScreenLayoutProps): React.ReactElement {
+  const { theme } = useTheme();
   const terminalSize = useTerminalSize();
   const isCompactLayout = terminalSize.columns < 90;
   const contentMargin = isCompactLayout ? 0 : 1;
@@ -68,7 +70,7 @@ export function ScreenLayout({
         marginX={contentMargin}
         flexDirection="column"
         borderStyle="round"
-        borderColor="green"
+        borderColor={theme.colors.border}
         paddingX={1}
         paddingY={0}
       >

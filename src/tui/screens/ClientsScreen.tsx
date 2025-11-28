@@ -10,6 +10,7 @@ import { ScreenLayout } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getClientService } from "../../services/client.service.js";
 import type { DetectedClient } from "../../types/index.js";
+import { useTheme } from "../theme/index.js";
 
 /** Convert absolute path to use ~ for home directory */
 function shortenPath(path: string): string {
@@ -33,6 +34,7 @@ interface ClientsState {
 }
 
 export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElement {
+  const { theme } = useTheme();
   const clientService = getClientService();
 
   const [state, setState] = useState<ClientsState>({
@@ -169,7 +171,7 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
     return (
       <ScreenLayout title="MCP Clients" menuSections={clientsMenuSections}>
         <Box paddingY={1} gap={1}>
-          <Text color="cyan">
+          <Text color={theme.colors.primary}>
             <Spinner type="dots" />
           </Text>
           <Text>Updating client connection...</Text>
@@ -185,7 +187,7 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
       footer={
         message ? (
           <Text
-            color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}
+            color={messageType === "success" ? theme.colors.success : messageType === "error" ? theme.colors.error : theme.colors.warning}
           >
             {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
           </Text>
@@ -221,9 +223,9 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
             <Box key={client.id} flexDirection="column" marginBottom={1}>
               {/* First line: arrow, icon, name, status, servers */}
               <Box gap={1}>
-                <Text color={isCurrent ? "magenta" : "cyan"}>{isCurrent ? "→" : " "}</Text>
+                <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>{isCurrent ? "→" : " "}</Text>
                 <Text color={statusColor}>{statusIcon}</Text>
-                <Text color={isCurrent ? "magenta" : undefined} bold={isCurrent}>
+                <Text color={isCurrent ? theme.colors.highlightText : undefined} bold={isCurrent}>
                   {client.name}
                 </Text>
                 <Text dimColor>[{client.id}]</Text>

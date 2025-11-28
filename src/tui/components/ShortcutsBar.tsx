@@ -4,6 +4,7 @@
 
 import React from "react";
 import { Box, Text } from "ink";
+import { useTheme } from "../theme/index.js";
 
 export interface Shortcut {
   key: string;
@@ -21,9 +22,10 @@ const defaultShortcuts: Shortcut[] = [
 ];
 
 export function ShortcutsBar({ shortcuts = defaultShortcuts }: ShortcutsBarProps): React.ReactElement {
+  const { theme } = useTheme();
   const renderShortcut = (shortcut: Shortcut) => (
     <Box key={shortcut.key} marginRight={1}>
-      <Text color="green" bold>
+      <Text color={theme.colors.success} bold>
         •{shortcut.key}
       </Text>
       <Text dimColor> {shortcut.label}</Text>

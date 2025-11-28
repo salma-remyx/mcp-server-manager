@@ -4,7 +4,7 @@
 
 import React from "react";
 import { describe, it, expect } from "vitest";
-import { render } from "ink-testing-library";
+import { render } from "../setup.js";
 import { HelpBar } from "../../../src/tui/components/HelpBar.js";
 
 describe("HelpBar Component", () => {

@@ -10,6 +10,7 @@ import { createMenuSections } from "../utils/menu.js";
 import { getProfileService } from "../../services/profile.service.js";
 import { getDaemonService } from "../../services/daemon.service.js";
 import type { ProfileListItem } from "../../types/index.js";
+import { useTheme } from "../theme/index.js";
 
 type View = "list" | "create" | "selectCloneSource" | "rename" | "confirmDelete" | "confirmClone";
 
@@ -29,6 +30,7 @@ interface ProfilesState {
 }
 
 export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElement {
+  const { theme } = useTheme();
   const profileService = getProfileService();
 
   const [state, setState] = useState<ProfilesState>({
@@ -319,11 +321,11 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
             const isCurrent = idx === currentIndex;
             return (
               <Box key={profile.id} marginBottom={1}>
-                <Text color={isCurrent ? "magenta" : "cyan"}>
+                <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>
                   {isCurrent ? "→" : " "}
                 </Text>
                 <Text> </Text>
-                <Text color={isCurrent ? "magenta" : undefined} bold={isCurrent}>
+                <Text color={isCurrent ? theme.colors.highlightText : undefined} bold={isCurrent}>
                   {profile.name}
                 </Text>
                 <Text> </Text>
@@ -347,7 +349,7 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
         <Box flexDirection="column" paddingY={1}>
           <Text>Profile name:</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={newProfileName}
               onChange={(value) => setState((prev) => ({ ...prev, newProfileName: value }))}
@@ -370,7 +372,7 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
         <Box flexDirection="column" paddingY={1}>
           <Text>New name for '{profile?.name}':</Text>
           <Box marginTop={1}>
-            <Text color="cyan">&gt; </Text>
+            <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
               value={renameValue}
               onChange={(value) => setState((prev) => ({ ...prev, renameValue: value }))}
@@ -405,7 +407,7 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
     <ScreenLayout title="Profiles" menuSections={profilesMenuSections}>
       {message && (
         <Box marginBottom={1}>
-          <Text color={messageType === "success" ? "green" : messageType === "error" ? "red" : "yellow"}>
+          <Text color={messageType === "success" ? theme.colors.success : messageType === "error" ? theme.colors.error : theme.colors.warning}>
             {messageType === "success" ? "✓" : messageType === "error" ? "✗" : "ℹ"} {message}
           </Text>
         </Box>
@@ -421,12 +423,12 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
           return (
             <Box key={profile.id} flexDirection="column" marginBottom={1}>
               <Box gap={1}>
-                <Text color={isCurrent ? "magenta" : "cyan"}>{isCurrent ? "→" : " "}</Text>
-                <Text color={isCurrent ? "magenta" : undefined} bold={isCurrent}>
+                <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>{isCurrent ? "→" : " "}</Text>
+                <Text color={isCurrent ? theme.colors.highlightText : undefined} bold={isCurrent}>
                   {profile.name}
                 </Text>
                 <Text dimColor>[{profile.id}]</Text>
-                {profile.isActive && <Text color="green">(active)</Text>}
+                {profile.isActive && <Text color={theme.colors.success}>(active)</Text>}
               </Box>
               <Box marginLeft={4}>
                 <Text dimColor>{serverInfo}</Text>
