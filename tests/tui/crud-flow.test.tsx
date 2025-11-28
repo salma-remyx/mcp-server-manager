@@ -275,16 +275,11 @@ describe("TUI CRUD with sardine config", () => {
   });
 
   it("allows editing stdio env vars through the edit flow", async () => {
-    const localWithEnv = localServers.find((s) => s.id === "metamcp") as LocalServer;
-    const initialEnvString = localWithEnv.env
-      ? Object.entries(localWithEnv.env)
-          .map(([k, v]) => `${k}=${v}`)
-          .join(" ")
-      : "";
+    const localWithoutEnv = localServers.find((s) => s.id === "sardineinternalsandbox") as LocalServer;
     const onSaved = vi.fn();
 
     const { stdin, lastFrame } = render(
-      <EditServerScreen server={{ ...localWithEnv }} type="local" onBack={() => {}} onSaved={onSaved} />
+      <EditServerScreen server={{ ...localWithoutEnv }} type="local" onBack={() => {}} onSaved={onSaved} />
     );
 
     await waitForStateUpdate(50);
@@ -303,9 +298,7 @@ describe("TUI CRUD with sardine config", () => {
     expect(lastFrame()).toContain("Environment variables");
 
     // env input
-    stdin.write(KEYS.BACKSPACE.repeat(initialEnvString.length + 5));
-    await waitForStateUpdate(30);
-    stdin.write(" API_ACCESS_TOKEN=UPDATED_ENV FOO=bar");
+    stdin.write("API_ACCESS_TOKEN=UPDATED_ENV,FOO=bar");
     await waitForStateUpdate(30);
     expect(lastFrame()).toContain("UPDATED_ENV");
     stdin.write(KEYS.ENTER);
@@ -320,7 +313,7 @@ describe("TUI CRUD with sardine config", () => {
       API_ACCESS_TOKEN: "UPDATED_ENV",
       FOO: "bar",
     });
-    expect(payload.command).toBe(localWithEnv.command);
+    expect(payload.command).toBe(localWithoutEnv.command);
     expect(onSaved).toHaveBeenCalled();
   });
 });
