@@ -258,6 +258,11 @@ describe("TUI CRUD with sardine config", () => {
     stdin.write(KEYS.ENTER);
     await waitForStateUpdate(300);
 
+    // Decline OAuth prompt (stay bearer-only)
+    stdin.write("n");
+    stdin.write(KEYS.ENTER);
+    await waitForStateUpdate(300);
+
     expect(mockConfigService.updateRemoteServer).toHaveBeenCalled();
     const [, payload] = mockConfigService.updateRemoteServer.mock.calls.at(-1) as [
       string,

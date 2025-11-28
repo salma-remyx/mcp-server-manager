@@ -129,6 +129,21 @@ export const mockDaemonService = {
   getLogFilePath: vi.fn(() => "/tmp/daemon.log"),
 };
 
+export const mockAuthService = {
+  hasValidToken: vi.fn(() => false),
+  isTokenExpired: vi.fn(() => false),
+  getTokenPreview: vi.fn(() => "tok_123"),
+  getToken: vi.fn(() => ({ accessToken: "token", refreshToken: "refresh", tokenType: "Bearer" })),
+  startOAuthFlow: vi.fn(() => Promise.resolve({ authUrl: "https://auth", state: "state1" })),
+  waitForAuth: vi.fn(() => Promise.resolve({ success: true, expiresAt: Date.now() + 1000 })),
+  stopCallbackServer: vi.fn(),
+  removeToken: vi.fn(),
+  getAllStoredTokenServerIds: vi.fn(() => []),
+  clearAllTokens: vi.fn(),
+  refreshToken: vi.fn(() => Promise.resolve({ accessToken: "token2", tokenType: "Bearer" })),
+  cancelPendingAuth: vi.fn(),
+};
+
 // Mock import/export service
 export const mockImportExportService = {
   importFromFile: vi.fn(() => ({
@@ -187,6 +202,12 @@ export function setupMocks(): void {
     getDaemonService: vi.fn(() => mockDaemonService),
     DaemonService: vi.fn(() => mockDaemonService),
     resetDaemonService: vi.fn(),
+  }));
+
+  vi.mock("../../src/services/auth.service.js", () => ({
+    getAuthService: vi.fn(() => mockAuthService),
+    AuthService: vi.fn(() => mockAuthService),
+    resetAuthService: vi.fn(),
   }));
 
   vi.mock("../../src/services/import-export.service.js", () => ({

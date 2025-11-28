@@ -131,7 +131,7 @@ export class DaemonService {
   }
 
   /** Start daemon */
-  async startDaemon(selectedServers: string[] = []): Promise<Result & { pid?: number }> {
+  async startDaemon(): Promise<Result & { pid?: number }> {
     const status = this.isDaemonRunning();
     if (status.running) {
       return { success: false, error: `Daemon already running (PID: ${status.pid})` };
@@ -182,11 +182,6 @@ export class DaemonService {
     const logStream = fs.openSync(this.logFile, "a");
 
     const env: Record<string, string | undefined> = { ...process.env, MCPSM_DAEMON: "1" };
-
-    // Pass selected servers as env variable if specified
-    if (selectedServers.length > 0) {
-      env.MCPSM_SERVERS = selectedServers.join(",");
-    }
 
     const child: ChildProcess = spawn("node", [finalCliPath, "daemon", "start", "--foreground"], {
       detached: true,

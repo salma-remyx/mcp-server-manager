@@ -30,6 +30,8 @@ interface ServerAuthState {
   phase: AuthPhase;
   error?: string;
   authUrl?: string;
+  hasRefresh?: boolean;
+  isBearerOnly?: boolean;
 }
 
 export function AuthScreen({
@@ -65,44 +67,50 @@ export function AuthScreen({
     const storedTokenServerIds = authService.getAllStoredTokenServerIds();
 
     for (const server of allRemoteServers) {
-      const token = authService.getToken(server.id);
-      const hasToken = !!token; // Check if token exists (even if expired)
+      let token = authService.getToken(server.id);
+      let isExpired = authService.isTokenExpired(server.id);
       const hasStoredToken = storedTokenServerIds.includes(server.id);
-      const isExpired = authService.isTokenExpired(server.id);
-      const hasStaticToken = !!server.bearerToken;
       const isOAuthEnabled = server.oauth?.enabled || false;
+      const isBearerOnly = !isOAuthEnabled;
+
+      // Attempt automatic refresh if token expired and refresh token exists
+      if (isExpired && token?.refreshToken) {
+        const refreshed = await authService.refreshToken(server, token);
+        if (refreshed) {
+          token = authService.getToken(server.id);
+          isExpired = authService.isTokenExpired(server.id);
+        }
+      }
+
+      const hasToken = !!token;
+      const hasRefresh = !!token?.refreshToken || !!server.oauth?.clientSecret;
 
       // Check if server actually needs auth (test it) - only if no tokens at all
       let requiresAuth = false;
-      if (!hasToken && !hasStaticToken && isOAuthEnabled) {
+      if (!hasToken && isOAuthEnabled) {
         // Quick test to see if server needs auth
         const testResult = await testingService.testRemoteServer(server, true);
         requiresAuth = testResult.requiresAuth || false;
       }
 
-      // Include ALL servers that:
-      // 1. Have OAuth enabled, OR
-      // 2. Have an OAuth token stored (even if expired)
       const shouldInclude = isOAuthEnabled || hasToken || hasStoredToken;
-
       if (!shouldInclude) {
-        continue; // Skip servers without OAuth
+        continue;
       }
 
-      // Determine if server requires auth:
-      // - No token and OAuth enabled (needs auth)
-      // - Token expired (needs re-auth)
-      // - Test returned 401 (needs auth)
-      const needsAuth = (!hasToken && !hasStaticToken && isOAuthEnabled) || (hasToken && isExpired) || requiresAuth;
+      const needsAuth =
+        (!hasToken && isOAuthEnabled) ||
+        (hasToken && isExpired) ||
+        requiresAuth;
 
       const status: AuthStatus = {
         serverId: server.id,
         serverName: server.name,
-        hasToken: hasToken || hasStoredToken, // Token exists (may be expired)
-        isOAuth: isOAuthEnabled || hasStoredToken, // Consider as OAuth if has stored token
-        isExpired,
+        hasToken: hasToken || hasStoredToken,
+        isOAuth: isOAuthEnabled || hasStoredToken,
         expiresAt: token?.expiresAt,
-        tokenPreview: (hasToken || hasStoredToken) ? authService.getTokenPreview(server.id) || undefined : undefined,
+        tokenPreview:
+          hasToken || hasStoredToken ? authService.getTokenPreview(server.id) || undefined : undefined,
         requiresAuth: needsAuth,
       };
 
@@ -110,6 +118,8 @@ export function AuthScreen({
         server,
         status,
         phase: "idle",
+        hasRefresh,
+        isBearerOnly,
       });
     }
 
@@ -238,7 +248,7 @@ export function AuthScreen({
 
       setCurrentAuthServer(null);
     },
-    [onAuthComplete, refreshDaemonIfRunning]
+    [onAuthComplete, refreshDaemonIfRunning, loadServers]
   );
 
   // Revoke authentication for a server
@@ -273,6 +283,20 @@ export function AuthScreen({
     },
     [loadServers, refreshDaemonIfRunning]
   );
+
+  const loginAll = useCallback(async () => {
+    const targets = allServers.filter(
+      (s) => s.status.requiresAuth && !s.isBearerOnly && !s.phase?.includes("auth")
+    );
+    if (targets.length === 0) {
+      setMessage("No servers need login");
+      return;
+    }
+
+    for (const entry of targets) {
+      await startAuth(entry.server);
+    }
+  }, [allServers, startAuth]);
 
   // Handle keyboard input
   useInput(
@@ -321,6 +345,8 @@ export function AuthScreen({
         if (selected && selected.status.hasToken) {
           setConfirmRevoke({ id: selected.server.id, name: selected.server.name });
         }
+      } else if (input.toLowerCase() === "a") {
+        void loginAll();
       } else if (input === "q" || input === "Q") {
         onBack();
       }
@@ -333,6 +359,7 @@ export function AuthScreen({
     actions: [
       { key: "Enter", label: "Authenticate" },
       { key: "R", label: "Revoke token" },
+      { key: "A", label: "Login all" },
     ],
     showData: false,
     showConfig: false,
@@ -449,21 +476,25 @@ export function AuthScreen({
                   statusColor = "red";
                   statusText = error || "failed";
                   break;
-                default:
-                  if (status.hasToken && !status.isExpired) {
-                    statusIcon = "✓";
-                    statusColor = "green";
-                    statusText = status.tokenPreview || "authenticated";
-                  } else if (status.hasToken && status.isExpired) {
-                    statusIcon = "!";
-                    statusColor = "yellow";
-                    statusText = "token expired";
-                  } else {
-                    statusIcon = "○";
-                    statusColor = "red";
-                    statusText = "not authenticated";
-                  }
-              }
+              default:
+                if (status.requiresAuth) {
+                  statusIcon = "!";
+                  statusColor = "yellow";
+                  statusText = "requires authentication";
+                } else if (status.hasToken) {
+                  statusIcon = "✓";
+                  statusColor = "green";
+                  statusText = status.tokenPreview || (state.isBearerOnly ? "static token" : "authenticated");
+                } else if (state.isBearerOnly) {
+                  statusIcon = "○";
+                  statusColor = "gray";
+                  statusText = "static token";
+                } else {
+                  statusIcon = "○";
+                  statusColor = "red";
+                  statusText = "not authenticated";
+                }
+            }
 
               return (
                 <Box key={server.id} flexDirection="column">
@@ -474,24 +505,28 @@ export function AuthScreen({
                       {server.name}
                     </Text>
                     <Text color={statusColor} dimColor={!isSelected}>({statusText})</Text>
-                    {phase === "waiting" && (
-                      <Text color="cyan">
-                        <Spinner type="dots" />
-                      </Text>
-                    )}
-                  </Box>
-                  {phase === "waiting" && authUrl && (
-                    <Box marginLeft={4}>
-                      <Text dimColor wrap="truncate">
-                        URL: {authUrl.substring(0, 60)}...
-                      </Text>
-                    </Box>
+                  {phase === "waiting" && (
+                    <Text color="cyan">
+                      <Spinner type="dots" />
+                    </Text>
                   )}
                 </Box>
-              );
-            }}
-          />
-        )}
+                {phase === "waiting" && authUrl && (
+                  <Box marginLeft={4}>
+                    <Text dimColor wrap="truncate">
+                      URL: {authUrl.substring(0, 60)}...
+                    </Text>
+                  </Box>
+                )}
+                <Box marginLeft={4} gap={1}>
+                  {state.isBearerOnly && <Text dimColor>Bearer token only</Text>}
+                  {state.hasRefresh && <Text dimColor>Has refresh</Text>}
+                </Box>
+              </Box>
+            );
+          }}
+        />
+      )}
       </Box>
     </ScreenLayout>
   );

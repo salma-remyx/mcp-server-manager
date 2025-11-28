@@ -281,8 +281,8 @@ export const FEATURES: Feature[] = [
     name: "Show config path",
     category: "utilities",
     cliCommands: ["config"],
-    tuiImplementation: null, // CLI-only is OK
-    requiredInTui: false,
+    tuiImplementation: "SettingsScreen.tsx",
+    requiredInTui: true,
   },
   {
     id: "tokens",
@@ -292,6 +292,14 @@ export const FEATURES: Feature[] = [
     tuiImplementation: "ToolsScreen.tsx",
     requiredInTui: true,
   },
+  {
+    id: "version",
+    name: "Show version",
+    category: "utilities",
+    cliCommands: ["version"],
+    tuiImplementation: null,
+    requiredInTui: false,
+  },
 
   // === Auth ===
   {
@@ -299,8 +307,8 @@ export const FEATURES: Feature[] = [
     name: "Auth status",
     category: "auth",
     cliCommands: ["auth status"],
-    tuiImplementation: null, // CLI-only for now
-    requiredInTui: false,
+    tuiImplementation: "AuthScreen.tsx",
+    requiredInTui: true,
   },
   {
     id: "auth-login",
@@ -308,23 +316,23 @@ export const FEATURES: Feature[] = [
     category: "auth",
     cliCommands: ["auth login", "auth login-all"],
     tuiImplementation: "AuthScreen.tsx",
-    requiredInTui: false, // Optional but implemented
+    requiredInTui: true,
   },
   {
     id: "auth-logout",
     name: "OAuth logout",
     category: "auth",
-    cliCommands: ["auth logout", "auth clear"],
+    cliCommands: ["auth logout"],
     tuiImplementation: "AuthScreen.tsx",
-    requiredInTui: false, // Optional but implemented
+    requiredInTui: true,
   },
   {
     id: "auth-refresh",
     name: "Refresh OAuth token",
     category: "auth",
     cliCommands: ["auth refresh"],
-    tuiImplementation: null, // CLI-only
-    requiredInTui: false,
+    tuiImplementation: "AuthScreen.tsx",
+    requiredInTui: true,
   },
 ];
 

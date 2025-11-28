@@ -9,6 +9,7 @@ import { colors, c } from "../../shared/colors.js";
 import { formatTokens, outputJson } from "../../shared/formatters.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getSettingsService } from "../../services/settings.service.js";
+import { VERSION } from "../../shared/version.js";
 
 /** Check if a command exists */
 function commandExists(cmd: string): boolean {
@@ -271,6 +272,19 @@ export function registerUtilityCommands(program: Command): void {
       console.log(
         `\n${colors.bright}Total: ${colors.magenta}${formatTokens(grandTotal)}${colors.reset} tokens`
       );
+    });
+
+  // Version command
+  program
+    .command("version")
+    .description("Show version information")
+    .option("--json", "Output in JSON format")
+    .action((options) => {
+      if (options.json) {
+        outputJson({ version: VERSION });
+        return;
+      }
+      console.log(`MCP Server Manager v${VERSION}`);
     });
 
   // Port command

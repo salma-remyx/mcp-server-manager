@@ -3,9 +3,10 @@
  */
 
 import React from "react";
+import fs from "fs";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render } from "ink-testing-library";
-import { mockDaemonService, waitForStateUpdate, KEYS } from "../setup.js";
+import { mockConfigService, mockDaemonService, waitForStateUpdate, KEYS } from "../setup.js";
 
 // Setup mocks before importing component
 vi.mock("../../../src/services/daemon.service.js", () => ({
@@ -105,14 +106,42 @@ describe("DaemonScreen", () => {
       // Should have called startDaemon
       expect(mockDaemonService.startDaemon).toHaveBeenCalled();
     });
+
+    it("refreshes daemon when Refresh is selected", async () => {
+      const { stdin } = render(<DaemonScreen onBack={mockOnBack} />);
+
+      stdin.write(KEYS.DOWN);
+      await waitForStateUpdate();
+      stdin.write(KEYS.ENTER);
+      await waitForStateUpdate();
+
+      expect(mockDaemonService.refreshDaemon).toHaveBeenCalled();
+    });
+
+    it("clears logs when Clear Logs is selected", async () => {
+      const logPath = "/tmp/daemon-clear.log";
+      mockDaemonService.getLogFilePath.mockReturnValue(logPath);
+      fs.writeFileSync(logPath, "old logs");
+
+      const { stdin, lastFrame } = render(<DaemonScreen onBack={mockOnBack} />);
+      for (let i = 0; i < 4; i++) {
+        stdin.write(KEYS.DOWN);
+        await waitForStateUpdate();
+      }
+      stdin.write(KEYS.ENTER);
+      await waitForStateUpdate(300);
+
+      expect(lastFrame()).toContain("Logs cleared");
+      expect(fs.readFileSync(logPath, "utf8")).toBe("");
+    });
   });
 
   describe("Startup Management", () => {
     it("should toggle startup when Enable/Disable Startup is selected", async () => {
       const { stdin } = render(<DaemonScreen onBack={mockOnBack} />);
 
-      // Navigate to startup option (Enable Auto-start is 4th option, index 3)
-      for (let i = 0; i < 3; i++) {
+      // Navigate to startup option (Enable Auto-start is later in the list)
+      for (let i = 0; i < 5; i++) {
         stdin.write(KEYS.DOWN);
         await waitForStateUpdate();
       }

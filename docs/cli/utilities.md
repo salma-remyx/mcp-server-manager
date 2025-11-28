@@ -139,17 +139,18 @@ mcpsm config --dir
 Show version information.
 
 ```bash
-mcpsm version
-# or
-mcpsm -v
-# or
-mcpsm --version
+mcpsm version [--json]
+# or mcpsm -v / --version
 ```
 
 ### Output
 
-```
-mcp-server-manager v1.7.0
+```bash
+mcpsm version
+# MCP Server Manager v2.2.2
+
+mcpsm version --json
+# {"version":"2.2.2"}
 ```
 
 ---

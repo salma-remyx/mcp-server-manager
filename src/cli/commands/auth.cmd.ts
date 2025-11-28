@@ -324,36 +324,6 @@ export function registerAuthCommands(program: Command): void {
       }
     });
 
-  // Clear all tokens
-  auth
-    .command("clear")
-    .description("Clear all OAuth tokens")
-    .option("-f, --force", "Don't prompt for confirmation")
-    .action(async (options) => {
-      const authService = getAuthService();
-
-      if (!options.force) {
-        const readline = await import("readline");
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout,
-        });
-
-        const answer = await new Promise<string>((resolve) => {
-          rl.question(`Clear all OAuth tokens? (y/N) `, resolve);
-        });
-        rl.close();
-
-        if (answer.toLowerCase() !== "y") {
-          console.log(`${colors.gray}Cancelled${colors.reset}`);
-          return;
-        }
-      }
-
-      authService.clearAllTokens();
-      console.log(`${c.checkmark} All OAuth tokens cleared`);
-    });
-
   // Refresh token for a server
   auth
     .command("refresh <server>")

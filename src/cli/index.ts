@@ -18,7 +18,7 @@ import { registerImportExportCommands } from "./commands/import-export.cmd.js";
 import { registerAuthCommands } from "./commands/auth.cmd.js";
 
 /** Package version */
-const VERSION = "2.0.0";
+import { VERSION } from "../shared/version.js";
 
 /** Create and configure the CLI program */
 function createProgram(): Command {

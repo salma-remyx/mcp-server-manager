@@ -53,8 +53,6 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
     },
     []
   );
-  // Keep reference to avoid unused warning
-  void showMessage;
 
   // Handle connect/disconnect toggle
   const handleToggleConnection = useCallback(async () => {
@@ -131,6 +129,21 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
       return;
     }
 
+    // Open config - O
+    if ((input === "o" || input === "O") && clients.length > 0) {
+      const client = clients[currentIndex];
+      if (client.status === "not-installed") {
+        showMessage("Client not installed", "error");
+        return;
+      }
+      const result = clientService.openClientConfig(client.id);
+      showMessage(
+        result.success ? `Opened ${client.name} config` : result.error || "Failed to open config",
+        result.success ? "success" : "error"
+      );
+      return;
+    }
+
     // Refresh - R
     if (input === "r" || input === "R") {
       handleRefresh();
@@ -143,6 +156,7 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
   const clientsMenuSections = createMenuSections({
     actions: [
       { key: "Enter", label: "Connect/Disconnect" },
+      { key: "O", label: "Open config" },
       { key: "R", label: "Refresh" },
     ],
     showData: false,

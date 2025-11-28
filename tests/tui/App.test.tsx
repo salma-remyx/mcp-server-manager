@@ -147,7 +147,7 @@ describe("App Component", () => {
       stdin.write("t");
       await waitForStateUpdate();
 
-      expect(lastFrame()).toContain("Tool Filters");
+      expect(lastFrame()).toContain("Token Usage");
     });
 
     it("should navigate to clients screen on C key", async () => {
@@ -201,7 +201,7 @@ describe("App Component", () => {
       // Go to tools screen
       stdin.write("t");
       await waitForStateUpdate();
-      expect(lastFrame()).toContain("Tool Filters");
+      expect(lastFrame()).toContain("Token Usage");
 
       // Press Q to go back
       stdin.write("q");

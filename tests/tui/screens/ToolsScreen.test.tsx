@@ -24,16 +24,16 @@ describe("ToolsScreen", () => {
   });
 
   describe("Rendering - No Server Selected", () => {
-    it("should render tools screen with title", () => {
+    it("should render global token view title", () => {
       const { lastFrame } = render(<ToolsScreen onBack={mockOnBack} />);
 
-      expect(lastFrame()).toContain("Tool Filters");
+      expect(lastFrame()).toContain("Token Usage");
     });
 
-    it("should show 'no server selected' message when no initialServerId", () => {
+    it("should show empty global state when no servers", () => {
       const { lastFrame } = render(<ToolsScreen onBack={mockOnBack} />);
 
-      expect(lastFrame()).toContain("No server selected");
+      expect(lastFrame()).toContain("No servers configured");
     });
   });
 

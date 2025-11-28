@@ -11,37 +11,6 @@ Remote servers (HTTP/SSE) may require authentication. MCPSM supports:
 
 ---
 
-## auth
-
-Authenticate with a remote server using OAuth.
-
-```bash
-mcpsm auth <server>
-```
-
-### Example
-
-```bash
-mcpsm auth my-api
-```
-
-### OAuth Flow
-
-1. Opens browser to authorization URL
-2. User logs in and approves access
-3. Callback receives authorization code
-4. Exchanges code for access token
-5. Token is securely stored
-
-### Requirements
-
-The remote server must support:
-
-- OAuth 2.0 authorization code flow
-- PKCE (Proof Key for Code Exchange)
-
----
-
 ## auth status
 
 Show authentication status for servers.
@@ -81,47 +50,52 @@ Authentication Status:
 
 ---
 
-## auth set
+## auth login
 
-Set a bearer token directly (skip OAuth).
-
-```bash
-mcpsm auth set <server> <token>
-```
-
-### Example
+Authenticate with a remote server using OAuth.
 
 ```bash
-mcpsm auth set my-api "eyJhbGciOiJIUzI1NiIs..."
+mcpsm auth login <server> [--no-browser]
 ```
 
-Use this when:
+### Notes
 
-- You have an API key or token
-- Server doesn't support OAuth
-- Testing with a temporary token
+- Opens a browser by default; use `--no-browser` to copy the URL manually.
+- Requires the server to have OAuth enabled (`mcpsm server update <id> --oauth`).
 
 ---
 
-## auth revoke
+## auth logout
 
-Remove stored credentials for a server.
-
-```bash
-mcpsm auth revoke <server>
-```
-
-### Example
+Remove OAuth tokens for a server.
 
 ```bash
-mcpsm auth revoke my-api
+mcpsm auth logout <server> [-f|--force]
 ```
 
-This removes:
+Prompts for confirmation unless `--force` is provided.
 
-- OAuth tokens (access and refresh)
-- Bearer tokens
-- Any stored credentials
+---
+
+## auth login-all
+
+Authenticate with all OAuth-enabled servers.
+
+```bash
+mcpsm auth login-all [--no-browser]
+```
+
+Skips servers that already have valid tokens.
+
+---
+
+## auth refresh
+
+Refresh the OAuth token for a server (requires a refresh token).
+
+```bash
+mcpsm auth refresh <server>
+```
 
 ---
 
@@ -139,17 +113,11 @@ Fallback: Encrypted file in `~/.mcp-manager/`
 
 ## Adding Authenticated Servers
 
-### With Bearer Token
-
-```bash
-mcpsm add my-api --type http --url "https://api.example.com/mcp" --token "your-token"
-```
-
-### With OAuth (after adding)
+### With OAuth
 
 ```bash
 mcpsm add my-api --type http --url "https://api.example.com/mcp"
-mcpsm auth my-api
+mcpsm auth login my-api
 ```
 
 ---

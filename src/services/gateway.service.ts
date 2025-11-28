@@ -71,7 +71,7 @@ interface GatewayState {
   activeSelection: Set<string> | null;
 }
 
-let gatewayState: GatewayState = {
+const createGatewayState = (): GatewayState => ({
   running: false,
   port: 8850,
   httpServer: null,
@@ -80,7 +80,9 @@ let gatewayState: GatewayState = {
   toolToServerMap: new Map(),
   aggregatedTools: [],
   activeSelection: null,
-};
+});
+
+let gatewayState: GatewayState = createGatewayState();
 
 let refreshLock: Promise<void> = Promise.resolve();
 
@@ -712,4 +714,13 @@ export async function runGatewayForeground(selectedServerIds?: string[]): Promis
 
   // Keep process alive
   await new Promise(() => {});
+}
+
+// Test helpers (no runtime impact in production)
+export function resetGatewayStateForTests(): void {
+  gatewayState = createGatewayState();
+}
+
+export function setGatewayStateForTests(state: Partial<GatewayState>): void {
+  gatewayState = { ...gatewayState, ...state };
 }

@@ -17,7 +17,7 @@ MCP Clients:
     VS Code           ✔ Installed   Connected
     Claude Code       ✘ Not installed
 
-  ↑↓: Navigate  |  ENTER: Toggle Connect/Disconnect  |  O: Open Config  |  ESC: Back
+  ↑↓: Navigate  |  ENTER: Toggle Connect/Disconnect  |  O: Open Config  |  R: Refresh  |  ESC: Back
 ```
 
 ### Features
@@ -46,6 +46,7 @@ When you connect a client:
 | `↑/↓`   | Navigate between clients     |
 | `ENTER` | Toggle connect/disconnect    |
 | `O`     | Open client config in editor |
+| `R`     | Refresh detection            |
 | `ESC`   | Return to main menu          |
 
 ### Status Meanings
@@ -70,7 +71,7 @@ Profiles:
   3. project-x         5 servers
      (no profile)      all servers
 
-  1-3: Switch  |  N: New  |  D: Delete  |  ESC: Back
+  1-3: Switch  |  N: New  |  R: Rename  |  D: Delete  |  ESC: Back
 ```
 
 ### Features
@@ -84,12 +85,14 @@ Profiles:
 
 ### Actions
 
-| Key   | Action              |
-| ----- | ------------------- |
-| `1-9` | Switch to profile   |
-| `N`   | Create new profile  |
-| `D`   | Delete profile      |
-| `ESC` | Return to main menu |
+| Key     | Action              |
+| ------- | ------------------- |
+| `↑/↓`   | Navigate profiles   |
+| `Enter` | Switch to profile   |
+| `N`     | Create new profile  |
+| `R`     | Rename profile      |
+| `D`     | Delete profile      |
+| `ESC`   | Return to main menu |
 
 ---
 
@@ -145,12 +148,12 @@ Configure application settings.
 ```
 Settings:
 
-  → Port                8850
-    Editor              code
-    Theme               default
-    Profile             (none)
+  → port: 8850 (default)
+    editor: vi
+    theme: default
+    defaultProfile: default
 
-  ↑↓: Navigate  |  ENTER: Edit  |  SPACE: Toggle (bool)  |  R: Reset All  |  ESC: Back
+  ↑↓: Navigate  |  ENTER: Edit  |  SPACE: Toggle (bool)  |  C: Show config path | O: Open config | R: Reset All  |  ESC: Back
 ```
 
 ### Features
@@ -178,6 +181,8 @@ Settings:
 | `↑/↓`   | Navigate settings     |
 | `ENTER` | Edit selected setting |
 | `SPACE` | Toggle boolean        |
+| `C`     | Show config file path |
+| `O`     | Open config in editor |
 | `R`     | Reset all to defaults |
 | `ESC`   | Return to main menu   |
 
@@ -207,26 +212,29 @@ Tools for deepwiki:
 
   Enabled: 3/3 tools  |  Total: 284 tokens
 
-  ↑↓: Navigate  |  SPACE: Toggle  |  A: All  |  N: None  |  ESC: Save
+  ↑↓: Navigate  |  SPACE: Toggle  |  A: All  |  N: None  |  X: Discover  |  G: Global tokens  |  ESC: Save
 ```
 
 ### Features
 
 - View all available tools per server
 - See tool descriptions and per-tool token counts
-- Get the server's total token usage directly in the footer (no separate Tokens screen)
+- Get the server's total token usage directly in the footer
+- Global token dashboard across all servers
 - Enable/disable individual tools
 - Bulk enable/disable
 
 ### Actions
 
-| Key       | Action              |
-| --------- | ------------------- |
-| `↑` / `↓` | Navigate tools      |
-| `SPACE`   | Toggle current tool |
-| `A`       | Enable all tools    |
-| `N`       | Disable all tools   |
-| `ESC`     | Save and return     |
+| Key       | Action                   |
+| --------- | ------------------------ |
+| `↑` / `↓` | Navigate tools           |
+| `SPACE`   | Toggle current tool      |
+| `A`       | Enable all tools         |
+| `N`       | Disable all tools        |
+| `X`       | Discover/retest tools    |
+| `G`       | Toggle global token view |
+| `ESC`     | Save and return          |
 
 ---
 
@@ -256,7 +264,81 @@ Add New Server:
 2. Select server type
 3. Enter command (STDIO) or URL (HTTP/SSE)
 4. Enter arguments or token (optional)
-5. Confirm
+5. (Remote) Configure OAuth client if needed
+6. Confirm
+
+---
+
+## Auth
+
+**Shortcut:** `O` (from main menu)
+
+Manage OAuth authentication for remote servers.
+
+```
+OAuth Management:
+
+  → Remote One (token expired)
+    Remote Two (not authenticated)
+
+  Enter: Authenticate  |  R: Revoke  |  A: Login all  |  ESC: Back
+```
+
+### Features
+
+- View auth status for all OAuth-enabled remote servers
+- Start OAuth login for selected server
+- Automatically refresh expiring tokens when a refresh token is available
+- Revoke tokens per server
+- Login all OAuth-enabled servers in sequence
+
+### Actions
+
+| Key     | Action                 |
+| ------- | ---------------------- |
+| `Enter` | Authenticate selected  |
+| `R`     | Revoke token           |
+| `A`     | Login all needing auth |
+| `ESC`   | Back to main menu      |
+
+---
+
+## Daemon
+
+**Shortcut:** `Enter` (from main menu)
+
+Manage the background gateway daemon.
+
+```
+Daemon Management:
+
+  Status: ● Running (PID: 1234) | Port: 8850 | Auto-start: disabled
+
+  → Start Daemon
+    Refresh Daemon
+    Stop Daemon
+    View Logs
+    Clear Logs
+    Enable Auto-start
+    Disable Auto-start
+
+  Enter: Select  |  ESC: Back
+```
+
+### Features
+
+- Start/stop daemon (uses the current selection and tool filters)
+- Refresh daemon after config changes
+- View or clear logs
+- Toggle auto-start
+
+### Actions
+
+| Key     | Action                |
+| ------- | --------------------- |
+| `↑/↓`   | Navigate menu options |
+| `Enter` | Run selected action   |
+| `ESC`   | Return to main menu   |
 
 ---
 
@@ -270,11 +352,16 @@ Add New Server:
            │               │               │
      ┌─────▼─────┐   ┌─────▼─────┐   ┌─────▼─────┐
      │  Clients  │   │ Profiles  │   │  Settings │
-     │    (C)    │   │    (F)    │   │    (G)    │
+     │    (C)    │   │    (F)    │   │    (G/P)  │
      └───────────┘   └───────────┘   └───────────┘
-           │
-     ┌─────▼──────┐         ┌──────────────┐
-     │  Import/   │         │ Tool Filters │
-     │  Export(I) │         │     (T)      │
-     └────────────┘         └──────────────┘
+           │               │               │
+     ┌─────▼──────┐        │         ┌─────▼──────┐
+     │  Import/   │        │         │ Tool Filters │
+     │  Export(I) │        │         │     (T)      │
+     └────────────┘        │         └──────────────┘
+           │               │
+     ┌─────▼──────┐   ┌────▼─────┐
+     │   Daemon   │   │   Auth   │
+     │   (Enter)  │   │    (O)   │
+     └────────────┘   └──────────┘
 ```

@@ -13,7 +13,7 @@ import { getDaemonService } from "../services/daemon.service.js";
 import { getAuthService } from "../services/auth.service.js";
 import { createLogger } from "../shared/logger.js";
 import { formatTokens } from "../shared/formatters.js";
-import type { LocalServer, RemoteServer, ServerToolFilter } from "../types/index.js";
+import type { LocalServer, RemoteServer, ServerToolFilter, Settings } from "../types/index.js";
 import { VERSION } from "../shared/version.js";
 import { getEnabledTokenTotal } from "./utils/tokenTotals.js";
 
@@ -75,6 +75,7 @@ interface AppState {
   authServerId?: string; // Server to auth when going to auth screen
   confirmDelete?: { server: LocalServer | RemoteServer; type: "local" | "remote" }; // Server pending deletion confirmation
   editTarget?: { server: LocalServer | RemoteServer; type: "local" | "remote" };
+  settingsInitialKey?: keyof Settings;
 }
 
 interface AppProps {
@@ -163,6 +164,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
       testingTotal: 0,
       testingCompleted: 0,
       editTarget: undefined,
+      settingsInitialKey: undefined,
     };
   });
 
@@ -379,6 +381,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
       testingTotal: 0,
       testingCompleted: 0,
       editTarget: undefined,
+      settingsInitialKey: undefined,
     }));
   }, [refreshServers, refreshAuthStatus]);
 
@@ -687,7 +690,13 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
       // G - Settings
       if (input === "g" || input === "G") {
-        setState((prev) => ({ ...prev, screen: "settings" }));
+        setState((prev) => ({ ...prev, screen: "settings", settingsInitialKey: undefined }));
+        return;
+      }
+
+      // P - Port (jump to settings port)
+      if (input === "p" || input === "P") {
+        setState((prev) => ({ ...prev, screen: "settings", settingsInitialKey: "port" }));
         return;
       }
 
@@ -767,7 +776,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
   }
 
   if (screen === "settings") {
-    return <SettingsScreen onBack={goBack} />;
+    return <SettingsScreen onBack={goBack} initialKey={state.settingsInitialKey} />;
   }
 
   if (screen === "daemon") {
@@ -970,7 +979,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
                       // Disabled servers always show empty brackets
                       const showCheck = !isDisabled && isSelected;
-                      const nameColor = isDisabled ? "gray" : isCurrent ? "magenta" : undefined;
+                      const nameColor = isCurrent ? "magenta" : isDisabled ? "gray" : undefined;
                       const arrowColor = isCurrent ? "magenta" : type === "local" ? "green" : "magenta";
 
                       return (

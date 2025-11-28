@@ -22,7 +22,7 @@ mcpsm import ./backup.json
 mcpsm import --from <client>
 ```
 
-Supported clients: `claude`, `cursor`, `windsurf`, `vscode`
+Supported clients: `claude`, `cursor`, `windsurf`
 
 ### Conflict Handling
 
@@ -75,17 +75,17 @@ mcpsm export [options]
 
 ### Options
 
-| Option                | Description                        |
-| --------------------- | ---------------------------------- |
-| `-o, --output <file>` | Write to file instead of stdout    |
-| `--format <format>`   | Export format: `mcpsm` or `claude` |
+| Option                | Description                      |
+| --------------------- | -------------------------------- |
+| `-o, --output <file>` | Write to file instead of stdout  |
+| `--format <format>`   | Export format: `mcpsm` or `json` |
 
 ### Formats
 
-| Format   | Description                          |
-| -------- | ------------------------------------ |
-| `mcpsm`  | Native format, includes all metadata |
-| `claude` | Claude Desktop compatible format     |
+| Format  | Description                                        |
+| ------- | -------------------------------------------------- |
+| `mcpsm` | Native format, includes tool filters and metadata  |
+| `json`  | MCP standard JSON (servers + remoteServers arrays) |
 
 ### Examples
 
@@ -96,9 +96,6 @@ mcpsm export
 # Export to file
 mcpsm export -o backup.json
 
-# Export in Claude format
-mcpsm export --format claude -o claude-config.json
-
 # Pipe to clipboard (macOS)
 mcpsm export | pbcopy
 ```
@@ -107,7 +104,7 @@ mcpsm export | pbcopy
 
 ```json
 {
-  "version": "1.7.0",
+  "version": "2.2.2",
   "exported": "2024-01-15T10:30:00Z",
   "servers": [
     {
@@ -126,21 +123,6 @@ mcpsm export | pbcopy
   ]
 }
 ```
-
-### Claude Format
-
-```json
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/user"]
-    }
-  }
-}
-```
-
----
 
 ## Backup & Restore
 

@@ -139,6 +139,7 @@ export class ImportExportService {
           command: server.command,
           args: server.args,
           env: server.env,
+          disabled: server.disabled,
         });
       }
     }
@@ -152,6 +153,7 @@ export class ImportExportService {
           url: server.url,
           type: server.type,
           bearerToken: server.bearerToken,
+          disabled: server.disabled,
         });
       }
     }
@@ -273,12 +275,12 @@ export class ImportExportService {
         });
       }
 
-      // Compare disabled status (imported servers are never disabled)
-      if ((existingLocal.disabled || false) !== false) {
+      // Compare disabled status
+      if ((existingLocal.disabled || false) !== (incoming.disabled || false)) {
         differences.push({
           field: "disabled",
           existing: existingLocal.disabled || false,
-          incoming: false,
+          incoming: incoming.disabled || false,
           isDifferent: true,
         });
       }
@@ -325,12 +327,12 @@ export class ImportExportService {
         });
       }
 
-      // Compare disabled status (imported servers are never disabled)
-      if ((existingRemote.disabled || false) !== false) {
+      // Compare disabled status
+      if ((existingRemote.disabled || false) !== (incoming.disabled || false)) {
         differences.push({
           field: "disabled",
           existing: existingRemote.disabled || false,
-          incoming: false,
+          incoming: incoming.disabled || false,
           isDifferent: true,
         });
       }
@@ -444,6 +446,7 @@ export class ImportExportService {
               url: server.url,
               type: (server.type || "http") as TransportType,
               bearerToken: server.bearerToken,
+              disabled: server.disabled,
             });
             results.updated++;
           } else if (decision === "merge") {
@@ -462,6 +465,7 @@ export class ImportExportService {
             url: server.url,
             type: (server.type || "http") as TransportType,
             bearerToken: server.bearerToken,
+            disabled: server.disabled,
           });
           results.added++;
         }
@@ -481,6 +485,7 @@ export class ImportExportService {
               command: server.command,
               args: server.args || [],
               env: server.env,
+              disabled: server.disabled,
             });
             results.updated++;
           } else if (decision === "merge") {
@@ -499,6 +504,7 @@ export class ImportExportService {
             command: server.command,
             args: server.args || [],
             env: server.env,
+            disabled: server.disabled,
           });
           results.added++;
         }
@@ -532,6 +538,7 @@ export class ImportExportService {
               url: server.url,
               type: (server.type || "http") as TransportType,
               bearerToken: server.bearerToken,
+              disabled: server.disabled,
             });
             results.updated++;
           } else {
@@ -544,6 +551,7 @@ export class ImportExportService {
             url: server.url,
             type: (server.type || "http") as TransportType,
             bearerToken: server.bearerToken,
+            disabled: server.disabled,
           });
           results.added++;
         }
@@ -563,6 +571,7 @@ export class ImportExportService {
               command: server.command,
               args: server.args || [],
               env: server.env,
+              disabled: server.disabled,
             });
             results.updated++;
           } else {
@@ -575,6 +584,7 @@ export class ImportExportService {
             command: server.command,
             args: server.args || [],
             env: server.env,
+            disabled: server.disabled,
           });
           results.added++;
         }

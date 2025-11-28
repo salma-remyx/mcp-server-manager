@@ -5,16 +5,19 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
+import { spawnSync } from "child_process";
 import { ScreenLayout } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getSettingsService } from "../../services/settings.service.js";
 import { getClientService } from "../../services/client.service.js";
+import { getConfigService } from "../../services/config.service.js";
 import type { Settings, ClientId } from "../../types/index.js";
 
 type View = "list" | "edit" | "confirmReset";
 
 interface SettingsScreenProps {
   onBack: () => void;
+  initialKey?: keyof Settings;
 }
 
 interface SettingsState {
@@ -27,13 +30,17 @@ interface SettingsState {
   messageType: "success" | "error" | "info";
 }
 
-export function SettingsScreen({ onBack }: SettingsScreenProps): React.ReactElement {
+export function SettingsScreen({ onBack, initialKey }: SettingsScreenProps): React.ReactElement {
   const settingsService = getSettingsService();
+  const configService = getConfigService();
+
+  const allKeys = settingsService.getKeys();
+  const initialIndex = initialKey ? Math.max(0, allKeys.indexOf(initialKey)) : 0;
 
   const [state, setState] = useState<SettingsState>({
     settings: settingsService.getAll(),
-    keys: settingsService.getKeys(),
-    currentIndex: 0,
+    keys: allKeys,
+    currentIndex: initialIndex,
     view: "list",
     editValue: "",
     message: null,
@@ -205,6 +212,26 @@ export function SettingsScreen({ onBack }: SettingsScreenProps): React.ReactElem
       setState((prev) => ({ ...prev, view: "confirmReset" }));
       return;
     }
+
+    // Show config path - C
+    if (input.toLowerCase() === "c") {
+      const paths = configService.getPaths();
+      showMessage(`Config: ${paths.configPath}`, "info");
+      return;
+    }
+
+    // Open config in editor - O
+    if (input.toLowerCase() === "o") {
+      const paths = configService.getPaths();
+      const editor = settingsService.get("editor");
+      try {
+        spawnSync(editor, [paths.configPath], { stdio: "ignore" });
+        showMessage(`Opened ${paths.configPath} in ${editor}`, "success");
+      } catch {
+        showMessage(`Failed to open ${paths.configPath}`, "error");
+      }
+      return;
+    }
   });
 
   const { settings, keys, currentIndex, view, editValue, message, messageType } = state;
@@ -215,6 +242,8 @@ export function SettingsScreen({ onBack }: SettingsScreenProps): React.ReactElem
       { key: "Enter", label: "Edit" },
       { key: "Space", label: "Toggle" },
       { key: "R", label: "Reset all" },
+      { key: "C", label: "Show config path" },
+      { key: "O", label: "Open config" },
     ],
     showData: false,
     showConfig: false,

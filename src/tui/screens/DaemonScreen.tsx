@@ -20,8 +20,10 @@ interface MenuOption {
 
 const MENU_OPTIONS: MenuOption[] = [
   { id: "start", label: "Start Daemon", description: "Start the gateway daemon" },
+  { id: "refresh", label: "Refresh Daemon", description: "Reload config and restart daemon" },
   { id: "stop", label: "Stop Daemon", description: "Stop the running daemon" },
   { id: "logs", label: "View Logs", description: "View recent daemon logs" },
+  { id: "clear-logs", label: "Clear Logs", description: "Truncate daemon log file" },
   { id: "startup-enable", label: "Enable Auto-start", description: "Start daemon on boot" },
   { id: "startup-disable", label: "Disable Auto-start", description: "Don't start on boot" },
 ];
@@ -66,7 +68,7 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
             }));
           } else {
             setState((prev) => ({ ...prev, isLoading: true }));
-            const result = await daemonService.startDaemon([]);
+            const result = await daemonService.startDaemon();
             setState((prev) => ({
               ...prev,
               isLoading: false,
@@ -102,6 +104,20 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
           break;
         }
 
+        case "refresh": {
+          setState((prev) => ({ ...prev, isLoading: true }));
+          const result = await daemonService.refreshDaemon();
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            view: "action",
+            actionResult: result.success
+              ? { success: true, message: "Daemon refreshed" }
+              : { success: false, message: `Failed: ${result.error}` },
+          }));
+          break;
+        }
+
         case "logs": {
           const logPath = daemonService.getLogFilePath();
           let logs: string[] = [];
@@ -112,6 +128,28 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
           }
 
           setState((prev) => ({ ...prev, view: "logs", logs }));
+          break;
+        }
+
+        case "clear-logs": {
+          const logPath = daemonService.getLogFilePath();
+          try {
+            fs.writeFileSync(logPath, "");
+            setState((prev) => ({
+              ...prev,
+              view: "action",
+              actionResult: { success: true, message: "Logs cleared" },
+            }));
+          } catch (error) {
+            setState((prev) => ({
+              ...prev,
+              view: "action",
+              actionResult: {
+                success: false,
+                message: `Failed to clear logs: ${error instanceof Error ? error.message : String(error)}`,
+              },
+            }));
+          }
           break;
         }
 

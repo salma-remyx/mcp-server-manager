@@ -18,6 +18,7 @@ export interface ImportedServer {
   url?: string;
   type?: TransportType;
   bearerToken?: string;
+  disabled?: boolean;
 }
 
 /** Export format types */

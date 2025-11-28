@@ -13,8 +13,12 @@ import { getConfigService } from "../../services/config.service.js";
 import { getTestingService } from "../../services/testing.service.js";
 import { getAuthService } from "../../services/auth.service.js";
 import { getDaemonService } from "../../services/daemon.service.js";
-import { parseEnvInput, normalizeEnv } from "../../shared/env.js";
-import type { LocalServer, RemoteServer, TransportType } from "../../types/index.js";
+import {
+  createServerFormFields,
+  prepareLocalServer,
+  prepareRemoteServer,
+  ServerFormFields,
+} from "./server-form.js";
 
 type Step =
   | "name"
@@ -24,27 +28,17 @@ type Step =
   | "env"
   | "url"
   | "token"
+  | "oauthToggle"
+  | "clientId"
+  | "clientSecret"
+  | "scopes"
+  | "authServer"
   | "testing"
   | "authenticating"
   | "done";
-type ServerType = "stdio" | "http" | "sse";
 
 interface AddServerScreenProps {
   onBack: () => void;
-}
-
-interface FormState {
-  step: Step;
-  name: string;
-  serverId: string;
-  serverType: ServerType | null;
-  command: string;
-  args: string;
-  env: string;
-  url: string;
-  token: string;
-  testResult: { success: boolean; toolCount?: number; error?: string } | null;
-  error: string | null;
 }
 
 const SERVER_TYPE_OPTIONS = [
@@ -54,9 +48,11 @@ const SERVER_TYPE_OPTIONS = [
 ];
 
 export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactElement {
-  useApp(); // Keep app context active
+  useApp(); // keep the Ink app alive
+
   const configService = getConfigService();
   const testingService = getTestingService();
+
   const refreshDaemonIfRunning = useCallback(() => {
     const daemonService = getDaemonService();
     if (daemonService.isDaemonRunning().running) {
@@ -66,307 +62,328 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
     }
   }, []);
 
-  const [state, setState] = useState<FormState>({
-    step: "name",
-    name: "",
-    serverId: "",
-    serverType: null,
-    command: "",
-    args: "",
-    env: "",
-    url: "",
-    token: "",
-    testResult: null,
-    error: null,
-  });
-
+  const [form, setForm] = useState<ServerFormFields>(() => createServerFormFields());
+  const [step, setStep] = useState<Step>("name");
+  const [error, setError] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ success: boolean; toolCount?: number; error?: string } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
 
-  // Handle escape to go back
+  const updateForm = useCallback((changes: Partial<ServerFormFields>) => {
+    setForm((prev) => ({ ...prev, ...changes }));
+  }, []);
+
   useInput((_input, key) => {
     if (key.escape) {
-      if (state.step === "name") {
+      if (step === "name") {
         onBack();
-      } else if (state.step === "type") {
-        setState((prev) => ({ ...prev, step: "name" }));
-      } else if (state.step === "command") {
-        setState((prev) => ({ ...prev, step: "type" }));
-      } else if (state.step === "args") {
-        setState((prev) => ({ ...prev, step: "command" }));
-      } else if (state.step === "env") {
-        setState((prev) => ({ ...prev, step: "args" }));
-      } else if (state.step === "url") {
-        setState((prev) => ({ ...prev, step: "type" }));
-      } else if (state.step === "token") {
-        setState((prev) => ({ ...prev, step: "url" }));
-      } else if (state.step === "done" && !isTesting) {
-        onBack();
+        return;
+      }
+
+      switch (step) {
+        case "type":
+          setStep("name");
+          break;
+        case "command":
+          setStep("type");
+          break;
+        case "args":
+          setStep("command");
+          break;
+        case "env":
+          setStep("args");
+          break;
+        case "url":
+          setStep("type");
+          break;
+        case "token":
+          setStep("url");
+          break;
+        case "oauthToggle":
+          setStep("token");
+          break;
+        case "clientId":
+          setStep("oauthToggle");
+          break;
+        case "clientSecret":
+          setStep("clientId");
+          break;
+        case "scopes":
+          setStep("clientSecret");
+          break;
+        case "authServer":
+          setStep("scopes");
+          break;
+        case "done":
+          if (!isTesting) {
+            onBack();
+          }
+          break;
       }
       return;
     }
 
-    // Any key after test result to go back
-    if (state.step === "done" && state.testResult !== null && !isTesting) {
+    if (step === "done" && testResult && !isTesting) {
       onBack();
     }
   });
 
-  // Handle name submission
-  const handleNameSubmit = useCallback(
-    (value: string) => {
-      if (!value.trim()) {
-        setState((prev) => ({ ...prev, error: "Name is required" }));
-        return;
-      }
-      
-      const name = value.trim();
-      const nameLower = name.toLowerCase();
-      
-      // Check for duplicate server name (case-insensitive)
-      const localServers = configService.getLocalServers();
-      const remoteServers = configService.getRemoteServers();
-      const existsLocal = localServers.some((s) => s.name.toLowerCase() === nameLower);
-      const existsRemote = remoteServers.some((s) => s.name.toLowerCase() === nameLower);
-      
-      if (existsLocal || existsRemote) {
-        setState((prev) => ({ ...prev, error: `Server '${name}' already exists` }));
-        return;
-      }
-      
-      const serverId = configService.generateServerId(name);
-      setState((prev) => ({
-        ...prev,
-        name,
-        serverId,
-        step: "type",
-        error: null,
-      }));
-    },
-    [configService]
-  );
-
-  // Handle server type selection
-  const handleTypeSelect = useCallback((item: { value: string }) => {
-    const serverType = item.value as ServerType;
-    setState((prev) => ({
-      ...prev,
-      serverType,
-      step: serverType === "stdio" ? "command" : "url",
-      error: null,
-    }));
-  }, []);
-
-  // Handle command submission
-  const handleCommandSubmit = useCallback((value: string) => {
-    if (!value.trim()) {
-      setState((prev) => ({ ...prev, error: "Command is required" }));
-      return;
-    }
-    setState((prev) => ({
-      ...prev,
-      command: value.trim(),
-      step: "args",
-      error: null,
-    }));
-  }, []);
-
-  // Handle args submission
-  const handleArgsSubmit = useCallback((value: string) => {
-    const args = value.trim();
-    setState((prev) => ({ ...prev, args, step: "env", error: null }));
-  }, []);
-
   const saveLocalServer = useCallback(
-    async (envInput: string) => {
-      const parsedEnv = parseEnvInput(envInput);
-      if (!parsedEnv.success) {
-        setState((prev) => ({ ...prev, error: parsedEnv.error || "Invalid environment variable" }));
+    async (fields: ServerFormFields) => {
+      const serverId = fields.serverId || configService.generateServerId(fields.name);
+      const prepared = prepareLocalServer(fields, serverId);
+      if (!prepared.success || !prepared.data) {
+        setError(prepared.error || "Failed to add server");
         return;
       }
 
-      const env = normalizeEnv(parsedEnv.data);
-      const argsArray = state.args ? state.args.split(/\s+/).filter(Boolean) : [];
-
-      const server: LocalServer = {
-        id: state.serverId,
-        name: state.name,
-        command: state.command,
-        args: argsArray,
-        ...(env ? { env } : {}),
-      };
-
-      const result = configService.addLocalServer(server);
+      const result = configService.addLocalServer(prepared.data);
       if (!result.success) {
-        setState((prev) => ({ ...prev, error: result.error || "Failed to add server" }));
+        setError(result.error || "Failed to add server");
         return;
       }
 
-      // Auto-test the server
-      setState((prev) => ({ ...prev, step: "testing", error: null }));
+      setStep("testing");
+      setTestResult(null);
       setIsTesting(true);
+
       try {
-        const testResult = await testingService.testLocalServer(server);
-        setState((prev) => ({ ...prev, step: "done", testResult }));
-      } catch (e) {
-        setState((prev) => ({
-          ...prev,
-          step: "done",
-          testResult: { success: false, error: e instanceof Error ? e.message : "Unknown error" },
-        }));
+        const test = await testingService.testLocalServer(prepared.data);
+        setTestResult(test);
+      } catch (err) {
+        setTestResult({
+          success: false,
+          error: err instanceof Error ? err.message : "Unknown error",
+        });
       } finally {
         setIsTesting(false);
+        setStep("done");
         refreshDaemonIfRunning();
       }
     },
-    [
-      configService,
-      refreshDaemonIfRunning,
-      state.args,
-      state.command,
-      state.name,
-      state.serverId,
-      testingService,
-    ]
+    [configService, refreshDaemonIfRunning, testingService]
   );
 
-  const handleEnvSubmit = useCallback(
-    (value: string) => {
-      const envInput = value.trim();
-      setState((prev) => ({ ...prev, env: envInput, error: null }));
-      void saveLocalServer(envInput);
-    },
-    [saveLocalServer]
-  );
-
-  // Handle URL submission
-  const handleUrlSubmit = useCallback((value: string) => {
-    if (!value.trim()) {
-      setState((prev) => ({ ...prev, error: "URL is required" }));
-      return;
-    }
-    setState((prev) => ({
-      ...prev,
-      url: value.trim(),
-      step: "token",
-      error: null,
-    }));
-  }, []);
-
-  // Handle token submission
-  const handleTokenSubmit = useCallback(
-    async (value: string) => {
-      const token = value.trim();
-      setState((prev) => ({ ...prev, token }));
-
-      // Save the server
-      const server: RemoteServer = {
-        id: state.serverId,
-        name: state.name,
-        type: state.serverType as TransportType,
-        url: state.url,
-        ...(token ? { bearerToken: token } : {}),
-      };
-
-      const result = configService.addRemoteServer(server);
-      if (!result.success) {
-        setState((prev) => ({ ...prev, error: result.error || "Failed to add server" }));
+  const finalizeRemoteServer = useCallback(
+    async (fields: ServerFormFields) => {
+      const serverId = fields.serverId || configService.generateServerId(fields.name);
+      const prepared = prepareRemoteServer(fields, serverId);
+      if (!prepared.success || !prepared.data) {
+        setError(prepared.error || "Failed to add server");
         return;
       }
 
-      // Auto-test the server
-      setState((prev) => ({ ...prev, step: "testing", error: null }));
+      const result = configService.addRemoteServer(prepared.data);
+      if (!result.success) {
+        setError(result.error || "Failed to add server");
+        return;
+      }
+
+      setStep("testing");
+      setTestResult(null);
       setIsTesting(true);
+
       try {
-        const testResult = await testingService.testRemoteServer(server, true);
-        
-        // If auth is required, start OAuth flow automatically
-        if (testResult.requiresAuth) {
-          setState((prev) => ({ ...prev, step: "authenticating" }));
-          
-          // Enable OAuth on the server
-          configService.updateRemoteServer(server.id, { oauth: { enabled: true } });
-          const updatedServer = { ...server, oauth: { enabled: true } };
-          
-          // Start OAuth flow
+        const test = await testingService.testRemoteServer(prepared.data, true);
+        if (test.requiresAuth) {
+          setStep("authenticating");
+          await configService.updateRemoteServer(prepared.data.id, { oauth: { enabled: true } });
+          const updatedServer = { ...prepared.data, oauth: { enabled: true } };
           const authService = getAuthService();
-          const flow = await authService.startOAuthFlow(updatedServer, testResult.authRequirements);
-          
+          const flow = await authService.startOAuthFlow(updatedServer, test.authRequirements);
+
           if (flow) {
-            // Open browser for authentication
             try {
               await open(flow.authUrl);
             } catch {
               // Ignore browser open errors
             }
-            
-            // Wait for auth to complete
             const authResult = await authService.waitForAuth(flow.state);
             authService.stopCallbackServer();
-            
+
             if (authResult.success) {
-              // Re-test with new token
-              const retestResult = await testingService.testRemoteServer(updatedServer);
-              setState((prev) => ({ ...prev, step: "done", testResult: retestResult }));
+              const retest = await testingService.testRemoteServer(updatedServer);
+              setTestResult(retest);
             } else {
-              setState((prev) => ({
-                ...prev,
-                step: "done",
-                testResult: { success: false, error: authResult.error || "Authentication failed" },
-              }));
+              setTestResult({
+                success: false,
+                error: authResult.error || "Authentication failed",
+              });
             }
           } else {
-            setState((prev) => ({
-              ...prev,
-              step: "done",
-              testResult: { success: false, error: "Could not start OAuth flow" },
-            }));
+            setTestResult({ success: false, error: "Could not start OAuth flow" });
           }
         } else {
-          setState((prev) => ({ ...prev, step: "done", testResult }));
+          setTestResult(test);
         }
-      } catch (e) {
-        setState((prev) => ({
-          ...prev,
-          step: "done",
-          testResult: { success: false, error: e instanceof Error ? e.message : "Unknown error" },
-        }));
+      } catch (err) {
+        setTestResult({
+          success: false,
+          error: err instanceof Error ? err.message : "Unknown error",
+        });
+      } finally {
+        setIsTesting(false);
+        setStep("done");
+        refreshDaemonIfRunning();
       }
-      setIsTesting(false);
-      refreshDaemonIfRunning();
     },
-    [
-      configService,
-      refreshDaemonIfRunning,
-      state.name,
-      state.serverId,
-      state.serverType,
-      state.url,
-      testingService,
-    ]
+    [configService, refreshDaemonIfRunning, testingService]
+  );
+
+  const handleNameSubmit = useCallback(
+    (value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        setError("Name is required");
+        return;
+      }
+      const lower = trimmed.toLowerCase();
+      const exists = [...configService.getLocalServers(), ...configService.getRemoteServers()].some(
+        (server) => server.name.toLowerCase() === lower
+      );
+      if (exists) {
+        setError(`Server '${trimmed}' already exists`);
+        return;
+      }
+
+      const serverId = configService.generateServerId(trimmed);
+      updateForm({ name: trimmed, serverId });
+      setError(null);
+      setStep("type");
+    },
+    [configService, updateForm]
+  );
+
+  const handleTypeSelect = useCallback(
+    (item: { value: string }) => {
+      const serverType = item.value as ServerFormFields["serverType"];
+      updateForm({ serverType });
+      setError(null);
+      setStep(serverType === "stdio" ? "command" : "url");
+    },
+    [updateForm]
+  );
+
+  const handleCommandSubmit = useCallback(
+    (value: string) => {
+      updateForm({ command: value.trim() });
+      setError(null);
+      setStep("args");
+    },
+    [updateForm]
+  );
+
+  const handleArgsSubmit = useCallback(
+    (value: string) => {
+      updateForm({ args: value.trim() });
+      setError(null);
+      setStep("env");
+    },
+    [updateForm]
+  );
+
+  const handleEnvSubmit = useCallback(
+    (value: string) => {
+      setForm((prev) => {
+        const next = { ...prev, env: value.trim() };
+        void saveLocalServer(next);
+        return next;
+      });
+      setError(null);
+    },
+    [saveLocalServer]
+  );
+
+  const handleUrlSubmit = useCallback(
+    (value: string) => {
+      updateForm({ url: value.trim() });
+      setError(null);
+      setStep("token");
+    },
+    [updateForm]
+  );
+
+  const handleTokenSubmit = useCallback(
+    (value: string) => {
+      updateForm({ token: value.trim() });
+      setError(null);
+      setStep("oauthToggle");
+    },
+    [updateForm]
+  );
+
+  const handleOauthToggle = useCallback(
+    (input: string) => {
+      const answer = input.trim().toLowerCase();
+      const enable = answer === "y" || answer === "yes";
+      setForm((prev) => {
+        const next = { ...prev, oauthEnabled: enable };
+        if (!enable) {
+          void finalizeRemoteServer(next);
+        }
+        return next;
+      });
+      setError(null);
+      setStep(enable ? "clientId" : "testing");
+    },
+    [finalizeRemoteServer]
+  );
+
+  const handleClientIdSubmit = useCallback(
+    (value: string) => {
+      updateForm({ clientId: value.trim() });
+      setError(null);
+      setStep("clientSecret");
+    },
+    [updateForm]
+  );
+
+  const handleClientSecretSubmit = useCallback(
+    (value: string) => {
+      updateForm({ clientSecret: value.trim() });
+      setError(null);
+      setStep("scopes");
+    },
+    [updateForm]
+  );
+
+  const handleScopesSubmit = useCallback(
+    (value: string) => {
+      updateForm({ scopes: value.trim() });
+      setError(null);
+      setStep("authServer");
+    },
+    [updateForm]
+  );
+
+  const handleAuthServerSubmit = useCallback(
+    (value: string) => {
+      setForm((prev) => {
+        const next = { ...prev, authServerUrl: value.trim() };
+        void finalizeRemoteServer(next);
+        return next;
+      });
+      setError(null);
+    },
+    [finalizeRemoteServer]
   );
 
   return (
-    <ScreenLayout
-      title="Add New MCP Server"
-      shortcuts={[{ key: "ESC", label: "Go back" }]}
-    >
-      {/* Name step */}
-      {state.step === "name" && (
+    <ScreenLayout title="Add New MCP Server" shortcuts={[{ key: "ESC", label: "Go back" }]}>
+      {step === "name" && (
         <Box flexDirection="column" paddingY={1}>
           <Text>Server name:</Text>
           <Box marginTop={1}>
             <Text color="cyan">&gt; </Text>
             <TextInput
-              value={state.name}
-              onChange={(value) => setState((prev) => ({ ...prev, name: value }))}
+              value={form.name}
+              onChange={(value) => updateForm({ name: value })}
               onSubmit={handleNameSubmit}
             />
           </Box>
         </Box>
       )}
 
-      {/* Type step */}
-      {state.step === "type" && (
+      {step === "type" && (
         <Box flexDirection="column" paddingY={1}>
           <Text>Server type:</Text>
           <Box marginTop={1}>
@@ -375,105 +392,175 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         </Box>
       )}
 
-      {/* Command step (local) */}
-      {state.step === "command" && (
+      {step === "command" && (
         <Box flexDirection="column" paddingY={1}>
           <Text>Command executable:</Text>
           <Text dimColor>Examples: npx, node, python, uvx</Text>
           <Box marginTop={1}>
             <Text color="cyan">&gt; </Text>
             <TextInput
-              value={state.command}
-              onChange={(value) => setState((prev) => ({ ...prev, command: value }))}
+              value={form.command}
+              onChange={(value) => updateForm({ command: value })}
               onSubmit={handleCommandSubmit}
             />
           </Box>
         </Box>
       )}
 
-      {/* Args step (local) */}
-      {state.step === "args" && (
+      {step === "args" && (
         <Box flexDirection="column" paddingY={1}>
           <Text>Arguments (space separated, optional):</Text>
           <Box marginTop={1}>
             <Text color="cyan">&gt; </Text>
             <TextInput
-              value={state.args}
-              onChange={(value) => setState((prev) => ({ ...prev, args: value }))}
+              value={form.args}
+              onChange={(value) => updateForm({ args: value })}
               onSubmit={handleArgsSubmit}
             />
           </Box>
         </Box>
       )}
 
-      {/* Env step (local) */}
-      {state.step === "env" && (
+      {step === "env" && (
         <Box flexDirection="column" paddingY={1}>
           <Text>Environment variables (optional):</Text>
-          <Text dimColor>Format: KEY=VALUE pairs, separated by space or comma. Leave blank to skip.</Text>
+          <Text dimColor>
+            Format: KEY=VALUE pairs, separated by space or comma. Leave blank to skip.
+          </Text>
           <Box marginTop={1}>
             <Text color="cyan">&gt; </Text>
             <TextInput
-              value={state.env}
-              onChange={(value) => setState((prev) => ({ ...prev, env: value }))}
+              value={form.env}
+              onChange={(value) => updateForm({ env: value })}
               onSubmit={handleEnvSubmit}
             />
           </Box>
         </Box>
       )}
 
-      {/* URL step (remote) */}
-      {state.step === "url" && (
+      {step === "url" && (
         <Box flexDirection="column" paddingY={1}>
           <Text>Server URL:</Text>
           <Box marginTop={1}>
             <Text color="cyan">&gt; </Text>
             <TextInput
-              value={state.url}
-              onChange={(value) => setState((prev) => ({ ...prev, url: value }))}
+              value={form.url}
+              onChange={(value) => updateForm({ url: value })}
               onSubmit={handleUrlSubmit}
             />
           </Box>
         </Box>
       )}
 
-      {/* Token step (remote) */}
-      {state.step === "token" && (
+      {step === "token" && (
         <Box flexDirection="column" paddingY={1}>
           <Text>Bearer token (optional):</Text>
           <Box marginTop={1}>
             <Text color="cyan">&gt; </Text>
             <TextInput
-              value={state.token}
-              onChange={(value) => setState((prev) => ({ ...prev, token: value }))}
+              value={form.token}
+              onChange={(value) => updateForm({ token: value })}
               onSubmit={handleTokenSubmit}
             />
           </Box>
         </Box>
       )}
 
-      {/* Testing step */}
-      {state.step === "testing" && (
+      {step === "oauthToggle" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Text>Enable OAuth? (y/N)</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={form.oauthEnabled ? "y" : ""}
+              onChange={(value) =>
+                updateForm({ oauthEnabled: value.trim().toLowerCase().startsWith("y") })
+              }
+              onSubmit={handleOauthToggle}
+            />
+          </Box>
+          <Box marginTop={1}>
+            <Text dimColor>Leave blank for 'N'</Text>
+          </Box>
+        </Box>
+      )}
+
+      {step === "clientId" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Text>OAuth Client ID (optional):</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={form.clientId}
+              onChange={(value) => updateForm({ clientId: value })}
+              onSubmit={handleClientIdSubmit}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {step === "clientSecret" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Text>OAuth Client Secret (optional):</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={form.clientSecret}
+              onChange={(value) => updateForm({ clientSecret: value })}
+              onSubmit={handleClientSecretSubmit}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {step === "scopes" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Text>OAuth Scopes (comma or space separated, optional):</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={form.scopes}
+              onChange={(value) => updateForm({ scopes: value })}
+              onSubmit={handleScopesSubmit}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {step === "authServer" && (
+        <Box flexDirection="column" paddingY={1}>
+          <Text>Auth Server URL (optional, overrides discovery):</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={form.authServerUrl}
+              onChange={(value) => updateForm({ authServerUrl: value })}
+              onSubmit={handleAuthServerSubmit}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {step === "testing" && (
         <Box flexDirection="column" paddingY={1}>
           <Box>
             <Text color="green">✓</Text>
-            <Text> Server '{state.name}' added!</Text>
+            <Text> Server '{form.name}' added!</Text>
           </Box>
           <Box marginTop={1}>
             <Text color="cyan">
               <Spinner type="dots" />
             </Text>
-            <Text> Testing {state.name}...</Text>
+            <Text> Testing {form.name}...</Text>
           </Box>
         </Box>
       )}
 
-      {/* Authenticating step */}
-      {state.step === "authenticating" && (
+      {step === "authenticating" && (
         <Box flexDirection="column" paddingY={1}>
           <Box>
             <Text color="green">✓</Text>
-            <Text> Server '{state.name}' added!</Text>
+            <Text> Server '{form.name}' added!</Text>
           </Box>
           <Box marginTop={1}>
             <Text color="yellow">○</Text>
@@ -491,25 +578,23 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         </Box>
       )}
 
-      {/* Done step */}
-      {state.step === "done" && (
+      {step === "done" && (
         <Box flexDirection="column" paddingY={1}>
           <Box>
             <Text color="green">✓</Text>
-            <Text> Server '{state.name}' added!</Text>
+            <Text> Server '{form.name}' added!</Text>
           </Box>
-
-          {state.testResult && (
+          {testResult && (
             <Box flexDirection="column" marginTop={1}>
-              {state.testResult.success ? (
+              {testResult.success ? (
                 <Box>
                   <Text color="green">✓ OK</Text>
-                  <Text> ({state.testResult.toolCount} tools)</Text>
+                  <Text> ({testResult.toolCount} tools)</Text>
                 </Box>
               ) : (
                 <Box>
                   <Text color="red">✗ FAILED</Text>
-                  <Text> - {state.testResult.error}</Text>
+                  <Text> - {testResult.error}</Text>
                 </Box>
               )}
               <Box marginTop={1}>
@@ -520,10 +605,9 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         </Box>
       )}
 
-      {/* Error message */}
-      {state.error && (
+      {error && (
         <Box marginTop={1}>
-          <Text color="red">Error: {state.error}</Text>
+          <Text color="red">Error: {error}</Text>
         </Box>
       )}
     </ScreenLayout>

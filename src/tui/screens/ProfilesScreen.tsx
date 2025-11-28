@@ -10,7 +10,7 @@ import { createMenuSections } from "../utils/menu.js";
 import { getProfileService } from "../../services/profile.service.js";
 import type { ProfileListItem } from "../../types/index.js";
 
-type View = "list" | "create" | "confirmDelete";
+type View = "list" | "create" | "rename" | "confirmDelete";
 
 interface ProfilesScreenProps {
   onBack: () => void;
@@ -21,6 +21,7 @@ interface ProfilesState {
   currentIndex: number;
   view: View;
   newProfileName: string;
+  renameValue: string;
   message: string | null;
   messageType: "success" | "error" | "info";
 }
@@ -33,6 +34,7 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
     currentIndex: 0,
     view: "list",
     newProfileName: "",
+    renameValue: "",
     message: null,
     messageType: "info",
   });
@@ -75,6 +77,32 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
     [profileService, showMessage]
   );
 
+  const handleRenameProfile = useCallback(
+    (value: string) => {
+      const name = value.trim();
+      const profile = state.profiles[state.currentIndex];
+      if (!profile || !name) {
+        setState((prev) => ({ ...prev, view: "list", renameValue: "" }));
+        return;
+      }
+
+      const result = profileService.rename(profile.id, name);
+      if (result.success) {
+        showMessage(`Profile renamed to '${name}'`, "success");
+        setState((prev) => ({
+          ...prev,
+          profiles: profileService.list(),
+          view: "list",
+          renameValue: "",
+        }));
+      } else {
+        showMessage(result.error || "Failed to rename profile", "error");
+        setState((prev) => ({ ...prev, view: "list", renameValue: "" }));
+      }
+    },
+    [profileService, showMessage, state.currentIndex, state.profiles]
+  );
+
   // Handle delete profile
   const handleDeleteProfile = useCallback(
     (confirm: boolean) => {
@@ -115,10 +143,10 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
       return;
     }
 
-    // Handle create view
-    if (view === "create") {
+    // Handle create/rename view
+    if (view === "create" || view === "rename") {
       if (key.escape) {
-        setState((prev) => ({ ...prev, view: "list", newProfileName: "" }));
+        setState((prev) => ({ ...prev, view: "list", newProfileName: "", renameValue: "" }));
       }
       return;
     }
@@ -170,6 +198,17 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
       return;
     }
 
+    // Rename profile - R
+    if (input.toLowerCase() === "r" && profiles.length > 0) {
+      const profile = profiles[currentIndex];
+      setState((prev) => ({
+        ...prev,
+        view: "rename",
+        renameValue: profile?.name || "",
+      }));
+      return;
+    }
+
     // Delete profile - D
     if (input.toLowerCase() === "d" && profiles.length > 0) {
       const profile = profiles[currentIndex];
@@ -182,13 +221,14 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
     }
   });
 
-  const { profiles, currentIndex, view, newProfileName, message, messageType } = state;
+  const { profiles, currentIndex, view, newProfileName, renameValue, message, messageType } = state;
 
   // Create profile view
   const profilesMenuSections = createMenuSections({
     actions: [
       { key: "Enter", label: "Use" },
       { key: "N", label: "New" },
+      { key: "R", label: "Rename" },
       { key: "D", label: "Delete" },
     ],
     showConfig: false,
@@ -211,6 +251,29 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
         </Box>
         <Box marginTop={2}>
           <Text dimColor>ENTER to create, ESC to cancel</Text>
+        </Box>
+      </ScreenLayout>
+    );
+  }
+
+  // Rename profile view
+  if (view === "rename") {
+    const profile = profiles[currentIndex];
+    return (
+      <ScreenLayout title="Rename Profile" menuSections={profilesMenuSections}>
+        <Box flexDirection="column" paddingY={1}>
+          <Text>New name for '{profile?.name}':</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">&gt; </Text>
+            <TextInput
+              value={renameValue}
+              onChange={(value) => setState((prev) => ({ ...prev, renameValue: value }))}
+              onSubmit={handleRenameProfile}
+            />
+          </Box>
+        </Box>
+        <Box marginTop={2}>
+          <Text dimColor>ENTER to save, ESC to cancel</Text>
         </Box>
       </ScreenLayout>
     );
