@@ -192,7 +192,7 @@ mcpsm test [server]                Test server(s)
 mcpsm import [file]                Import servers from file or client
 mcpsm export                        Export server configuration
 mcpsm clients [list|connect|disconnect|open]
-mcpsm profile [list|create|delete|use|add|remove]
+mcpsm profile [list|create|clone|delete|rename|use|add|remove]
 mcpsm settings [list|get|set|reset]
 mcpsm tools [list|discover|enable|disable]
 mcpsm doctor                       Health check
@@ -207,6 +207,18 @@ mcpsm port [number]                Get/set port
 - `mcpsm clients connect <client>` - Connect a client by adding the mcpsm gateway server to its config
 - `mcpsm clients disconnect <client>` - Disconnect a client by removing the mcpsm gateway server
 - `mcpsm clients open <client>` - Open client config file in default editor
+
+### Profile Commands Details
+
+- `mcpsm profile list` - List all profiles with their server counts and active status
+- `mcpsm profile create <name> [displayName]` - Create a new profile
+- `mcpsm profile clone <source> <target> [displayName]` - Clone an existing profile with all its servers and settings
+  - Example: `mcpsm profile clone production staging "Staging Environment"`
+- `mcpsm profile delete <name>` - Delete a profile (cannot delete default profile)
+- `mcpsm profile rename <profile> <newName>` - Rename a profile
+- `mcpsm profile use <name>` - Switch to a profile
+- `mcpsm profile add <profile> <server>` - Add a server to a profile
+- `mcpsm profile remove <profile> <server>` - Remove a server from a profile
 
 ### Import/Export Commands Details
 
@@ -290,7 +302,11 @@ Main screen keyboard shortcuts:
 - `T` - Tools screen (manage tool filters)
 - `C` - Clients screen (connect/disconnect clients)
 - `F` - Profiles screen (manage server profiles)
+  - `N` - Create new profile (with option to clone from existing)
+  - `R` - Rename profile
+  - `D` - Delete profile
 - `G` - Settings screen (configure port, theme, etc.)
+  - Theme options: default (balanced colors), minimal (subdued colors), colorful (vibrant colors)
 - `I` - Import/Export screen
 
 ### System

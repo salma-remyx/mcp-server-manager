@@ -300,4 +300,113 @@ describe("ProfileService", () => {
       expect(result.success).toBe(false);
     });
   });
+
+  describe("clone", () => {
+    it("should successfully clone a profile with new ID", () => {
+      profileService = new ProfileService();
+
+      profileService.create("source", "Source Profile");
+      profileService.addServer("source", "server1");
+
+      const result = profileService.clone("source", "target");
+      expect(result.success).toBe(true);
+
+      const cloned = profileService.getProfile("target");
+      expect(cloned).toBeDefined();
+      expect(cloned?.name).toBe("Source Profile (Copy)");
+      expect(cloned?.servers).toEqual(["server1"]);
+    });
+
+    it("should clone with custom display name", () => {
+      profileService = new ProfileService();
+
+      profileService.create("source2", "Source");
+      const result = profileService.clone("source2", "target2", "Custom Name");
+
+      expect(result.success).toBe(true);
+      expect(profileService.getProfile("target2")?.name).toBe("Custom Name");
+    });
+
+    it("should deep clone servers and remoteServers arrays", () => {
+      profileService = new ProfileService();
+
+      profileService.create("source3", "Source");
+      profileService.addServer("source3", "server1");
+      profileService.addServer("source3", "remote1");
+
+      profileService.clone("source3", "target3");
+
+      const source = profileService.getProfile("source3");
+      const target = profileService.getProfile("target3");
+
+      // Should be equal values
+      expect(target?.servers).toEqual(source?.servers);
+      expect(target?.remoteServers).toEqual(source?.remoteServers);
+
+      // But different array instances (deep clone)
+      expect(target?.servers).not.toBe(source?.servers);
+      expect(target?.remoteServers).not.toBe(source?.remoteServers);
+    });
+
+    it("should deep clone toolFilters if present", () => {
+      profileService = new ProfileService();
+
+      // Create profile with toolFilters
+      fs.writeFileSync(
+        path.join(testConfigDir, "profiles.json"),
+        JSON.stringify({
+          activeProfile: "default",
+          profiles: {
+            default: { name: "Default", servers: [], remoteServers: [] },
+            source: {
+              name: "Source",
+              servers: [],
+              remoteServers: [],
+              toolFilters: { server1: { tool1: false, tool2: true } },
+            },
+          },
+        })
+      );
+
+      profileService = new ProfileService();
+      const result = profileService.clone("source", "target");
+
+      expect(result.success).toBe(true);
+
+      const source = profileService.getProfile("source");
+      const target = profileService.getProfile("target");
+
+      expect(target?.toolFilters).toEqual(source?.toolFilters);
+      // Should be deep cloned (different objects)
+      expect(target?.toolFilters).not.toBe(source?.toolFilters);
+    });
+
+    it("should fail when source profile not found", () => {
+      profileService = new ProfileService();
+
+      const result = profileService.clone("nonexistent", "target");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Source profile not found");
+    });
+
+    it("should fail when target profile already exists", () => {
+      profileService = new ProfileService();
+
+      profileService.create("source", "Source");
+      profileService.create("target", "Target");
+
+      const result = profileService.clone("source", "target");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Profile already exists");
+    });
+
+    it("should generate '(Copy)' suffix when no display name provided", () => {
+      profileService = new ProfileService();
+
+      profileService.create("source4", "My Profile");
+      profileService.clone("source4", "target4");
+
+      expect(profileService.getProfile("target4")?.name).toBe("My Profile (Copy)");
+    });
+  });
 });

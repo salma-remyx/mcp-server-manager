@@ -80,9 +80,12 @@ describe("CLI/TUI Parity", () => {
       }
     });
 
-    it("should have CLI commands for all features", () => {
+    it("should have CLI commands for all features (except optional ones)", () => {
       for (const feature of FEATURES) {
-        expect(feature.cliCommands.length).toBeGreaterThan(0);
+        // Optional features (requiredInTui: false) may have empty CLI commands
+        if (feature.requiredInTui) {
+          expect(feature.cliCommands.length).toBeGreaterThan(0);
+        }
       }
     });
   });

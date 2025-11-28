@@ -43,6 +43,54 @@ mcpsm profile create work
 
 ---
 
+## profile clone
+
+Clone an existing profile to create a new one with the same configuration.
+
+```bash
+mcpsm profile clone <source> <target> [displayName]
+```
+
+### Arguments
+
+- `source` - ID of the profile to clone
+- `target` - ID for the new profile
+- `displayName` - (Optional) Display name for the new profile
+
+### Examples
+
+```bash
+# Clone with auto-generated name
+mcpsm profile clone production staging
+
+# Clone with custom display name
+mcpsm profile clone dev test "Test Environment"
+```
+
+### Notes
+
+- Copies all servers, remote servers, and tool filters
+- Target profile ID must not already exist
+- If displayName is omitted, uses source name with " (Copy)" suffix
+
+---
+
+## profile rename
+
+Rename a profile's display name.
+
+```bash
+mcpsm profile rename <profile> <newName>
+```
+
+### Example
+
+```bash
+mcpsm profile rename work "Work Servers"
+```
+
+---
+
 ## profile delete
 
 Delete a profile.
@@ -135,6 +183,12 @@ mcpsm profile add work filesystem
 mcpsm profile add work github
 mcpsm profile add personal spotify
 mcpsm profile add personal home-assistant
+
+# Clone a profile for testing
+mcpsm profile clone work staging "Staging Servers"
+
+# Rename a profile
+mcpsm profile rename personal "Personal Projects"
 
 # Switch to work profile
 mcpsm profile use work

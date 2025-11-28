@@ -188,6 +188,30 @@ export const FEATURES: Feature[] = [
     tuiImplementation: "ProfilesScreen.tsx",
     requiredInTui: true,
   },
+  {
+    id: "profiles-rename",
+    name: "Rename profile",
+    category: "profiles",
+    cliCommands: ["profile rename"],
+    tuiImplementation: "ProfilesScreen.tsx",
+    requiredInTui: true,
+  },
+  {
+    id: "profiles-clone",
+    name: "Clone profile",
+    category: "profiles",
+    cliCommands: ["profile clone"],
+    tuiImplementation: "ProfilesScreen.tsx",
+    requiredInTui: true,
+  },
+  {
+    id: "profiles-tool-filters",
+    name: "Profile tool filters",
+    category: "profiles",
+    cliCommands: [],
+    tuiImplementation: "ProfilesScreen.tsx",
+    requiredInTui: false,
+  },
 
   // === Settings ===
   {
@@ -212,6 +236,22 @@ export const FEATURES: Feature[] = [
     category: "settings",
     cliCommands: ["port"],
     tuiImplementation: "key:p",
+    requiredInTui: true,
+  },
+  {
+    id: "settings-theme",
+    name: "Theme setting",
+    category: "settings",
+    cliCommands: ["settings set theme", "settings get theme"],
+    tuiImplementation: "SettingsScreen.tsx",
+    requiredInTui: true,
+  },
+  {
+    id: "settings-default-profile",
+    name: "Default profile setting",
+    category: "settings",
+    cliCommands: ["settings set defaultProfile", "settings get defaultProfile"],
+    tuiImplementation: "SettingsScreen.tsx",
     requiredInTui: true,
   },
 

@@ -112,7 +112,11 @@ mcpsm settings set editor "code -w"
 
 ### theme
 
-TUI color theme.
+TUI color theme with three options:
+
+- **`default`** - Balanced color scheme for general use. Uses cyan, magenta, green, and yellow with good contrast. Best for most users.
+- **`minimal`** - Subdued colors for reduced visual noise. Primarily uses white and gray with minimal color accents. Best for focused work or users who prefer minimal styling.
+- **`colorful`** - Vibrant colors for maximum visual distinction. Uses bright, saturated colors throughout the interface. Best for users who want clear visual separation between elements.
 
 ```bash
 mcpsm settings set theme minimal

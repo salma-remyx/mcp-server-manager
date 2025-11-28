@@ -74,13 +74,16 @@ Available on all screens:
 
 ## Profiles Screen
 
-| Key     | Action               |
-| ------- | -------------------- |
-| `↑/↓`   | Navigate profiles    |
-| `ENTER` | Use selected profile |
-| `N`     | Create new profile   |
-| `D`     | Delete selected      |
-| `ESC`   | Return to main menu  |
+| Key     | Action                                    |
+| ------- | ----------------------------------------- |
+| `↑/↓`   | Navigate profiles                         |
+| `ENTER` | Use selected profile                      |
+| `N`     | Create new profile (with option to clone) |
+| `R`     | Rename selected profile                   |
+| `D`     | Delete selected profile                   |
+| `ESC`   | Return to main menu                       |
+
+When creating a new profile with `N`, you'll be prompted to either clone from an existing profile or create an empty one.
 
 ---
 

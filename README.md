@@ -32,10 +32,12 @@ This friction slows down development and makes server management error-prone.
 **Key Features:**
 
 - 🎯 **Gateway Pattern** - One gateway, all clients
-- 🎨 **Interactive TUI** - Beautiful terminal UI with keyboard shortcuts
+- 🎨 **Interactive TUI** - Beautiful terminal UI with keyboard shortcuts and customizable themes
 - ⚡ **Automatic Sync** - Changes propagate to all clients instantly
 - 🧪 **Built-in Testing** - Verify servers before using them
 - 📊 **Token Tracking** - Monitor context usage per server
+- 📦 **Profile Management** - Group servers for different contexts with cloning support
+- 🎨 **Theme Customization** - Choose from three color palettes (default, minimal, colorful)
 
 ---
 

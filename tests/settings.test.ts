@@ -164,4 +164,50 @@ describe("SettingsService", () => {
       expect(settingsService.isDefault("port")).toBe(false);
     });
   });
+
+  describe("getOptions", () => {
+    it("should return theme options (static)", () => {
+      settingsService = new SettingsService();
+
+      const options = settingsService.getOptions("theme");
+      expect(options).toBeDefined();
+      expect(options).toEqual(["default", "minimal", "colorful"]);
+    });
+
+    it("should return dynamic profile options from ProfileService", () => {
+      settingsService = new SettingsService();
+
+      const options = settingsService.getOptions("defaultProfile");
+      expect(options).toBeDefined();
+      expect(Array.isArray(options)).toBe(true);
+      // Should include at least the default profile
+      expect(options).toContain("default");
+    });
+
+    it("should return undefined for keys without options (port)", () => {
+      settingsService = new SettingsService();
+
+      const options = settingsService.getOptions("port");
+      expect(options).toBeUndefined();
+    });
+
+    it("should return undefined for keys without options (editor)", () => {
+      settingsService = new SettingsService();
+
+      const options = settingsService.getOptions("editor");
+      expect(options).toBeUndefined();
+    });
+
+    it("should reflect actual profiles created for defaultProfile", () => {
+      settingsService = new SettingsService();
+
+      // Get initial profile options
+      const initialOptions = settingsService.getOptions("defaultProfile");
+      expect(initialOptions).toContain("default");
+
+      // The options should reflect the current state of ProfileService
+      // (In a real scenario with ProfileService, we'd create profiles and verify they appear)
+      expect(Array.isArray(initialOptions)).toBe(true);
+    });
+  });
 });

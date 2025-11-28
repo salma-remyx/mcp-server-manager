@@ -149,4 +149,21 @@ export function registerProfileCommands(program: Command): void {
         process.exit(1);
       }
     });
+
+  // Clone profile
+  profile
+    .command("clone <source> <target> [displayName]")
+    .description("Clone an existing profile")
+    .action(async (source: string, target: string, displayName?: string) => {
+      const profileService = getProfileService();
+      const result = profileService.clone(source, target, displayName);
+
+      if (result.success) {
+        const name = displayName || profileService.getProfile(target)?.name;
+        console.log(`${c.checkmark} Profile cloned: ${source} → ${target} ('${name}')`);
+      } else {
+        console.log(`${c.cross} ${result.error}`);
+        process.exit(1);
+      }
+    });
 }
