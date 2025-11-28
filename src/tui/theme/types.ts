@@ -2,8 +2,8 @@
  * Theme types for TUI
  */
 
-/** Available theme names */
-export type ThemeName = "default" | "minimal" | "colorful";
+/** Available theme names (kept for future expansion) */
+export type ThemeName = "default";
 
 /** Ink color types */
 export type Color =

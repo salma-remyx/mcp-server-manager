@@ -42,7 +42,6 @@ describe("SettingsService", () => {
       const settings = settingsService.getAll();
       expect(settings.port).toBe(8850);
       expect(settings.editor).toBeDefined();
-      expect(settings.theme).toBe("default");
     });
 
     it("should load existing settings", () => {
@@ -53,7 +52,7 @@ describe("SettingsService", () => {
 
       expect(settings.port).toBe(9000);
       // Should merge with defaults
-      expect(settings.theme).toBe("default");
+      expect(settings.editor).toBeDefined();
     });
   });
 
@@ -91,10 +90,13 @@ describe("SettingsService", () => {
       expect(settingsService.get("editor")).toBe("vim");
     });
 
-    it("should validate options for theme", () => {
-      const result = settingsService.set("theme", "invalid");
+    it("should reject invalid setting key", () => {
+      const result = settingsService.set(
+        "invalidKey" as keyof typeof settingsService.getAll,
+        "value"
+      );
       expect(result.success).toBe(false);
-      expect(result.error).toContain("Invalid value");
+      expect(result.error).toContain("Unknown setting");
     });
 
     it("should fail for unknown setting", () => {
@@ -119,14 +121,14 @@ describe("SettingsService", () => {
 
       // Change some settings
       settingsService.set("port", "9999");
-      settingsService.set("theme", "colorful");
+      settingsService.set("editor", "nano");
 
       // Reset
       settingsService.reset();
 
       // Verify defaults
       expect(settingsService.get("port")).toBe(8850);
-      expect(settingsService.get("theme")).toBe("default");
+      expect(settingsService.get("editor")).toBeDefined();
     });
   });
 
@@ -137,8 +139,8 @@ describe("SettingsService", () => {
       const info = settingsService.getInfo();
       expect(info.port).toBeDefined();
       expect(info.port.type).toBe("number");
-      expect(info.theme).toBeDefined();
-      expect(info.theme.options).toContain("default");
+      expect(info.editor).toBeDefined();
+      expect(info.editor.type).toBe("string");
     });
   });
 
@@ -149,8 +151,8 @@ describe("SettingsService", () => {
       const keys = settingsService.getKeys();
       expect(keys).toContain("port");
       expect(keys).toContain("editor");
-      expect(keys).toContain("theme");
-      expect(keys).toContain("defaultProfile");
+      expect(keys).not.toContain("theme"); // theme is hidden
+      expect(keys).not.toContain("defaultProfile"); // defaultProfile is hidden
     });
   });
 
@@ -166,24 +168,6 @@ describe("SettingsService", () => {
   });
 
   describe("getOptions", () => {
-    it("should return theme options (static)", () => {
-      settingsService = new SettingsService();
-
-      const options = settingsService.getOptions("theme");
-      expect(options).toBeDefined();
-      expect(options).toEqual(["default", "minimal", "colorful"]);
-    });
-
-    it("should return dynamic profile options from ProfileService", () => {
-      settingsService = new SettingsService();
-
-      const options = settingsService.getOptions("defaultProfile");
-      expect(options).toBeDefined();
-      expect(Array.isArray(options)).toBe(true);
-      // Should include at least the default profile
-      expect(options).toContain("default");
-    });
-
     it("should return undefined for keys without options (port)", () => {
       settingsService = new SettingsService();
 
@@ -197,17 +181,14 @@ describe("SettingsService", () => {
       const options = settingsService.getOptions("editor");
       expect(options).toBeUndefined();
     });
+  });
 
-    it("should reflect actual profiles created for defaultProfile", () => {
+  describe("getTheme", () => {
+    it("should return default theme (internal use only)", () => {
       settingsService = new SettingsService();
 
-      // Get initial profile options
-      const initialOptions = settingsService.getOptions("defaultProfile");
-      expect(initialOptions).toContain("default");
-
-      // The options should reflect the current state of ProfileService
-      // (In a real scenario with ProfileService, we'd create profiles and verify they appear)
-      expect(Array.isArray(initialOptions)).toBe(true);
+      const theme = settingsService.getTheme();
+      expect(theme).toBe("default");
     });
   });
 });

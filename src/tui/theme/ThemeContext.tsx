@@ -20,7 +20,7 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children }: ThemeProviderProps): React.ReactElement {
   const settingsService = getSettingsService();
-  const themeName = settingsService.get("theme") as ThemeName;
+  const themeName = settingsService.getTheme() as ThemeName;
 
   const contextValue = useMemo<ThemeContextValue>(() => {
     const theme = getTheme(themeName);

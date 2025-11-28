@@ -249,8 +249,8 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
       return;
     }
 
-    // New profile - N
-    if (input.toLowerCase() === "n") {
+    // Add profile - A
+    if (input.toLowerCase() === "a") {
       // Show confirmation dialog: Clone or start fresh?
       setState((prev) => ({ ...prev, view: "confirmClone" }));
       return;
@@ -270,8 +270,8 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
     // Delete profile - D
     if (input.toLowerCase() === "d" && profiles.length > 0) {
       const profile = profiles[currentIndex];
-      if (profile && profile.id === "default") {
-        showMessage("Cannot delete the default profile", "error");
+      if (profile && profile.isActive) {
+        showMessage("Cannot delete the active profile", "error");
         return;
       }
       setState((prev) => ({ ...prev, view: "confirmDelete" }));
@@ -285,7 +285,7 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
   const profilesMenuSections = createMenuSections({
     actions: [
       { key: "Enter", label: "Use" },
-      { key: "N", label: "New" },
+      { key: "A", label: "Add" },
       { key: "R", label: "Rename" },
       { key: "D", label: "Delete" },
     ],

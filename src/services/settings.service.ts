@@ -5,7 +5,6 @@
 import fs from "fs";
 import type { Settings, SettingInfo, SettingsInfo, SettingResult } from "../types/index.js";
 import { getConfigService } from "./config.service.js";
-import { getProfileService } from "./profile.service.js";
 import { createLogger } from "../shared/logger.js";
 
 const log = createLogger("SettingsService");
@@ -14,9 +13,10 @@ const log = createLogger("SettingsService");
 const DEFAULT_SETTINGS: Settings = {
   port: 8850,
   editor: process.env.EDITOR || process.env.VISUAL || "vi",
-  theme: "default",
-  defaultProfile: "default",
 };
+
+/** Internal settings (not exposed in Settings interface, kept for future expansion) */
+const INTERNAL_THEME = "default";
 
 /** Settings metadata */
 const SETTINGS_INFO: SettingsInfo = {
@@ -29,17 +29,6 @@ const SETTINGS_INFO: SettingsInfo = {
     description: "Preferred editor for config files",
     type: "string",
     default: "vi",
-  },
-  theme: {
-    description: "TUI theme (default, minimal, colorful)",
-    type: "string",
-    default: "default",
-    options: ["default", "minimal", "colorful"],
-  },
-  defaultProfile: {
-    description: "Default profile to use on startup",
-    type: "string",
-    default: "default",
   },
 };
 
@@ -111,17 +100,6 @@ export class SettingsService {
       };
     }
 
-    // Validate defaultProfile exists
-    if (key === "defaultProfile") {
-      const profileService = getProfileService();
-      if (!profileService.exists(String(parsedValue))) {
-        return {
-          success: false,
-          error: `Profile '${parsedValue}' does not exist`,
-        };
-      }
-    }
-
     this.settings[key] = parsedValue;
     this.save();
 
@@ -158,18 +136,17 @@ export class SettingsService {
   getOptions(key: keyof Settings): string[] | undefined {
     const info = SETTINGS_INFO[key];
 
-    // Static options (like theme)
+    // Static options
     if (info.options) {
       return info.options;
     }
 
-    // Dynamic options for defaultProfile
-    if (key === "defaultProfile") {
-      const profileService = getProfileService();
-      return profileService.list().map((p) => p.id);
-    }
-
     return undefined;
+  }
+
+  /** Get theme (internal use only, not exposed in Settings interface) */
+  getTheme(): "default" {
+    return INTERNAL_THEME;
   }
 }
 

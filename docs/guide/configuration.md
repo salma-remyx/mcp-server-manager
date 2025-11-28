@@ -9,13 +9,13 @@ MCP Server Manager stores configuration in two main locations:
 
 All mcpsm settings are stored in `~/.mcp-manager/`:
 
-| File                | Description                              |
-| ------------------- | ---------------------------------------- |
-| `config.json`       | Server configurations (local and remote) |
-| `tool-filters.json` | Per-server tool enable/disable settings  |
-| `settings.json`     | Application settings (port, theme, etc.) |
-| `profiles.json`     | Server profiles (grouping by context)    |
-| `clients.json`      | Client connection state cache            |
+| File                | Description                               |
+| ------------------- | ----------------------------------------- |
+| `config.json`       | Server configurations (local and remote)  |
+| `tool-filters.json` | Per-server tool enable/disable settings   |
+| `settings.json`     | Application settings (port, editor, etc.) |
+| `profiles.json`     | Server profiles (grouping by context)     |
+| `clients.json`      | Client connection state cache             |
 
 ## config.json
 
@@ -66,20 +66,16 @@ Application-wide settings:
 ```json
 {
   "port": 8850,
-  "editor": "code",
-  "theme": "default",
-  "profile": null
+  "editor": "code"
 }
 ```
 
 ### Available Settings
 
-| Setting   | Type   | Default   | Description                                     |
-| --------- | ------ | --------- | ----------------------------------------------- |
-| `port`    | number | `8850`    | Gateway port (updated in all connected clients) |
-| `editor`  | string | `code`    | Default editor command                          |
-| `theme`   | string | `default` | TUI color theme                                 |
-| `profile` | string | `null`    | Default profile to load on startup              |
+| Setting  | Type   | Default | Description                                     |
+| -------- | ------ | ------- | ----------------------------------------------- |
+| `port`   | number | `8850`  | Gateway port (updated in all connected clients) |
+| `editor` | string | `code`  | Default editor command                          |
 
 ### Port Changes
 

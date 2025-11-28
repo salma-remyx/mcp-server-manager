@@ -238,22 +238,6 @@ export const FEATURES: Feature[] = [
     tuiImplementation: "key:p",
     requiredInTui: true,
   },
-  {
-    id: "settings-theme",
-    name: "Theme setting",
-    category: "settings",
-    cliCommands: ["settings set theme", "settings get theme"],
-    tuiImplementation: "SettingsScreen.tsx",
-    requiredInTui: true,
-  },
-  {
-    id: "settings-default-profile",
-    name: "Default profile setting",
-    category: "settings",
-    cliCommands: ["settings set defaultProfile", "settings get defaultProfile"],
-    tuiImplementation: "SettingsScreen.tsx",
-    requiredInTui: true,
-  },
 
   // === Daemon ===
   {

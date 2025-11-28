@@ -214,7 +214,7 @@ mcpsm port [number]                Get/set port
 - `mcpsm profile create <name> [displayName]` - Create a new profile
 - `mcpsm profile clone <source> <target> [displayName]` - Clone an existing profile with all its servers and settings
   - Example: `mcpsm profile clone production staging "Staging Environment"`
-- `mcpsm profile delete <name>` - Delete a profile (cannot delete default profile)
+- `mcpsm profile delete <name>` - Delete a profile (cannot delete active profile)
 - `mcpsm profile rename <profile> <newName>` - Rename a profile
 - `mcpsm profile use <name>` - Switch to a profile
 - `mcpsm profile add <profile> <server>` - Add a server to a profile
@@ -299,20 +299,19 @@ Main screen keyboard shortcuts:
 
 ### Views/Screens
 
-- `T` - Tools screen (manage tool filters)
+- `T` - Tools screen (manage tool filters and view token usage)
 - `C` - Clients screen (connect/disconnect clients)
 - `F` - Profiles screen (manage server profiles)
-  - `N` - Create new profile (with option to clone from existing)
+  - `A` - Add new profile (with option to clone from existing)
   - `R` - Rename profile
   - `D` - Delete profile
-- `G` - Settings screen (configure port, theme, etc.)
-  - Theme options: default (balanced colors), minimal (subdued colors), colorful (vibrant colors)
+- `G` - Settings screen (configure port, editor, etc.)
 - `I` - Import/Export screen
+- `O` - Auth screen (authenticate with MCP servers)
 
 ### System
 
 - `H` - Doctor screen (health check)
-- `K` - Tokens screen (view token usage)
 
 ### Import/Export Screen (`I`)
 

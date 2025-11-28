@@ -111,6 +111,7 @@ export const mockSettingsService = {
   set: vi.fn(() => ({ success: true })),
   reset: vi.fn(),
   isDefault: vi.fn(() => true),
+  getTheme: vi.fn(() => "default"),
   getInfo: vi.fn(() => ({
     autoTest: { description: "Auto test new servers", type: "boolean" },
     theme: { description: "UI theme", type: "string", options: ["default", "minimal", "colorful"] },

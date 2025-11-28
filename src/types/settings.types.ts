@@ -8,14 +8,10 @@ export interface Settings {
   port: number;
   /** Preferred editor for config files */
   editor: string;
-  /** TUI theme */
-  theme: ThemeOption;
-  /** Default profile to use on startup */
-  defaultProfile: string;
 }
 
-/** Available theme options */
-export type ThemeOption = "default" | "minimal" | "colorful";
+/** Available theme options (kept for future use) */
+export type ThemeOption = "default";
 
 /** Setting value types */
 export type SettingType = "number" | "string" | "boolean";

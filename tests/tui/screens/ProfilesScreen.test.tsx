@@ -83,11 +83,11 @@ describe("ProfilesScreen", () => {
   });
 
   describe("Create Profile", () => {
-    it("should show create profile view when N is pressed", async () => {
+    it("should show create profile view when A is pressed", async () => {
       const { lastFrame, stdin } = render(<ProfilesScreen onBack={mockOnBack} />);
 
-      // Press N to show clone confirmation
-      stdin.write("n");
+      // Press A to show clone confirmation
+      stdin.write("a");
       await waitForStateUpdate();
       expect(lastFrame()).toContain("New Profile");
 
@@ -103,7 +103,7 @@ describe("ProfilesScreen", () => {
       const { stdin, lastFrame } = render(<ProfilesScreen onBack={mockOnBack} />);
 
       // Open create view - first shows clone confirmation
-      stdin.write("n");
+      stdin.write("a");
       await waitForStateUpdate();
       expect(lastFrame()).toContain("New Profile");
 
@@ -124,7 +124,7 @@ describe("ProfilesScreen", () => {
       const { stdin, lastFrame } = render(<ProfilesScreen onBack={mockOnBack} />);
 
       // Open create view - first shows clone confirmation
-      stdin.write("n");
+      stdin.write("a");
       await waitForStateUpdate();
       expect(lastFrame()).toContain("New Profile");
 
@@ -174,8 +174,8 @@ describe("ProfilesScreen", () => {
     it("should support ESC to go back in nested views", async () => {
       const { stdin } = render(<ProfilesScreen onBack={mockOnBack} />);
 
-      // Press N to show clone confirmation
-      stdin.write("n");
+      // Press A to show clone confirmation
+      stdin.write("a");
       await waitForStateUpdate();
 
       // ESC from confirmClone goes to create view (by calling onCancel)

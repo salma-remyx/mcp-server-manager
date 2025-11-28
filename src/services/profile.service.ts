@@ -124,8 +124,8 @@ export class ProfileService {
 
   /** Delete a profile */
   delete(id: string): ProfileResult {
-    if (id === "default") {
-      return { success: false, error: "Cannot delete default profile" };
+    if (id === this.profiles.activeProfile) {
+      return { success: false, error: "Cannot delete active profile" };
     }
 
     if (!this.profiles.profiles[id]) {
@@ -133,11 +133,6 @@ export class ProfileService {
     }
 
     delete this.profiles.profiles[id];
-
-    // Switch to default if deleting active profile
-    if (this.profiles.activeProfile === id) {
-      this.profiles.activeProfile = "default";
-    }
 
     this.save();
     return { success: true };

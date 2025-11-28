@@ -79,7 +79,7 @@ Profiles:
 - View all profiles
 - See active profile
 - View server count per profile
-- Create new profiles (with option to clone)
+- Add new profiles (with option to clone)
 - Clone profiles with all settings
 - Rename profiles
 - Delete profiles
@@ -87,16 +87,16 @@ Profiles:
 
 ### Actions
 
-| Key     | Action                                 |
-| ------- | -------------------------------------- |
-| `↑/↓`   | Navigate profiles                      |
-| `Enter` | Switch to profile                      |
-| `N`     | Create new profile (with clone option) |
-| `R`     | Rename profile                         |
-| `D`     | Delete profile                         |
-| `ESC`   | Return to main menu                    |
+| Key     | Action                              |
+| ------- | ----------------------------------- |
+| `↑/↓`   | Navigate profiles                   |
+| `Enter` | Switch to profile                   |
+| `A`     | Add new profile (with clone option) |
+| `R`     | Rename profile                      |
+| `D`     | Delete profile                      |
+| `ESC`   | Return to main menu                 |
 
-**Creating/Cloning:** When you press `N`, you'll be prompted to either clone from an existing profile or create an empty one. Cloning copies all servers, remote servers, and tool filter settings from the source profile.
+**Adding/Cloning:** When you press `A`, you'll be prompted to either clone from an existing profile or create an empty one. Cloning copies all servers, remote servers, and tool filter settings from the source profile.
 
 ---
 
@@ -154,8 +154,6 @@ Settings:
 
   → port: 8850 (default)
     editor: vi
-    theme: default
-    defaultProfile: default
 
   ↑↓: Navigate  |  ENTER: Edit  |  SPACE: Toggle (bool)  |  C: Show config path | O: Open config | R: Reset All  |  ESC: Back
 ```
@@ -164,20 +162,15 @@ Settings:
 
 - View all application settings
 - Edit individual settings by pressing ENTER
-- Toggle boolean settings with SPACE
-- Select from options (e.g., theme)
 - Reset to defaults
 - **Automatic port updates:** When port is changed, all connected clients are automatically updated
-- **Theme customization:** Choose from three color palettes (default, minimal, colorful)
 
 ### Settings
 
-| Setting | Type    | Description                                  |
-| ------- | ------- | -------------------------------------------- |
-| Port    | Number  | Gateway port (updates all connected clients) |
-| Editor  | String  | Default editor command                       |
-| Theme   | Options | TUI color theme (default/minimal/colorful)   |
-| Profile | String  | Profile to load on start                     |
+| Setting | Type   | Description                                  |
+| ------- | ------ | -------------------------------------------- |
+| Port    | Number | Gateway port (updates all connected clients) |
+| Editor  | String | Default editor command                       |
 
 ### Actions
 

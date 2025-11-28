@@ -201,16 +201,14 @@ mcpsm start
 
 ---
 
-## Default Profile
+## Active Profile
 
-Set a default profile to load on startup:
+The active profile is the currently selected profile. All servers and tools shown in the TUI and used by the daemon are based on the active profile.
 
-```bash
-mcpsm settings set defaultProfile work
-```
-
-Clear default profile:
+Switch to a different profile:
 
 ```bash
-mcpsm settings set defaultProfile null
+mcpsm profile use work
 ```
+
+Note: The active profile cannot be deleted. Switch to a different profile first if you need to delete the currently active one.

@@ -1,11 +1,27 @@
 ---
 name: tui-cli
-description: Auto-generates TUI+CLI parity checklists and updates project documentation. Analyzes git diff to detect CLI/TUI changes and automatically updates docs/cli/, docs/tui/, CLAUDE.md, and README.md with new commands and features. We need to use this skill every time we're creating a new command, or modifiying an existing command
+description: Ensures TUI+CLI+Documentation parity for all feature changes. CRITICAL - Use this for EVERY change that affects commands, screens, shortcuts, or settings. Validates that changes are reflected in TUI implementation, CLI commands, docs/cli/, docs/tui/, docs/tui/shortcuts.md, CLAUDE.md, and feature registry. Prevents documentation drift and missing implementations.
 ---
 
-# TUI + CLI Parity & Documentation Manager
+# TUI + CLI + Documentation Parity Enforcer
 
-Automatically generates feature parity checklists and maintains project documentation based on your git changes. When you modify code that affects both CLI and TUI interfaces, this skill identifies which features need synchronization **and automatically updates all relevant documentation files**.
+**⚠️ CRITICAL USAGE:** This skill MUST be invoked for EVERY change that affects:
+
+- Commands (CLI or TUI)
+- Keyboard shortcuts
+- Screens or UI elements
+- Settings or configuration
+- Feature additions/modifications
+
+## Core Principle
+
+Every feature in this project requires **three-way parity**:
+
+1. **TUI Implementation** - Interactive terminal UI with keyboard shortcuts
+2. **CLI Implementation** - Command-line interface with flags and options
+3. **Documentation** - Multiple doc files must stay synchronized
+
+**Missing any one = broken user experience.**
 
 ## How It Works
 
@@ -39,18 +55,20 @@ python3 .claude/skills/tui-cli/scripts/generate_checklist.py
 
 The skill automatically updates documentation based on file changes:
 
-| Changed File | Documentation Updates |
-|---|---|
-| `src/cli/commands/*.cmd.ts` | `docs/cli/<category>.md`, `CLAUDE.md` (CLI Commands section), `README.md` |
-| `src/tui/screens/*.screen.ts` | `docs/tui/screens.md`, `docs/tui/overview.md` |
-| `src/tui/index.ts` | `docs/tui/shortcuts.md`, `docs/tui/overview.md` |
-| `src/services/*.service.ts` | (No direct doc update, but noted in parity checklist) |
-| `src/shared/features.ts` | (Feature registry validation in checklist) |
+| Changed File                  | Documentation Updates                                                     |
+| ----------------------------- | ------------------------------------------------------------------------- |
+| `src/cli/commands/*.cmd.ts`   | `docs/cli/<category>.md`, `CLAUDE.md` (CLI Commands section), `README.md` |
+| `src/tui/screens/*.screen.ts` | `docs/tui/screens.md`, `docs/tui/overview.md`                             |
+| `src/tui/index.ts`            | `docs/tui/shortcuts.md`, `docs/tui/overview.md`                           |
+| `src/services/*.service.ts`   | (No direct doc update, but noted in parity checklist)                     |
+| `src/shared/features.ts`      | (Feature registry validation in checklist)                                |
 
 ### Documentation File Formats
 
 #### `docs/cli/<category>.md`
+
 Each command category has its own file with:
+
 - Command heading: `## <command-name>`
 - Description paragraph
 - Usage block: ` ```bash\nmcpsm <command> [options]\n``` `
@@ -59,26 +77,33 @@ Each command category has its own file with:
 - Output samples (where applicable)
 
 #### `docs/tui/screens.md`
+
 Lists all TUI screens with:
+
 - Screen name
 - Description
 - Key bindings/navigation
 - Features available
 
 #### `docs/tui/shortcuts.md`
+
 Keyboard shortcuts reference with:
+
 - Shortcut key(s)
 - Action description
 - Context/screen where applicable
 
 #### `CLAUDE.md` (CLI Commands section)
+
 Quick reference format:
-```
+
+```text
 mcpsm command [args]     Brief description
 mcpsm command2 <param>   Another description
 ```
 
 #### `README.md`
+
 - Main feature highlights
 - Common commands (top-level only)
 - Links to full documentation
@@ -87,7 +112,7 @@ mcpsm command2 <param>   Another description
 
 The skill recognizes these file patterns:
 
-```
+```text
 src/cli/commands/        → CLI Command Implementation
 src/tui/screens/         → TUI Screen Implementation
 src/tui/index.ts         → TUI Main Screen/Key Bindings
@@ -145,6 +170,7 @@ When this skill detects CLI/TUI changes, Claude will:
 ### 1. Parse CLI Commands
 
 Extract from TypeScript files (`src/cli/commands/*.cmd.ts`):
+
 - **Command name** - From `.command("name [args]")`
 - **Aliases** - From `.aliases([...])`
 - **Description** - From `.description("...")`
@@ -152,6 +178,7 @@ Extract from TypeScript files (`src/cli/commands/*.cmd.ts`):
 - **Examples** - Comment-based or inferred from usage patterns
 
 **Example extraction from TypeScript:**
+
 ```typescript
 program
   .command("test [server]")
@@ -164,6 +191,7 @@ program
 ```
 
 Becomes in documentation:
+
 ```markdown
 ## test
 
@@ -177,19 +205,22 @@ mcpsm test [server] [options]
 
 ### Options
 
-| Option | Description |
-|--------|-------------|
-| `[server]` | Server name to test (tests all if omitted) |
-| `--json` | Output in JSON format |
-| `-v, --verbose` | Verbose output |
+| Option          | Description                                |
+| --------------- | ------------------------------------------ |
+| `[server]`      | Server name to test (tests all if omitted) |
+| `--json`        | Output in JSON format                      |
+| `-v, --verbose` | Verbose output                             |
 
 ### Examples
 
 \`\`\`bash
+
 # Test a specific server
+
 mcpsm test my-server
 
 # Test all servers with verbose output
+
 mcpsm test --verbose
 \`\`\`
 ```
@@ -197,17 +228,20 @@ mcpsm test --verbose
 ### 2. Update Documentation Files
 
 **For `docs/cli/<category>.md`:**
+
 - Keep existing commands, update modified ones
 - Add new commands maintaining the format
 - Preserve all explanatory text and examples
 - Use horizontal rule `---` between commands
 
 **For `CLAUDE.md` (CLI Commands section):**
+
 - Update quick reference: `mcpsm command [args]     Description`
 - Keep format consistent with existing commands
 - Maintain alphabetical order within sections
 
 **For `README.md`:**
+
 - Update highlights if major new feature
 - Link to documentation files
 - Keep user-friendly language
@@ -229,13 +263,13 @@ mcpsm test --verbose
 
 **On main branch with no changes:**
 
-```
+```text
 ✅ No changes detected - nothing needs to be done
 ```
 
 **On feature branch with CLI + TUI changes:**
 
-```
+```text
 🌿 Current branch: matt/implement-gateway
 
 🔍 Detected 5 source file(s) across 3 feature(s)

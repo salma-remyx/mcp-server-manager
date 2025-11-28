@@ -228,7 +228,7 @@ The system stores configuration in `~/.mcp-manager/`:
 | File                | Purpose                                              |
 | ------------------- | ---------------------------------------------------- |
 | `config.json`       | Server definitions (local STDIO and remote HTTP/SSE) |
-| `settings.json`     | Application settings (port, theme, default editor)   |
+| `settings.json`     | Application settings (port, default editor, etc.)    |
 | `profiles.json`     | Server profiles (groupings by project/context)       |
 | `tool-filters.json` | Per-server tool enable/disable settings              |
 | `clients.json`      | Client connection state cache (informational only)   |

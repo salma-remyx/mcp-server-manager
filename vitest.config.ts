@@ -10,5 +10,19 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json", "html"],
     },
+    // Prevent orphan processes and improve cleanup
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        singleFork: false,
+        maxForks: 3, // Limit concurrent forks to prevent resource exhaustion
+      },
+    },
+    // Ensure tests don't hang
+    testTimeout: 30000,
+    hookTimeout: 10000,
+    teardownTimeout: 5000,
+    // Force exit after tests complete
+    forceExit: true,
   },
 });

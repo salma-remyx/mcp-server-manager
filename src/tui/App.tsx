@@ -722,12 +722,6 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return;
       }
 
-      // P - Port (jump to settings port)
-      if (input === "p" || input === "P") {
-        setState((prev) => ({ ...prev, screen: "settings", settingsInitialKey: "port" }));
-        return;
-      }
-
       // I - Import/Export
       if (input === "i" || input === "I") {
         setState((prev) => ({ ...prev, screen: "import-export" }));
@@ -1076,6 +1070,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                 { key: "Space", label: "Toggle" },
                 { key: "Enter", label: "Daemon" },
                 { key: "A", label: "Add" },
+                { key: "E", label: "Edit" },
                 { key: "D", label: "Del" },
                 { key: "X", label: "Test" },
                 { key: "T", label: "Tools" },

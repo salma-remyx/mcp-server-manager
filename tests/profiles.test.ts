@@ -124,12 +124,14 @@ describe("ProfileService", () => {
       expect(profileService.getProfile("test")).toBeUndefined();
     });
 
-    it("should not allow deleting default profile", () => {
+    it("should not allow deleting active profile", () => {
       profileService = new ProfileService();
 
-      const result = profileService.delete("default");
+      // Try to delete the currently active profile (default is active by default)
+      const activeProfileId = profileService.getActiveProfileId();
+      const result = profileService.delete(activeProfileId);
       expect(result.success).toBe(false);
-      expect(result.error).toContain("Cannot delete default");
+      expect(result.error).toContain("Cannot delete active");
     });
 
     it("should fail when profile not found", () => {
@@ -140,15 +142,22 @@ describe("ProfileService", () => {
       expect(result.error).toContain("not found");
     });
 
-    it("should switch to default if deleting active profile", () => {
+    it("should allow deleting non-active profile", () => {
       profileService = new ProfileService();
 
+      // Create a test profile
       profileService.create("test", "Test");
-      profileService.use("test");
-      expect(profileService.getActiveProfileId()).toBe("test");
+      profileService.create("another", "Another");
 
-      profileService.delete("test");
-      expect(profileService.getActiveProfileId()).toBe("default");
+      // Switch to "another" profile
+      profileService.use("another");
+      expect(profileService.getActiveProfileId()).toBe("another");
+
+      // Should be able to delete "test" since it's not active
+      const result = profileService.delete("test");
+      expect(result.success).toBe(true);
+      expect(profileService.getProfile("test")).toBeUndefined();
+      expect(profileService.getActiveProfileId()).toBe("another"); // Active profile unchanged
     });
   });
 
