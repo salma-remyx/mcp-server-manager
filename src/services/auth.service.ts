@@ -923,6 +923,20 @@ export class AuthService {
     return stored.expiresAt < Date.now();
   }
 
+  /** Check if token is expired but can be refreshed */
+  isRefreshable(serverId: string): boolean {
+    const stored = this.tokens.get(serverId);
+    if (!stored) {
+      return false;
+    }
+
+    if (this.isTokenExpired(serverId) && stored.refreshToken) {
+      return true;
+    }
+
+    return false;
+  }
+
   // === Utility Methods ===
 
   /** Check if a server requires OAuth */

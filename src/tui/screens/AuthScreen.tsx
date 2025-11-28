@@ -67,19 +67,21 @@ export function AuthScreen({
     const storedTokenServerIds = authService.getAllStoredTokenServerIds();
 
     for (const server of allRemoteServers) {
-      let token = authService.getToken(server.id);
-      let isExpired = authService.isTokenExpired(server.id);
+      const token = authService.getToken(server.id);
+      const isExpired = authService.isTokenExpired(server.id);
+      const isRefreshable = authService.isRefreshable(server.id);
       const hasStoredToken = storedTokenServerIds.includes(server.id);
       const isOAuthEnabled = server.oauth?.enabled || false;
       const isBearerOnly = !isOAuthEnabled;
 
-      // Attempt automatic refresh if token expired and refresh token exists
-      if (isExpired && token?.refreshToken) {
-        const refreshed = await authService.refreshToken(server, token);
-        if (refreshed) {
-          token = authService.getToken(server.id);
-          isExpired = authService.isTokenExpired(server.id);
-        }
+      // Trigger silent refresh in the background if refreshable
+      if (isRefreshable && token) {
+        authService.refreshToken(server, token).then(refreshed => {
+          if (refreshed) {
+            // Re-load servers to update the UI with the new token status
+            void loadServers();
+          }
+        });
       }
 
       const hasToken = !!token;
@@ -100,7 +102,7 @@ export function AuthScreen({
 
       const needsAuth =
         (!hasToken && isOAuthEnabled) ||
-        (hasToken && isExpired) ||
+        (isExpired && !isRefreshable) ||
         requiresAuth;
 
       const status: AuthStatus = {

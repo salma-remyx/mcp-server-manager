@@ -111,12 +111,15 @@ export function registerServerCommands(program: Command): void {
           // OAuth status
           let authStatus = "";
           if (server.oauth?.enabled) {
-            const hasToken = authService.hasValidToken(server.id);
-            const isExpired = authService.isTokenExpired(server.id);
-            if (hasToken && !isExpired) {
+            if (authService.hasValidToken(server.id)) {
               authStatus = ` · ${colors.green}OAuth${colors.reset}`;
-            } else if (isExpired) {
-              authStatus = ` · ${colors.yellow}OAuth (expired)${colors.reset}`;
+            } else if (authService.isRefreshable(server.id)) {
+              const token = await authService.getValidToken(server);
+              if (token) {
+                authStatus = ` · ${colors.green}OAuth${colors.reset}`;
+              } else {
+                authStatus = ` · ${colors.red}OAuth (refresh failed)${colors.reset}`;
+              }
             } else {
               authStatus = ` · ${colors.red}OAuth (not auth'd)${colors.reset}`;
             }

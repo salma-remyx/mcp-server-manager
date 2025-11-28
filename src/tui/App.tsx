@@ -276,10 +276,21 @@ export function App({ onExit }: AppProps): React.ReactElement {
       const needsAuth = new Set<string>();
       for (const server of state.remoteServers) {
         const filter = toolFilters[`remote:${server.id}`];
-        if (
-          (server.oauth?.enabled && !authService.hasValidToken(server.id)) ||
-          filterIndicatesAuth(filter)
-        ) {
+        if (server.oauth?.enabled) {
+          if (authService.isRefreshable(server.id)) {
+            authService.getValidToken(server).then((refreshed) => {
+              if (refreshed && isMounted) {
+                setState((prev) => {
+                  const newNeedsAuth = new Set(prev.serversNeedingAuth);
+                  newNeedsAuth.delete(server.id);
+                  return { ...prev, serversNeedingAuth: newNeedsAuth };
+                });
+              }
+            });
+          } else if (!authService.hasValidToken(server.id)) {
+            needsAuth.add(server.id);
+          }
+        } else if (filterIndicatesAuth(filter)) {
           needsAuth.add(server.id);
         }
       }
@@ -314,10 +325,21 @@ export function App({ onExit }: AppProps): React.ReactElement {
       const finalNeedsAuth = new Set<string>();
       for (const server of state.remoteServers) {
         const filter = updatedFilters[`remote:${server.id}`];
-        if (
-          (server.oauth?.enabled && !authService.hasValidToken(server.id)) ||
-          filterIndicatesAuth(filter)
-        ) {
+        if (server.oauth?.enabled) {
+          if (authService.isRefreshable(server.id)) {
+            authService.getValidToken(server).then((refreshed) => {
+              if (refreshed && isMounted) {
+                setState((prev) => {
+                  const newNeedsAuth = new Set(prev.serversNeedingAuth);
+                  newNeedsAuth.delete(server.id);
+                  return { ...prev, serversNeedingAuth: newNeedsAuth };
+                });
+              }
+            });
+          } else if (!authService.hasValidToken(server.id)) {
+            finalNeedsAuth.add(server.id);
+          }
+        } else if (filterIndicatesAuth(filter)) {
           finalNeedsAuth.add(server.id);
         }
       }
@@ -363,7 +385,11 @@ export function App({ onExit }: AppProps): React.ReactElement {
     const authService = getAuthService();
     const needsAuth = new Set<string>();
     for (const server of state.remoteServers) {
-      if (server.oauth?.enabled && !authService.hasValidToken(server.id)) {
+      if (
+        server.oauth?.enabled &&
+        !authService.hasValidToken(server.id) &&
+        !authService.isRefreshable(server.id)
+      ) {
         needsAuth.add(server.id);
       }
     }
