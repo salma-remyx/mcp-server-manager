@@ -435,7 +435,7 @@ export function AuthScreen({
             description={`Are you sure you want to revoke the OAuth token for '${confirmRevoke.name}'? You will need to re-authenticate to use this server.`}
             confirmText="Yes, revoke"
             cancelText="No, keep it"
-            titleColor="yellow"
+            titleColor="red"
             onConfirm={() => {
               revokeAuth(confirmRevoke.id);
             }}

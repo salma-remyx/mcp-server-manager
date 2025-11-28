@@ -177,7 +177,6 @@ export function SettingsScreen({ onBack, initialKey }: SettingsScreenProps): Rea
       if (!settingKey) return;
 
       const currentValue = settings[settingKey];
-      const info = settingsService.getInfo()[settingKey];
 
       if (typeof currentValue === "boolean") {
         // Toggle boolean
@@ -186,23 +185,26 @@ export function SettingsScreen({ onBack, initialKey }: SettingsScreenProps): Rea
           ...prev,
           settings: settingsService.getAll(),
         }));
-      } else if (info?.options) {
-        // Cycle through options
-        const options = info.options;
-        const currentIdx = options.indexOf(String(currentValue));
-        const nextIdx = (currentIdx + 1) % options.length;
-        settingsService.set(settingKey, options[nextIdx]);
-        setState((prev) => ({
-          ...prev,
-          settings: settingsService.getAll(),
-        }));
       } else {
-        // Open edit view
-        setState((prev) => ({
-          ...prev,
-          view: "edit",
-          editValue: String(currentValue),
-        }));
+        // Check for options (static or dynamic)
+        const options = settingsService.getOptions(settingKey);
+        if (options && options.length > 0) {
+          // Cycle through options
+          const currentIdx = options.indexOf(String(currentValue));
+          const nextIdx = (currentIdx + 1) % options.length;
+          settingsService.set(settingKey, options[nextIdx]);
+          setState((prev) => ({
+            ...prev,
+            settings: settingsService.getAll(),
+          }));
+        } else {
+          // Open edit view
+          setState((prev) => ({
+            ...prev,
+            view: "edit",
+            editValue: String(currentValue),
+          }));
+        }
       }
       return;
     }

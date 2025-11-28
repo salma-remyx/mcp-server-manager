@@ -2,6 +2,8 @@
  * Profile-related type definitions
  */
 
+import type { ToolFilters } from "./config.types.js";
+
 /** Single profile definition */
 export interface Profile {
   /** Profile display name */
@@ -10,6 +12,8 @@ export interface Profile {
   servers: string[];
   /** Remote server IDs in this profile (empty = all) */
   remoteServers: string[];
+  /** Per-profile tool filters (optional, for independent tool management) */
+  toolFilters?: ToolFilters;
 }
 
 /** Profiles configuration */

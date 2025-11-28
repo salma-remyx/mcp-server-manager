@@ -5,6 +5,7 @@
 import fs from "fs";
 import type { Settings, SettingInfo, SettingsInfo, SettingResult } from "../types/index.js";
 import { getConfigService } from "./config.service.js";
+import { getProfileService } from "./profile.service.js";
 import { createLogger } from "../shared/logger.js";
 
 const log = createLogger("SettingsService");
@@ -110,6 +111,17 @@ export class SettingsService {
       };
     }
 
+    // Validate defaultProfile exists
+    if (key === "defaultProfile") {
+      const profileService = getProfileService();
+      if (!profileService.exists(String(parsedValue))) {
+        return {
+          success: false,
+          error: `Profile '${parsedValue}' does not exist`,
+        };
+      }
+    }
+
     this.settings[key] = parsedValue;
     this.save();
 
@@ -140,6 +152,24 @@ export class SettingsService {
   /** Get available keys */
   getKeys(): (keyof Settings)[] {
     return Object.keys(SETTINGS_INFO) as (keyof Settings)[];
+  }
+
+  /** Get options for a setting (static or dynamic) */
+  getOptions(key: keyof Settings): string[] | undefined {
+    const info = SETTINGS_INFO[key];
+
+    // Static options (like theme)
+    if (info.options) {
+      return info.options;
+    }
+
+    // Dynamic options for defaultProfile
+    if (key === "defaultProfile") {
+      const profileService = getProfileService();
+      return profileService.list().map((p) => p.id);
+    }
+
+    return undefined;
   }
 }
 

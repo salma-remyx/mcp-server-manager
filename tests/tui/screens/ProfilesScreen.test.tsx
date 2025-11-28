@@ -86,6 +86,12 @@ describe("ProfilesScreen", () => {
     it("should show create profile view when N is pressed", async () => {
       const { lastFrame, stdin } = render(<ProfilesScreen onBack={mockOnBack} />);
 
+      // Press N to show clone confirmation
+      stdin.write("n");
+      await waitForStateUpdate();
+      expect(lastFrame()).toContain("New Profile");
+
+      // Choose "No, create empty" (press N for "No" to cloning)
       stdin.write("n");
       await waitForStateUpdate(300);
 
@@ -96,7 +102,12 @@ describe("ProfilesScreen", () => {
     it("should go back from create view with ESC", async () => {
       const { stdin, lastFrame } = render(<ProfilesScreen onBack={mockOnBack} />);
 
-      // Open create view
+      // Open create view - first shows clone confirmation
+      stdin.write("n");
+      await waitForStateUpdate();
+      expect(lastFrame()).toContain("New Profile");
+
+      // Choose "Start fresh" (press N for "No" to cloning)
       stdin.write("n");
       await waitForStateUpdate();
       expect(lastFrame()).toContain("Create New Profile");
@@ -112,7 +123,12 @@ describe("ProfilesScreen", () => {
     it("should show name input in create view", async () => {
       const { stdin, lastFrame } = render(<ProfilesScreen onBack={mockOnBack} />);
 
-      // Open create view
+      // Open create view - first shows clone confirmation
+      stdin.write("n");
+      await waitForStateUpdate();
+      expect(lastFrame()).toContain("New Profile");
+
+      // Choose "Start fresh" (press N for "No" to cloning)
       stdin.write("n");
       await waitForStateUpdate();
 
@@ -158,15 +174,19 @@ describe("ProfilesScreen", () => {
     it("should support ESC to go back in nested views", async () => {
       const { stdin } = render(<ProfilesScreen onBack={mockOnBack} />);
 
-      // Open create view
+      // Press N to show clone confirmation
       stdin.write("n");
       await waitForStateUpdate();
 
-      // ESC should go back to list (not call onBack)
+      // ESC from confirmClone goes to create view (by calling onCancel)
       stdin.write(KEYS.ESCAPE);
       await waitForStateUpdate();
 
-      // ESC again should call onBack
+      // ESC from create view goes back to list
+      stdin.write(KEYS.ESCAPE);
+      await waitForStateUpdate();
+
+      // ESC from list should call onBack
       stdin.write(KEYS.ESCAPE);
       await waitForStateUpdate();
 

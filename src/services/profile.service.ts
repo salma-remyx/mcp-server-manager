@@ -99,6 +99,29 @@ export class ProfileService {
     return { success: true };
   }
 
+  /** Clone a profile */
+  clone(sourceId: string, newId: string, newName?: string): ProfileResult {
+    const source = this.profiles.profiles[sourceId];
+    if (!source) {
+      return { success: false, error: "Source profile not found" };
+    }
+
+    if (this.profiles.profiles[newId]) {
+      return { success: false, error: "Profile already exists" };
+    }
+
+    // Deep clone the profile
+    this.profiles.profiles[newId] = {
+      name: newName || `${source.name} (Copy)`,
+      servers: [...source.servers],
+      remoteServers: [...source.remoteServers],
+      toolFilters: source.toolFilters ? JSON.parse(JSON.stringify(source.toolFilters)) : undefined,
+    };
+
+    this.save();
+    return { success: true };
+  }
+
   /** Delete a profile */
   delete(id: string): ProfileResult {
     if (id === "default") {
