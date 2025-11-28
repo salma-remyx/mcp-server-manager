@@ -23,6 +23,7 @@ describe("AuthScreen", () => {
       sampleRemoteServers.map((s) => ({ ...s, oauth: { enabled: true } }))
     );
     mockAuthService.getAllStoredTokenServerIds.mockReturnValue([]);
+    mockAuthService.isRefreshable.mockReturnValue(false);
   });
 
   it("runs login-all when A is pressed", async () => {
