@@ -47,7 +47,7 @@ export function ServerList({
         const checkboxColor = isSelected ? "green" : "gray";
 
         // Determine name style
-        const nameColor = isDisabled ? "gray" : isCurrent ? "white" : undefined;
+        const nameColor = isCurrent ? "magenta" : isDisabled ? "gray" : undefined;
 
         // Always show tool count, regardless of disabled state
         const statusText = `${toolCount} tools`;
@@ -55,7 +55,7 @@ export function ServerList({
 
         return (
           <Box key={server.id} gap={1}>
-            <Text color="cyan">{isCurrent ? "→" : " "}</Text>
+            <Text color={isCurrent ? "magenta" : "cyan"}>{isCurrent ? "→" : " "}</Text>
             <Text color={checkboxColor}>{checkbox}</Text>
             <Text color={nameColor} bold={isCurrent}>
               {server.name || server.id}
