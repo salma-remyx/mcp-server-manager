@@ -13,12 +13,15 @@ import {
   mockSettingsService,
   mockDaemonService,
   mockImportExportService,
+  setupMocks,
   KEYS,
   waitForStateUpdate,
 } from "./setup.js";
 import sardineConfig from "../fixtures/sardine-config.json";
 import { REDACTED_PLACEHOLDER } from "../../src/shared/redaction.js";
 import type { LocalServer, RemoteServer } from "../../src/types/index.js";
+
+setupMocks();
 
 vi.mock("../../src/services/config.service.js", () => ({
   getConfigService: vi.fn(() => mockConfigService),
@@ -48,13 +51,6 @@ vi.mock("../../src/services/daemon.service.js", () => ({
 
 vi.mock("../../src/services/import-export.service.js", () => ({
   getImportExportService: vi.fn(() => mockImportExportService),
-}));
-
-vi.mock("../../src/services/auth.service.js", () => ({
-  getAuthService: vi.fn(() => ({
-    hasValidToken: vi.fn(() => false),
-    isTokenExpired: vi.fn(() => false),
-  })),
 }));
 
 vi.mock("../../src/shared/formatters.js", () => ({

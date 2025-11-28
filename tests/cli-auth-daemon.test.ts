@@ -13,8 +13,10 @@ const mockConfigService = {
 const mockAuthService = {
   hasValidToken: vi.fn(() => false),
   isTokenExpired: vi.fn(() => false),
+  isRefreshable: vi.fn(() => false),
   getToken: vi.fn(),
   getTokenPreview: vi.fn(),
+  getValidToken: vi.fn(() => Promise.resolve("refreshed-token")),
   startOAuthFlow: vi.fn(),
   waitForAuth: vi.fn(),
   stopCallbackServer: vi.fn(),
@@ -76,10 +78,6 @@ vi.mock("../src/services/profile.service.js", () => ({
 
 vi.mock("../src/services/gateway.service.js", () => ({
   runGatewayForeground: mockGateway.runGatewayForeground,
-}));
-
-vi.mock("open", () => ({
-  default: vi.fn(),
 }));
 
 describe("CLI auth/daemon commands", () => {
