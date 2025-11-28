@@ -87,7 +87,7 @@ describe("ProfilesScreen", () => {
       const { lastFrame, stdin } = render(<ProfilesScreen onBack={mockOnBack} />);
 
       stdin.write("n");
-      await waitForStateUpdate();
+      await waitForStateUpdate(300);
 
       expect(lastFrame()).toContain("Create New Profile");
       expect(lastFrame()).toContain("Profile name");

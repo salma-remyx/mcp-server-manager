@@ -1,9 +1,7 @@
-/**
- * DaemonScreen Tests
- */
-
 import React from "react";
 import fs from "fs";
+import os from "os";
+import path from "path";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render } from "ink-testing-library";
 import { mockConfigService, mockDaemonService, waitForStateUpdate, KEYS } from "../setup.js";
@@ -119,7 +117,7 @@ describe("DaemonScreen", () => {
     });
 
     it("clears logs when Clear Logs is selected", async () => {
-      const logPath = "/tmp/daemon-clear.log";
+      const logPath = path.join(os.tmpdir(), "daemon-clear.log");
       mockDaemonService.getLogFilePath.mockReturnValue(logPath);
       fs.writeFileSync(logPath, "old logs");
 
@@ -168,7 +166,7 @@ describe("DaemonScreen", () => {
         pid: 12345,
         port: 8850,
         startupEnabled: false,
-        logFile: "/tmp/daemon.log",
+        logFile: path.join(os.tmpdir(), "daemon.log"),
       });
 
       const { lastFrame } = render(<DaemonScreen onBack={mockOnBack} />);
