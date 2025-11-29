@@ -39,6 +39,9 @@ export {
 // Auth service
 export { AuthService, getAuthService, resetAuthService } from "./auth.service.js";
 
+// Version service
+export { getVersionService } from "./version.service.js";
+
 // Re-export types used by services
 export type {
   AppConfig,

@@ -5,12 +5,13 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import Spinner from "ink-spinner";
-import { Header, ShortcutsBar, ConfirmDialog, ScrollableList, ScreenLayout } from "./components/index.js";
+import { Header, ShortcutsBar, ConfirmDialog, ScrollableList, ScreenLayout, VersionBanner } from "./components/index.js";
 import { getConfigService } from "../services/config.service.js";
 import { getTestingService } from "../services/testing.service.js";
 import { getProfileService } from "../services/profile.service.js";
 import { getDaemonService } from "../services/daemon.service.js";
 import { getAuthService } from "../services/auth.service.js";
+import { getVersionService } from "../services/version.service.js";
 import { createLogger } from "../shared/logger.js";
 import { formatTokens } from "../shared/formatters.js";
 import type { LocalServer, RemoteServer, ServerToolFilter, Settings } from "../types/index.js";
@@ -77,6 +78,7 @@ interface AppState {
   confirmDelete?: { server: LocalServer | RemoteServer; type: "local" | "remote" }; // Server pending deletion confirmation
   editTarget?: { server: LocalServer | RemoteServer; type: "local" | "remote" };
   settingsInitialKey?: keyof Settings;
+  versionInfo?: { current: string; latest: string; hasUpdate: boolean };
 }
 
 interface AppProps {
@@ -357,6 +359,29 @@ export function App({ onExit }: AppProps): React.ReactElement {
       isMounted = false;
     };
   }, [refreshDaemonIfRunning]);
+
+  // Check for version updates on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkVersion = async (): Promise<void> => {
+      const versionService = getVersionService();
+      try {
+        const versionInfo = await versionService.checkForUpdate();
+        if (isMounted && versionInfo.hasUpdate) {
+          setState((prev) => ({ ...prev, versionInfo }));
+        }
+      } catch (error) {
+        log.debug("Failed to check version:", error);
+      }
+    };
+
+    checkVersion();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Create unified server list
   const unifiedServers = React.useMemo((): UnifiedServer[] => {
@@ -940,6 +965,16 @@ export function App({ onExit }: AppProps): React.ReactElement {
           totalTokens={totalTokens}
         />
       </Box>
+
+      {/* Version update banner */}
+      {state.versionInfo?.hasUpdate && (
+        <Box marginX={contentMargin} marginTop={1}>
+          <VersionBanner
+            currentVersion={state.versionInfo.current}
+            latestVersion={state.versionInfo.latest}
+          />
+        </Box>
+      )}
 
       {/* Delete confirmation dialog - shown exclusively */}
       {state.confirmDelete ? (
