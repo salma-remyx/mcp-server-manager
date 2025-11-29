@@ -11,7 +11,7 @@ mcpsm
 ## Layout
 
 ```
-MCP Server Manager v2.2.3
+MCP Server Manager v0.0.0
 Profile: default | Port: 8850 | Total: 8.6k tokens
 
 Local Servers (STDIO):
