@@ -39,6 +39,13 @@ export {
 // Auth service
 export { AuthService, getAuthService, resetAuthService } from "./auth.service.js";
 
+// Environment service
+export {
+  EnvironmentService,
+  getEnvironmentService,
+  resetEnvironmentService,
+} from "./environment.service.js";
+
 // Version service
 export { getVersionService } from "./version.service.js";
 
