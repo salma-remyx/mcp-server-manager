@@ -39,6 +39,9 @@ export {
 // Auth service
 export { AuthService, getAuthService, resetAuthService } from "./auth.service.js";
 
+// HTTP Connection service
+export { getHttpConnectionService } from "./http-connection.service.js";
+
 // Environment service
 export {
   EnvironmentService,

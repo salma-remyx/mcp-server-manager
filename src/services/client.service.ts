@@ -18,7 +18,6 @@ import type {
   ClaudeServerConfig,
   OperationResult,
 } from "../types/index.js";
-import { getConfigService } from "./config.service.js";
 import { createLogger } from "../shared/logger.js";
 
 const log = createLogger("ClientService");
@@ -353,9 +352,6 @@ export class ClientService {
       return { success: false, error: "Client not installed" };
     }
 
-    const configService = getConfigService();
-    const port = configService.getPort();
-
     // For clients with real-time MCP loading, use the additional MCP path as source of truth
     const additionalMcpPath = ADDITIONAL_MCP_PATHS[clientId];
     if (additionalMcpPath) {
@@ -379,18 +375,18 @@ export class ClientService {
           }
           clientConfig.servers.mcpsm = {
             type: "stdio",
-            command: "npx",
-            args: ["-y", "supergateway", "--streamableHttp", `http://localhost:${port}/mcp`],
+            command: "mcpsm",
+            args: ["daemon", "connect", "--http"],
           };
         } else {
           if (!clientConfig.mcpServers) {
             clientConfig.mcpServers = {};
           }
 
-          // Add mcpsm gateway server using supergateway (stdio wrapper for HTTP/SSE)
+          // Add mcpsm gateway server using native HTTP client
           clientConfig.mcpServers.mcpsm = {
-            command: "npx",
-            args: ["-y", "supergateway", "--streamableHttp", `http://localhost:${port}/mcp`],
+            command: "mcpsm",
+            args: ["daemon", "connect", "--http"],
           };
         }
 
@@ -417,8 +413,8 @@ export class ClientService {
       }
 
       clientConfig.mcpServers.mcpsm = {
-        command: "npx",
-        args: ["-y", "supergateway", "--streamableHttp", `http://localhost:${port}/mcp`],
+        command: "mcpsm",
+        args: ["daemon", "connect", "--http"],
       };
 
       const success = this.writeClientConfig(clientId, clientConfig);
