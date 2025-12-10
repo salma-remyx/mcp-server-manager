@@ -15,7 +15,7 @@ import type {
   DetectedClient,
   ClientStatus,
   ClientMcpConfig,
-  ClaudeServerConfig,
+  ClientServerConfig,
   OperationResult,
 } from "../types/index.js";
 import { getConfigService } from "./config.service.js";
@@ -118,6 +118,22 @@ export class ClientService {
     return process.platform as Platform;
   }
 
+  /** Determine if client config already contains the mcpsm gateway */
+  private hasGateway(config?: ClientMcpConfig | null): boolean {
+    if (!config) return false;
+
+    const gateway = config.mcpServers?.mcpsm || config.servers?.mcpsm;
+    if (!gateway) return false;
+
+    return !!(
+      gateway.command ||
+      gateway.url ||
+      gateway.type ||
+      (gateway.args && gateway.args.length > 0) ||
+      (gateway.env && Object.keys(gateway.env).length > 0)
+    );
+  }
+
   /** Get config path for a client on current platform */
   getClientConfigPath(clientId: ClientId): string | null {
     const paths = CLIENT_PATHS[clientId];
@@ -173,7 +189,7 @@ export class ClientService {
     try {
       const data = fs.readFileSync(configPath, "utf8");
       const tomlConfig = TOML.parse(data);
-      const mcpServers: Record<string, ClaudeServerConfig> = {};
+      const mcpServers: Record<string, ClientServerConfig> = {};
 
       // Convert mcp_servers from TOML format to standard format
       const mcpServersToml = tomlConfig.mcp_servers as
@@ -181,12 +197,27 @@ export class ClientService {
         | undefined;
       if (mcpServersToml) {
         for (const [name, server] of Object.entries(mcpServersToml)) {
-          if (server.command) {
-            mcpServers[name] = {
-              command: server.command as string,
-              args: (server.args as string[]) || [],
-              env: server.env as Record<string, string> | undefined,
-            };
+          if (server.command || server.url) {
+            const serverConfig: ClientServerConfig = {};
+
+            if (server.command) {
+              serverConfig.command = server.command as string;
+              serverConfig.args = (server.args as string[]) || [];
+            }
+
+            if (server.url) {
+              serverConfig.url = server.url as string;
+            }
+
+            if (server.type) {
+              serverConfig.type = server.type as string;
+            }
+
+            if (server.env) {
+              serverConfig.env = server.env as Record<string, string>;
+            }
+
+            mcpServers[name] = serverConfig;
           }
         }
       }
@@ -220,16 +251,30 @@ export class ClientService {
       const mcpServers: TOML.JsonMap = {};
       if (config.mcpServers) {
         for (const [name, server] of Object.entries(config.mcpServers)) {
-          const serverConfig: TOML.JsonMap = {
-            command: server.command,
-          };
-          if (server.args && server.args.length > 0) {
-            serverConfig.args = server.args;
+          const serverConfig: TOML.JsonMap = {};
+
+          if (server.command) {
+            serverConfig.command = server.command;
+            if (server.args && server.args.length > 0) {
+              serverConfig.args = server.args;
+            }
           }
+
+          if (server.url) {
+            serverConfig.url = server.url;
+          }
+
+          if (server.type) {
+            serverConfig.type = server.type;
+          }
+
           if (server.env) {
             serverConfig.env = server.env;
           }
-          mcpServers[name] = serverConfig;
+
+          if (Object.keys(serverConfig).length > 0) {
+            mcpServers[name] = serverConfig;
+          }
         }
       }
 
@@ -319,7 +364,7 @@ export class ClientService {
         status = "not-installed";
       } else {
         // Check if connected (has mcpsm gateway)
-        const connected = !!(currentConfig?.mcpServers?.mcpsm || currentConfig?.servers?.mcpsm);
+        const connected = this.hasGateway(currentConfig);
         status = connected ? "connected" : "disconnected";
       }
 
@@ -416,10 +461,13 @@ export class ClientService {
         clientConfig.mcpServers = {};
       }
 
-      clientConfig.mcpServers.mcpsm = {
-        command: "npx",
-        args: ["-y", "supergateway", "--streamableHttp", `http://localhost:${port}/mcp`],
-      };
+      clientConfig.mcpServers.mcpsm =
+        clientId === "codex"
+          ? { url: `http://localhost:${port}/mcp` }
+          : {
+              command: "npx",
+              args: ["-y", "supergateway", "--streamableHttp", `http://localhost:${port}/mcp`],
+            };
 
       const success = this.writeClientConfig(clientId, clientConfig);
       return {
@@ -452,9 +500,7 @@ export class ClientService {
         const useServersKey = clientId === "vscode";
 
         // If no config or no mcpsm, already disconnected
-        const hasGateway = useServersKey
-          ? !!currentConfig?.servers?.mcpsm
-          : !!currentConfig?.mcpServers?.mcpsm;
+        const hasGateway = this.hasGateway(currentConfig);
 
         if (!currentConfig || !hasGateway) {
           return { success: true };
@@ -485,7 +531,7 @@ export class ClientService {
     try {
       const currentConfig = this.readClientConfig(clientId);
 
-      const hasGateway = currentConfig?.mcpServers?.mcpsm || currentConfig?.servers?.mcpsm;
+      const hasGateway = this.hasGateway(currentConfig);
       if (!currentConfig || !hasGateway) {
         return { success: true };
       }
@@ -517,7 +563,7 @@ export class ClientService {
 
     const currentConfig = this.readClientConfig(clientId);
 
-    if (currentConfig?.mcpServers?.mcpsm || currentConfig?.servers?.mcpsm) {
+    if (this.hasGateway(currentConfig)) {
       return "connected";
     }
 
