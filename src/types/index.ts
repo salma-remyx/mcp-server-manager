@@ -39,7 +39,7 @@ export type {
   ClientNames,
   DetectedClient,
   ClientStatus,
-  ClaudeServerConfig,
+  ClientServerConfig,
   ClientMcpConfig,
   OperationResult,
 } from "./client.types.js";

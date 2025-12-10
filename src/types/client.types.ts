@@ -47,18 +47,19 @@ export interface DetectedClient {
   serverCount: number;
 }
 
-/** Claude Desktop server format */
-export interface ClaudeServerConfig {
-  command: string;
-  args: string[];
+/** Generic client server configuration */
+export interface ClientServerConfig {
+  command?: string;
+  args?: string[];
   type?: string;
+  url?: string;
   env?: Record<string, string>;
 }
 
 /** Client MCP configuration */
 export interface ClientMcpConfig {
-  mcpServers?: Record<string, ClaudeServerConfig>;
-  servers?: Record<string, ClaudeServerConfig>;
+  mcpServers?: Record<string, ClientServerConfig>;
+  servers?: Record<string, ClientServerConfig>;
   [key: string]: unknown;
 }
 
