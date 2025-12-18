@@ -7,6 +7,7 @@ import path from "path";
 import os from "os";
 import { spawn, execSync, ChildProcess } from "child_process";
 import { getConfigService } from "./config.service.js";
+import { getEnvironmentService } from "./environment.service.js";
 import type { Result } from "../types/index.js";
 import { createLogger } from "../shared/logger.js";
 
@@ -183,7 +184,12 @@ export class DaemonService {
 
     const env: Record<string, string | undefined> = { ...process.env, MCPSM_DAEMON: "1" };
 
-    const child: ChildProcess = spawn("node", [finalCliPath, "daemon", "start", "--foreground"], {
+    // Get environment service to detect shell and use it to spawn the node process
+    const envService = getEnvironmentService();
+    const shellCommand = envService.getShellCommand();
+    const fullCommand = `node ${finalCliPath} daemon start --foreground`;
+
+    const child: ChildProcess = spawn(shellCommand, ["-c", fullCommand], {
       detached: true,
       stdio: ["ignore", logStream, logStream],
       env,

@@ -86,6 +86,7 @@ describe("ProfilesScreen", () => {
     it("should show create profile view when A is pressed", async () => {
       const { lastFrame, stdin } = render(<ProfilesScreen onBack={mockOnBack} />);
 
+      await waitForStateUpdate();
       // Press A to show clone confirmation
       stdin.write("a");
       await waitForStateUpdate();
@@ -102,6 +103,7 @@ describe("ProfilesScreen", () => {
     it("should go back from create view with ESC", async () => {
       const { stdin, lastFrame } = render(<ProfilesScreen onBack={mockOnBack} />);
 
+      await waitForStateUpdate();
       // Open create view - first shows clone confirmation
       stdin.write("a");
       await waitForStateUpdate();
@@ -123,6 +125,7 @@ describe("ProfilesScreen", () => {
     it("should show name input in create view", async () => {
       const { stdin, lastFrame } = render(<ProfilesScreen onBack={mockOnBack} />);
 
+      await waitForStateUpdate();
       // Open create view - first shows clone confirmation
       stdin.write("a");
       await waitForStateUpdate();
@@ -141,6 +144,7 @@ describe("ProfilesScreen", () => {
     it("should show delete confirmation when D is pressed", async () => {
       const { stdin, lastFrame } = render(<ProfilesScreen onBack={mockOnBack} />);
 
+      await waitForStateUpdate();
       // Navigate to a non-active profile (can't delete active)
       stdin.write(KEYS.DOWN);
       await waitForStateUpdate();
@@ -158,6 +162,7 @@ describe("ProfilesScreen", () => {
     it("should switch profile when Enter is pressed", async () => {
       const { stdin } = render(<ProfilesScreen onBack={mockOnBack} />);
 
+      await waitForStateUpdate();
       // Navigate to Development profile
       stdin.write(KEYS.DOWN);
       await waitForStateUpdate();
@@ -174,6 +179,7 @@ describe("ProfilesScreen", () => {
     it("should support ESC to go back in nested views", async () => {
       const { stdin } = render(<ProfilesScreen onBack={mockOnBack} />);
 
+      await waitForStateUpdate();
       // Press A to show clone confirmation
       stdin.write("a");
       await waitForStateUpdate();
