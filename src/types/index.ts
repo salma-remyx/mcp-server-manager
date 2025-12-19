@@ -44,6 +44,17 @@ export type {
   OperationResult,
 } from "./client.types.js";
 
+// Client strategy types
+export type {
+  ConfigFormat,
+  GatewayType,
+  ServersKey,
+  ClientCapabilities,
+  ClientPlatformPaths,
+  ClientMetadata,
+  IClientStrategy,
+} from "./client-strategy.types.js";
+
 // Profile types
 export type {
   Profile,
