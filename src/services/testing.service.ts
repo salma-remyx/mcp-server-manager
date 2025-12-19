@@ -133,9 +133,15 @@ export class TestingService {
       totalTokens += tokens;
     }
 
+    // Preserve disabled tools, keeping only those that still exist on the server
+    const preservedDisabledTools = (filter.disabledTools || []).filter((t) =>
+      toolNames.includes(t)
+    );
+
     configService.setServerToolFilter(filterId, {
       allTools: toolNames,
       enabled: !filter.enabled || filter.enabled.length === 0 ? [...toolNames] : filter.enabled,
+      disabledTools: preservedDisabledTools,
       toolsData,
       totalTokens,
     });

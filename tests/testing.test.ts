@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -173,6 +173,187 @@ describe("TestingService", () => {
       // Should complete quickly without testing
       await testingService.autoTestUnknownServers();
       // No assertions needed - just verifies it doesn't throw
+    });
+  });
+
+  describe("preserveDisabledTools", () => {
+    it("should preserve disabledTools when updating tool filter on successful test", async () => {
+      // Set up tool filter with disabled tools
+      fs.writeFileSync(
+        path.join(testConfigDir, "tool-filters.json"),
+        JSON.stringify({
+          "remote:test-server": {
+            allTools: ["tool1", "tool2", "tool3"],
+            disabledTools: ["tool1", "tool3"],
+            enabled: ["tool2"],
+            totalTokens: 300,
+          },
+        })
+      );
+      resetConfigService();
+      new ConfigService(testConfigDir);
+      testingService = new TestingService();
+
+      // Mock fetch to return a successful response with tools
+      const mockFetch = vi.fn();
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: new globalThis.Headers(),
+          json: async () => ({ result: {} }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: new globalThis.Headers({ "content-type": "application/json" }),
+          json: async () => ({
+            result: {
+              tools: [
+                { name: "tool1", description: "Tool 1" },
+                { name: "tool2", description: "Tool 2" },
+                { name: "tool3", description: "Tool 3" },
+              ],
+            },
+          }),
+        });
+
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = mockFetch;
+
+      try {
+        const server = {
+          id: "test-server",
+          name: "Test Server",
+          type: "http" as const,
+          url: "http://localhost:3000",
+        };
+
+        const result = await testingService.testRemoteServer(server);
+
+        expect(result.success).toBe(true);
+        expect(result.toolCount).toBe(3);
+
+        // Verify disabledTools was preserved
+        resetConfigService();
+        const newConfigService = new ConfigService(testConfigDir);
+        const toolFilters = newConfigService.getToolFilters();
+        const filter = toolFilters["remote:test-server"];
+
+        expect(filter).toBeDefined();
+        expect(filter.disabledTools).toEqual(["tool1", "tool3"]);
+        expect(filter.allTools).toEqual(["tool1", "tool2", "tool3"]);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it("should remove disabledTools that no longer exist on server", async () => {
+      // Set up tool filter with disabled tools, some of which won't exist after update
+      fs.writeFileSync(
+        path.join(testConfigDir, "tool-filters.json"),
+        JSON.stringify({
+          "remote:test-server-2": {
+            allTools: ["old-tool", "tool1", "tool2"],
+            disabledTools: ["old-tool", "tool1"],
+            enabled: ["tool2"],
+            totalTokens: 300,
+          },
+        })
+      );
+      resetConfigService();
+      new ConfigService(testConfigDir);
+      testingService = new TestingService();
+
+      // Mock fetch - server now only has tool1 and tool2 (old-tool was removed)
+      const mockFetch = vi.fn();
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: new globalThis.Headers(),
+          json: async () => ({ result: {} }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: new globalThis.Headers({ "content-type": "application/json" }),
+          json: async () => ({
+            result: {
+              tools: [
+                { name: "tool1", description: "Tool 1" },
+                { name: "tool2", description: "Tool 2" },
+              ],
+            },
+          }),
+        });
+
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = mockFetch;
+
+      try {
+        const server = {
+          id: "test-server-2",
+          name: "Test Server 2",
+          type: "http" as const,
+          url: "http://localhost:3001",
+        };
+
+        const result = await testingService.testRemoteServer(server);
+
+        expect(result.success).toBe(true);
+        expect(result.toolCount).toBe(2);
+
+        // Verify disabledTools was preserved but old-tool was removed
+        resetConfigService();
+        const newConfigService = new ConfigService(testConfigDir);
+        const toolFilters = newConfigService.getToolFilters();
+        const filter = toolFilters["remote:test-server-2"];
+
+        expect(filter).toBeDefined();
+        expect(filter.disabledTools).toEqual(["tool1"]); // old-tool should be removed
+        expect(filter.allTools).toEqual(["tool1", "tool2"]);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it("should preserve disabledTools when test fails with error", async () => {
+      // Set up tool filter with disabled tools
+      fs.writeFileSync(
+        path.join(testConfigDir, "tool-filters.json"),
+        JSON.stringify({
+          "remote:failing-server": {
+            allTools: ["tool1", "tool2"],
+            disabledTools: ["tool2"],
+            enabled: ["tool1"],
+            totalTokens: 200,
+          },
+        })
+      );
+      resetConfigService();
+      new ConfigService(testConfigDir);
+      testingService = new TestingService();
+
+      const server = {
+        id: "failing-server",
+        name: "Failing Server",
+        type: "http" as const,
+        url: "http://localhost:59997", // Port with nothing running
+      };
+
+      const result = await testingService.testRemoteServer(server);
+
+      expect(result.success).toBe(false);
+
+      // Verify disabledTools was preserved even after error
+      resetConfigService();
+      const newConfigService = new ConfigService(testConfigDir);
+      const toolFilters = newConfigService.getToolFilters();
+      const filter = toolFilters["remote:failing-server"];
+
+      expect(filter).toBeDefined();
+      expect(filter.disabledTools).toEqual(["tool2"]);
     });
   });
 });
