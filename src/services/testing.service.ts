@@ -16,6 +16,7 @@ import type {
 } from "../types/index.js";
 import { getConfigService } from "./config.service.js";
 import { getAuthService } from "./auth.service.js";
+import { getEnvironmentService } from "./environment.service.js";
 import { createLogger } from "../shared/logger.js";
 
 const log = createLogger("TestingService");
@@ -172,10 +173,31 @@ export class TestingService {
       }, this.testTimeout);
 
       try {
-        proc = spawn(server.command, server.args, {
-          env: { ...process.env, ...(server.env || {}) },
-          stdio: ["pipe", "pipe", "pipe"],
-        });
+        // Get environment service to detect shell
+        const envService = getEnvironmentService();
+        const shellCommand = envService.getShellCommand();
+
+        // If we have zsh available and the command is a shell script or uses shell features,
+        // run it through zsh for better compatibility
+        if (
+          envService.shouldUseZsh() &&
+          (server.command.includes("/") || server.command === "sh" || server.command === "bash")
+        ) {
+          // Run command through zsh
+          const fullCommand = server.args
+            ? `${server.command} ${server.args.join(" ")}`
+            : server.command;
+          proc = spawn(shellCommand, ["-c", fullCommand], {
+            env: { ...process.env, ...(server.env || {}) },
+            stdio: ["pipe", "pipe", "pipe"],
+          });
+        } else {
+          // Use direct spawn as before
+          proc = spawn(server.command, server.args, {
+            env: { ...process.env, ...(server.env || {}) },
+            stdio: ["pipe", "pipe", "pipe"],
+          });
+        }
       } catch (err) {
         clearTimeout(timeout);
         const error = err instanceof Error ? err.message : "Spawn error";
