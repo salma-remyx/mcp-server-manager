@@ -101,6 +101,7 @@ Some clients support **real-time config loading** - they pick up changes instant
 | Cursor         | ✓ Yes     | Changes appear immediately        |
 | Windsurf       | ✓ Yes     | Changes appear immediately        |
 | VS Code        | ✓ Yes     | Changes appear immediately        |
+| Zed            | ✓ Yes     | Changes appear immediately        |
 | Claude Desktop | No        | Requires restart after connection |
 | Codex          | No        | Requires restart after connection |
 | Gemini         | No        | Requires restart after connection |
@@ -113,6 +114,7 @@ mcpsm writes to special config paths for clients that support real-time loading:
 Cursor:   ~/.cursor/mcp.json
 Windsurf: ~/.codeium/windsurf/mcp_config.json
 VS Code:  ~/Library/Application Support/Code/User/mcp.json
+Zed:      Uses its primary settings.json path (no separate real-time path)
 ```
 
 When you connect a real-time client, mcpsm writes to **both** the primary config and the real-time path, ensuring instant updates.
@@ -142,6 +144,7 @@ All servers are now available in each connected client:
 - **Claude Desktop**: Restart and check MCP servers
 - **Cursor**: Changes appear immediately
 - **Windsurf**: Changes appear immediately
+- **Zed**: Changes appear immediately
 
 ### Step 4: Change Port (Optional)
 
@@ -170,6 +173,8 @@ When you connect a client, mcpsm adds this to the client's MCP server config:
 
 The `PORT` matches your current gateway port setting (default: 8850).
 
+For Zed, mcpsm adds a `context_servers.mcpsm` entry that points to `http://localhost:PORT/mcp`.
+
 ### What Stays Intact
 
 When you connect or disconnect a client, all other servers in the config remain unchanged. mcpsm only modifies the `mcpsm` gateway entry.
@@ -183,6 +188,7 @@ Claude Desktop:    ~/Library/Application Support/Claude/claude_desktop_config.js
 Cursor:           ~/Library/Application Support/Cursor/User/globalStorage/cursor.mcp/config.json
 Windsurf:         ~/Library/Application Support/Windsurf/User/globalStorage/windsurf.mcp/config.json
 VS Code:          ~/Library/Application Support/Code/User/mcp.json
+Zed:              ~/.config/zed/settings.json
 ```
 
 #### Windows
@@ -192,6 +198,7 @@ Claude Desktop:    %APPDATA%\Claude\claude_desktop_config.json
 Cursor:           %APPDATA%\Cursor\User\globalStorage\cursor.mcp\config.json
 Windsurf:         %APPDATA%\Windsurf\User\globalStorage\windsurf.mcp\config.json
 VS Code:          %APPDATA%\Code\User\mcp.json
+Zed:              %APPDATA%\Zed\settings.json
 ```
 
 #### Linux
@@ -201,6 +208,7 @@ Claude Desktop:    ~/.config/Claude/claude_desktop_config.json
 Cursor:           ~/.config/Cursor/User/globalStorage/cursor.mcp/config.json
 Windsurf:         ~/.config/Windsurf/User/globalStorage/windsurf.mcp/config.json
 VS Code:          ~/.config/Code/User/mcp.json
+Zed:              ~/.config/zed/settings.json
 ```
 
 ## View Client Status
@@ -223,6 +231,7 @@ Detected MCP Clients:
   2. Cursor            ✔ Installed   Connected
   3. Windsurf          ✔ Installed   Disconnected
   4. VS Code           ✘ Not installed
+  5. Zed               ✔ Installed   Disconnected
 ```
 
 ## Open Client Config
@@ -261,7 +270,7 @@ Try again after closing the client.
 
 ### Changes Not Appearing
 
-**For real-time clients** (Cursor, Windsurf, VS Code):
+**For real-time clients** (Cursor, Windsurf, VS Code, Zed):
 
 - Changes should appear immediately
 - If not, try restarting the client

@@ -65,7 +65,7 @@ mcpsm clients connect windsurf
 - A single `mcpsm` server is added to the client's configuration
 - This server proxies all requests to your daemon at `localhost:{port}/mcp`
 - All your configured servers become instantly accessible
-- For real-time loading clients (Cursor, Windsurf, VS Code), changes appear without restart
+- For real-time loading clients (Cursor, Windsurf, VS Code, Zed), changes appear without restart
 
 ## Step 5: Use Your Servers
 

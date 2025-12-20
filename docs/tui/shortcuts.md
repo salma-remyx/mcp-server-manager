@@ -89,7 +89,7 @@ When adding a new profile with `A`, you'll be prompted to either clone from an e
 
 ## Import/Export Screen
 
-Navigate with `↑/↓` and select with `ENTER`. Options are dynamic based on installed clients (e.g., Import from Claude/Cursor/Windsurf/VS Code), plus import from file and export options.
+Navigate with `↑/↓` and select with `ENTER`. Options are dynamic based on installed clients (e.g., Import from Claude/Cursor/Windsurf/VS Code/Zed), plus import from file and export options.
 
 ---
 

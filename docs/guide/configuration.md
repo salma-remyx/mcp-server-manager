@@ -84,7 +84,7 @@ When you change the `port` setting, **all connected clients are automatically up
 1. All clients with the mcpsm gateway are detected
 2. The gateway is removed and re-added with the new port
 3. Changes are written to both primary and real-time config paths
-4. For real-time clients (Cursor, Windsurf, VS Code), changes take effect immediately
+4. For real-time clients (Cursor, Windsurf, VS Code, Zed), changes take effect immediately
 5. For other clients, they'll use the new port on next restart
 
 ## profiles.json
@@ -117,6 +117,7 @@ Claude Desktop:    ~/Library/Application Support/Claude/claude_desktop_config.js
 Cursor:           ~/Library/Application Support/Cursor/User/globalStorage/cursor.mcp/config.json
 Windsurf:         ~/Library/Application Support/Windsurf/User/globalStorage/windsurf.mcp/config.json
 VS Code:          ~/Library/Application Support/Code/User/mcp.json
+Zed:              ~/.config/zed/settings.json
 Claude Code:      ~/.claude/claude_code_config.json
 Codex:            ~/.codex/config.toml
 Gemini:           ~/.gemini/settings.json
@@ -129,6 +130,7 @@ Claude Desktop:    %APPDATA%\Claude\claude_desktop_config.json
 Cursor:           %APPDATA%\Cursor\User\globalStorage\cursor.mcp\config.json
 Windsurf:         %APPDATA%\Windsurf\User\globalStorage\windsurf.mcp\config.json
 VS Code:          %APPDATA%\Code\User\mcp.json
+Zed:              %APPDATA%\Zed\settings.json
 Claude Code:      %USERPROFILE%\.claude\claude_code_config.json
 Codex:            %USERPROFILE%\.codex\config.toml
 Gemini:           %USERPROFILE%\.gemini\settings.json
@@ -141,6 +143,7 @@ Claude Desktop:    ~/.config/Claude/claude_desktop_config.json
 Cursor:           ~/.config/Cursor/User/globalStorage/cursor.mcp/config.json
 Windsurf:         ~/.config/Windsurf/User/globalStorage/windsurf.mcp/config.json
 VS Code:          ~/.config/Code/User/mcp.json
+Zed:              ~/.config/zed/settings.json
 Claude Code:      ~/.claude/claude_code_config.json
 Codex:            ~/.codex/config.toml
 Gemini:           ~/.gemini/settings.json
@@ -154,6 +157,7 @@ For clients that support real-time config loading, mcpsm also writes to addition
 Cursor:   ~/.cursor/mcp.json
 Windsurf: ~/.codeium/windsurf/mcp_config.json
 VS Code:  ~/Library/Application Support/Code/User/mcp.json
+Zed:      Uses its primary settings.json path (no separate real-time path)
 ```
 
 When you connect a client, mcpsm writes the gateway server to **both** locations. This ensures:
@@ -176,6 +180,8 @@ When you connect a client, mcpsm adds this gateway server entry:
 ```
 
 Where `PORT` is your current gateway port (default: 8850).
+
+For Zed, mcpsm writes a `context_servers.mcpsm` entry that points to `http://localhost:PORT/mcp`.
 
 All your configured servers are accessible through this single gateway. Other servers in the client's config are preserved and remain unchanged.
 

@@ -15,6 +15,7 @@ MCP Clients:
     Cursor            ✔ Installed   Disconnected
     Windsurf          ✘ Not installed
     VS Code           ✔ Installed   Connected
+    Zed               ✔ Installed   Disconnected
     Claude Code       ✘ Not installed
 
   ↑↓: Navigate  |  ENTER: Toggle Connect/Disconnect  |  O: Open Config  |  R: Refresh  |  ESC: Back
@@ -191,7 +192,7 @@ When you change the port setting:
 - ✓ All connected clients are **automatically updated**
 - ✓ The new port is written to each client's configuration
 - ✓ No need to manually edit client configs
-- ✓ Real-time loading clients (Cursor, Windsurf, VS Code) see changes without restart
+- ✓ Real-time loading clients (Cursor, Windsurf, VS Code, Zed) see changes without restart
 
 ---
 
