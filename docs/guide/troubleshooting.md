@@ -102,6 +102,7 @@ MCP Server Manager auto-detects clients based on config file locations. If a cli
 | Cursor         | `~/.cursor/`                                          |
 | Windsurf       | `~/.codeium/windsurf/mcp_config.json`                 |
 | VS Code        | `~/.vscode/` or `~/Library/Application Support/Code/` |
+| Zed            | `~/.config/zed/` |
 | Claude Code    | `~/.claude/`                                          |
 | Codex          | `~/.codex/`                                           |
 | Gemini CLI     | `~/.gemini/`                                          |

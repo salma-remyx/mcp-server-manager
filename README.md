@@ -17,7 +17,7 @@
 
 ## The Problem
 
-Managing MCP servers across multiple AI clients (Claude Desktop, Cursor, Windsurf, VS Code) is fragmented and tedious:
+Managing MCP servers across multiple AI clients (Claude Desktop, Cursor, Windsurf, VS Code, Zed) is fragmented and tedious:
 
 - 🔧 **Scattered configs** - Each client has its own config file in different locations
 - 🔄 **Manual sync** - Adding a server means manually editing multiple JSON files

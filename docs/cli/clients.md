@@ -10,6 +10,7 @@ Commands for managing MCP client connections using the gateway pattern.
 | Cursor         | `cursor`      | macOS, Windows, Linux | Yes               |
 | Windsurf       | `windsurf`    | macOS, Windows, Linux | Yes               |
 | VS Code        | `vscode`      | macOS, Windows, Linux | Yes               |
+| Zed            | `zed`         | macOS, Windows, Linux | Yes               |
 | Claude Code    | `claude-code` | CLI                   | No                |
 | Codex          | `codex`       | macOS, Windows, Linux | No                |
 | Gemini         | `gemini`      | macOS, Windows, Linux | No                |
@@ -44,7 +45,8 @@ Detected MCP Clients:
   2. Cursor            ✔ Installed   Disconnected
   3. Windsurf          ✘ Not installed
   4. VS Code           ✔ Installed   Connected
-  5. Claude Code       ✘ Not installed
+  5. Zed               ✔ Installed   Disconnected
+  6. Claude Code       ✘ Not installed
 ```
 
 **Status Legend:**
@@ -148,7 +150,7 @@ mcpsm clients connect windsurf
 
 ### 3. Use servers in clients
 
-All your servers are now available in Claude Desktop, Cursor, and Windsurf through the `mcpsm` gateway.
+All your servers are now available in Claude Desktop, Cursor, Windsurf, and Zed through the `mcpsm` gateway.
 
 ### 4. Change port if needed
 
@@ -183,4 +185,4 @@ mcpsm port 9000
 - All connected clients are automatically reconnected
 - The new port is written to each client's configuration
 - No manual editing required
-- Real-time loading clients (Cursor, Windsurf, VS Code) see changes without restart
+- Real-time loading clients (Cursor, Windsurf, VS Code, Zed) see changes without restart

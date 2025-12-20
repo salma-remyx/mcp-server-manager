@@ -98,6 +98,7 @@ Claude Desktop:    ~/Library/Application Support/Claude/claude_desktop_config.js
 Cursor:           ~/Library/Application Support/Cursor/User/globalStorage/cursor.mcp/config.json
 Windsurf:         ~/Library/Application Support/Windsurf/User/globalStorage/windsurf.mcp/config.json
 VS Code:          ~/Library/Application Support/Code/User/mcp.json
+Zed:              ~/.config/zed/settings.json
 Claude Code:      ~/.claude/claude_code_config.json
 Codex CLI:        ~/.codex/config.toml
 Gemini CLI:       ~/.gemini/settings.json
@@ -110,6 +111,7 @@ Claude Desktop:    %APPDATA%/Claude/claude_desktop_config.json
 Cursor:           %APPDATA%/Cursor/User/globalStorage/cursor.mcp/config.json
 Windsurf:         %APPDATA%/Windsurf/User/globalStorage/windsurf.mcp/config.json
 VS Code:          %APPDATA%/Code/User/mcp.json
+Zed:              %APPDATA%/Zed/settings.json
 Claude Code:      %USERPROFILE%/.claude/claude_code_config.json
 Codex CLI:        %USERPROFILE%/.codex/config.toml
 Gemini CLI:       %USERPROFILE%/.gemini/settings.json
@@ -122,6 +124,7 @@ Claude Desktop:    ~/.config/Claude/claude_desktop_config.json
 Cursor:           ~/.config/Cursor/User/globalStorage/cursor.mcp/config.json
 Windsurf:         ~/.config/Windsurf/User/globalStorage/windsurf.mcp/config.json
 VS Code:          ~/.config/Code/User/mcp.json
+Zed:              ~/.config/zed/settings.json
 Claude Code:      ~/.claude/claude_code_config.json
 Codex CLI:        ~/.codex/config.toml
 Gemini CLI:       ~/.gemini/settings.json
@@ -136,6 +139,7 @@ Some clients support real-time config loading (no restart required). These use a
 | Cursor   | ~/.cursor/mcp.json                               |
 | Windsurf | ~/.codeium/windsurf/mcp_config.json              |
 | VS Code  | ~/Library/Application Support/Code/User/mcp.json |
+| Zed      | Uses its primary settings.json path              |
 
 When connecting a client, mcpsm writes to **both** the primary config path and the real-time path (if supported).
 
@@ -250,7 +254,7 @@ Each client maintains its own config file (see Client Paths above). mcpsm reads 
 - Additional paths for clients that support live config reloading
 - Automatically written to when connected
 - Allows changes to take effect without restart
-- Cursor, Windsurf, VS Code, and Claude support real-time loading
+- Cursor, Windsurf, VS Code, and Zed support real-time loading
 
 When mcpsm connects a client, it writes the gateway server to **both** locations. This ensures:
 
@@ -266,6 +270,7 @@ When mcpsm connects a client, it writes the gateway server to **both** locations
 | Cursor         | `cursor`      | macOS, Windows, Linux | Yes       | cursor.mcp/config.json     |
 | Windsurf       | `windsurf`    | macOS, Windows, Linux | Yes       | windsurf.mcp/config.json   |
 | VS Code        | `vscode`      | macOS, Windows, Linux | Yes       | Code/User/mcp.json         |
+| Zed            | `zed`         | macOS, Windows, Linux | Yes       | Zed/settings.json          |
 | Claude Code    | `claude-code` | CLI                   | No        | claude_code_config.json    |
 | Codex          | `codex`       | macOS, Windows, Linux | No        | .codex/config.toml (TOML)  |
 | Gemini         | `gemini`      | macOS, Windows, Linux | No        | .gemini/settings.json      |

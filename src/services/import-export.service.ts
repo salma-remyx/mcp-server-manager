@@ -40,6 +40,18 @@ interface ClaudeFormat {
   >;
 }
 
+/** Zed format */
+interface ZedFormat {
+  context_servers: Record<
+    string,
+    {
+      url?: string;
+      headers?: Record<string, string>;
+      settings?: Record<string, unknown>;
+    }
+  >;
+}
+
 /** MCPSM format */
 interface McpsmFormat {
   servers: LocalServer[];
@@ -76,6 +88,20 @@ export class ImportExportService {
           servers: this.parseClaudeFormat({ mcpServers: serversRecord } as ClaudeFormat),
         };
       }
+    }
+
+    // Zed format: { context_servers: { id: { url, headers, settings } } }
+    const contextServers = (data as ZedFormat).context_servers;
+    if (
+      "context_servers" in data &&
+      contextServers &&
+      typeof contextServers === "object" &&
+      !Array.isArray(contextServers)
+    ) {
+      return {
+        format: "zed",
+        servers: this.parseZedFormat(data as ZedFormat),
+      };
     }
 
     // Claude Desktop format: { mcpServers: { id: { command, args } } }
@@ -156,6 +182,26 @@ export class ImportExportService {
           disabled: server.disabled,
         });
       }
+    }
+
+    return servers;
+  }
+
+  /** Parse Zed format */
+  private parseZedFormat(data: ZedFormat): ImportedServer[] {
+    const servers: ImportedServer[] = [];
+
+    for (const [id, server] of Object.entries(data.context_servers || {})) {
+      if (!server.url) continue;
+
+      const type: TransportType = server.url.includes("/sse") ? "sse" : "http";
+      servers.push({
+        id,
+        name: id,
+        serverType: "remote",
+        url: server.url,
+        type,
+      });
     }
 
     return servers;
