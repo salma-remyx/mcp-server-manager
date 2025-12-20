@@ -549,13 +549,16 @@ export class TestingService {
         const decoder = new TextDecoder();
         let buffer = "";
         let parsed: McpToolsResponse | null = null;
+        let rawSSEData = ""; // Store raw SSE response for logging
 
         try {
           while (!parsed) {
             const { value, done } = await reader.read();
             if (done) break;
 
-            buffer += decoder.decode(value, { stream: true });
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
+            rawSSEData += chunk; // Accumulate raw data for logging
             const lines = buffer.split("\n");
             buffer = lines.pop() ?? "";
 
@@ -586,8 +589,19 @@ export class TestingService {
           }
         }
 
+        // Log the raw SSE response for debugging
+        log.debug(`Raw SSE response from ${server.name} (${server.type} server):`, {
+          url: server.url,
+          contentType: contentType,
+          rawResponse: rawSSEData,
+          parsed: parsed,
+        });
+
         if (!parsed) {
-          const error = "No JSON data in SSE response";
+          const error =
+            (server.type as string) === "sse"
+              ? "No JSON data in SSE response"
+              : `Server configured as HTTP but returned SSE content without valid JSON data (expected JSON in 'data:' events)`;
           this.updateToolFilter(filterId, [], error);
           return { success: false, error, toolCount: 0 };
         }
