@@ -1,0 +1,55 @@
+/**
+ * VS Code Strategy - Strategy for Visual Studio Code with Continue extension
+ * Uses 'servers' key instead of 'mcpServers'
+ * Supports real-time config reloading
+ */
+
+import path from "path";
+import { JsonClientStrategy } from "./json-client.strategy.js";
+import type {
+  ClientMetadata,
+  ClientCapabilities,
+  ClientPlatformPaths,
+} from "../../types/client-strategy.types.js";
+import type { ClientServerConfig, Platform } from "../../types/index.js";
+
+export class VSCodeStrategy extends JsonClientStrategy {
+  readonly metadata: ClientMetadata = {
+    id: "vscode",
+    displayName: "VS Code (Continue)",
+    description: "Visual Studio Code with Continue extension",
+  };
+
+  readonly capabilities: ClientCapabilities = {
+    supportsRealTimeReload: true,
+    hasSecondaryConfigPath: false, // VS Code uses primary path for real-time loading
+    configFormat: "json",
+    gatewayType: "stdio",
+    serversKey: "servers", // VS Code uses 'servers' not 'mcpServers'
+  };
+
+  readonly paths: ClientPlatformPaths = {
+    primary: {
+      darwin: path.join(this.getHomedir(), "Library/Application Support/Code/User/mcp.json"),
+      win32: path.join(this.getAppData(), "Code/User/mcp.json"),
+      linux: path.join(this.getHomedir(), ".config/Code/User/mcp.json"),
+    },
+    appBundles: {
+      darwin: "/Applications/Visual Studio Code.app",
+    },
+  };
+
+  // Override to include 'type' field required by VS Code
+  buildGatewayConfig(port: number): ClientServerConfig {
+    return {
+      type: "stdio",
+      command: "npx",
+      args: ["-y", "supergateway", "--streamableHttp", `http://localhost:${port}/mcp`],
+    };
+  }
+
+  // VS Code uses its primary path for real-time loading (same as primary)
+  getEffectiveConfigPath(platform: Platform): string | null {
+    return this.paths.primary[platform] || null;
+  }
+}
