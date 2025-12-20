@@ -4,16 +4,17 @@ Commands for managing MCP client connections using the gateway pattern.
 
 ## Supported Clients
 
-| Client         | ID            | Platform              | Real-time Loading |
-| -------------- | ------------- | --------------------- | ----------------- |
-| Claude Desktop | `claude`      | macOS, Windows        | No                |
-| Cursor         | `cursor`      | macOS, Windows, Linux | Yes               |
-| Windsurf       | `windsurf`    | macOS, Windows, Linux | Yes               |
-| VS Code        | `vscode`      | macOS, Windows, Linux | Yes               |
-| Zed            | `zed`         | macOS, Windows, Linux | Yes               |
-| Claude Code    | `claude-code` | CLI                   | No                |
-| Codex          | `codex`       | macOS, Windows, Linux | No                |
-| Gemini         | `gemini`      | macOS, Windows, Linux | No                |
+| Client             | ID            | Platform              | Real-time Loading |
+| ------------------ | ------------- | --------------------- | ----------------- |
+| Claude Desktop     | `claude`      | macOS, Windows        | No                |
+| Cursor             | `cursor`      | macOS, Windows, Linux | Yes               |
+| Windsurf           | `windsurf`    | macOS, Windows, Linux | Yes               |
+| VS Code            | `vscode`      | macOS, Windows, Linux | Yes               |
+| Zed                | `zed`         | macOS, Windows, Linux | Yes               |
+| Claude Code        | `claude-code` | CLI                   | No                |
+| Codex              | `codex`       | macOS, Windows, Linux | No                |
+| Gemini             | `gemini`      | macOS, Windows, Linux | No                |
+| Google Antigravity | `antigravity` | macOS, Windows, Linux | No                |
 
 ---
 

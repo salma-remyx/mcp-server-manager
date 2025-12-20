@@ -22,7 +22,7 @@ mcpsm import ./backup.json
 mcpsm import --from <client>
 ```
 
-Supported clients: `claude`, `cursor`, `windsurf`, `zed`
+Supported clients: `claude`, `cursor`, `windsurf`, `zed`, `antigravity`
 
 ### Conflict Handling
 
@@ -55,6 +55,9 @@ mcpsm import --from cursor
 
 # Import from Zed
 mcpsm import --from zed
+
+# Import from Google Antigravity
+mcpsm import --from antigravity
 
 # Import from JSON file
 mcpsm import ./my-servers.json
