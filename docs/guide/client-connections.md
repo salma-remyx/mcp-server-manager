@@ -44,7 +44,7 @@ mcpsm clients disconnect cursor
 When you connect a client:
 
 1. **Single Gateway Server**: A `mcpsm` server entry is added to your client's configuration
-2. **Proxy Connection**: This server uses `supergateway` to forward requests to `localhost:{port}/mcp`
+2. **Gateway Connection**: The `mcpsm` entry points to `localhost:{port}/mcp` (either via `supergateway` or direct URL, depending on the client)
 3. **All Servers Available**: All your configured servers become accessible through this gateway
 4. **Existing Servers Preserved**: Any servers you already had configured remain untouched
 
@@ -59,8 +59,7 @@ When you run `mcpsm clients connect cursor`, mcpsm:
    ```json
    {
      "mcpsm": {
-       "command": "npx",
-       "args": ["-y", "supergateway", "--streamableHttp", "http://localhost:8850/mcp"]
+       "url": "http://localhost:8850/mcp"
      }
    }
    ```

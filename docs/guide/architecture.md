@@ -37,7 +37,7 @@ Instead of syncing individual servers to each client, mcpsm operates as a **gate
 
 1. **Daemon**: Runs a central `mcpsm` server that listens on `localhost:{port}/mcp`
 2. **Client Connection**: Each client connects to the daemon through a single `mcpsm` server entry
-3. **Proxy**: The `mcpsm` server uses `supergateway` to forward all requests to the daemon
+3. **Gateway**: The `mcpsm` server points to the daemon (via `supergateway` or a direct URL, depending on the client)
 4. **All Servers Accessible**: All configured servers are accessible through this single gateway
 
 ### Benefits

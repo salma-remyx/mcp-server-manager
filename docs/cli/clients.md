@@ -23,7 +23,7 @@ Commands for managing MCP client connections using the gateway pattern.
 MCP Server Manager uses a **gateway pattern** for client connections:
 
 - A single `mcpsm` server is added to each connected client's configuration
-- This server uses `supergateway` to proxy all MCP requests to the daemon on `localhost:{port}/mcp`
+- This server points to `localhost:{port}/mcp` (via `supergateway` or direct URL, depending on the client)
 - All your configured servers are accessible through this single gateway
 - When the port is changed, all connected clients are automatically updated
 

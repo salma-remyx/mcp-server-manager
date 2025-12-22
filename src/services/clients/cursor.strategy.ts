@@ -10,6 +10,7 @@ import type {
   ClientCapabilities,
   ClientPlatformPaths,
 } from "../../types/client-strategy.types.js";
+import type { ClientServerConfig } from "../../types/index.js";
 
 export class CursorStrategy extends JsonClientStrategy {
   readonly metadata: ClientMetadata = {
@@ -22,7 +23,7 @@ export class CursorStrategy extends JsonClientStrategy {
     supportsRealTimeReload: true,
     hasSecondaryConfigPath: true,
     configFormat: "json",
-    gatewayType: "stdio",
+    gatewayType: "url-only",
     serversKey: "mcpServers",
   };
 
@@ -43,4 +44,11 @@ export class CursorStrategy extends JsonClientStrategy {
       darwin: "/Applications/Cursor.app",
     },
   };
+
+  // Cursor supports direct URL connections without supergateway.
+  buildGatewayConfig(port: number): ClientServerConfig {
+    return {
+      url: `http://localhost:${port}/mcp`,
+    };
+  }
 }
