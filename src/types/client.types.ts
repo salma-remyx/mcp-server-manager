@@ -11,7 +11,8 @@ export type ClientId =
   | "claude-code"
   | "codex"
   | "gemini"
-  | "zed";
+  | "zed"
+  | "antigravity";
 
 /** Platform types */
 export type Platform = "darwin" | "win32" | "linux";

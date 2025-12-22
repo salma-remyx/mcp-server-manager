@@ -127,6 +127,7 @@ Each client has its own config location where the `mcpsm` gateway server is regi
 - **Claude Code**: `~/.claude/claude_code_config.json`
 - **Codex CLI**: `~/.codex/config.toml`
 - **Gemini CLI**: `~/.gemini/settings.json`
+- **Google Antigravity**: `~/.antigravity/mcp_config.json`
 
 ## Important: TUI + CLI Parity
 

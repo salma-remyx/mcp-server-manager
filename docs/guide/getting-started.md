@@ -1,6 +1,6 @@
 # Getting Started
 
-MCP Server Manager (`mcpsm`) is a unified CLI and TUI tool for managing MCP (Model Context Protocol) servers across multiple AI clients like Claude Desktop, Cursor, Windsurf, VS Code, Zed, and more.
+MCP Server Manager (`mcpsm`) is a unified CLI and TUI tool for managing MCP (Model Context Protocol) servers across multiple AI clients like Claude Desktop, Cursor, Windsurf, VS Code, Zed, Google Antigravity, and more.
 
 ## Why MCP Server Manager?
 
@@ -24,6 +24,7 @@ Your Servers → mcpsm Daemon ← Client 1 (Claude Desktop)
                            ← Client 3 (Windsurf)
                            ← Client 4 (VS Code)
                            ← Client 5 (Zed)
+                           ← Client 6 (Google Antigravity)
 ```
 
 **Benefits:**
@@ -36,18 +37,18 @@ Your Servers → mcpsm Daemon ← Client 1 (Claude Desktop)
 
 ## Features
 
-| Feature               | Description                                               |
-| --------------------- | --------------------------------------------------------- |
-| **Interactive TUI**   | Beautiful terminal UI for managing servers                |
-| **Gateway Pattern**   | Single mcpsm server per client; all servers accessible    |
-| **Auto Port Updates** | Changing port automatically updates all connected clients |
+| Feature               | Description                                                  |
+| --------------------- | ------------------------------------------------------------ |
+| **Interactive TUI**   | Beautiful terminal UI for managing servers                   |
+| **Gateway Pattern**   | Single mcpsm server per client; all servers accessible       |
+| **Auto Port Updates** | Changing port automatically updates all connected clients    |
 | **Real-time Loading** | Cursor, Windsurf, VS Code, Zed load config changes instantly |
-| **Server testing**    | Test servers in parallel before using them                |
-| **Import/Export**     | Migrate configs between machines or clients               |
-| **Profiles**          | Group servers by project or context                       |
-| **Daemon mode**       | Run gateway in background with auto-start                 |
-| **OAuth support**     | Built-in OAuth flow with PKCE for remote servers          |
-| **Token counting**    | Track context usage per server and tool                   |
+| **Server testing**    | Test servers in parallel before using them                   |
+| **Import/Export**     | Migrate configs between machines or clients                  |
+| **Profiles**          | Group servers by project or context                          |
+| **Daemon mode**       | Run gateway in background with auto-start                    |
+| **OAuth support**     | Built-in OAuth flow with PKCE for remote servers             |
+| **Token counting**    | Track context usage per server and tool                      |
 
 ## Connection Model
 

@@ -96,15 +96,16 @@ Each client has a connection state:
 
 Some clients support **real-time config loading** - they pick up changes instantly without restart:
 
-| Client         | Real-Time | Behavior                          |
-| -------------- | --------- | --------------------------------- |
-| Cursor         | ✓ Yes     | Changes appear immediately        |
-| Windsurf       | ✓ Yes     | Changes appear immediately        |
-| VS Code        | ✓ Yes     | Changes appear immediately        |
-| Zed            | ✓ Yes     | Changes appear immediately        |
-| Claude Desktop | No        | Requires restart after connection |
-| Codex          | No        | Requires restart after connection |
-| Gemini         | No        | Requires restart after connection |
+| Client             | Real-Time | Behavior                          |
+| ------------------ | --------- | --------------------------------- |
+| Cursor             | ✓ Yes     | Changes appear immediately        |
+| Windsurf           | ✓ Yes     | Changes appear immediately        |
+| VS Code            | ✓ Yes     | Changes appear immediately        |
+| Zed                | ✓ Yes     | Changes appear immediately        |
+| Claude Desktop     | No        | Requires restart after connection |
+| Codex              | No        | Requires restart after connection |
+| Gemini             | No        | Requires restart after connection |
+| Google Antigravity | No        | Requires restart after connection |
 
 ### Real-Time Config Paths
 
@@ -189,6 +190,7 @@ Cursor:           ~/Library/Application Support/Cursor/User/globalStorage/cursor
 Windsurf:         ~/Library/Application Support/Windsurf/User/globalStorage/windsurf.mcp/config.json
 VS Code:          ~/Library/Application Support/Code/User/mcp.json
 Zed:              ~/.config/zed/settings.json
+Google Antigravity: ~/.antigravity/mcp_config.json
 ```
 
 #### Windows
@@ -199,6 +201,7 @@ Cursor:           %APPDATA%\Cursor\User\globalStorage\cursor.mcp\config.json
 Windsurf:         %APPDATA%\Windsurf\User\globalStorage\windsurf.mcp\config.json
 VS Code:          %APPDATA%\Code\User\mcp.json
 Zed:              %APPDATA%\Zed\settings.json
+Google Antigravity: %USERPROFILE%\.antigravity\mcp_config.json
 ```
 
 #### Linux
@@ -209,6 +212,7 @@ Cursor:           ~/.config/Cursor/User/globalStorage/cursor.mcp/config.json
 Windsurf:         ~/.config/Windsurf/User/globalStorage/windsurf.mcp/config.json
 VS Code:          ~/.config/Code/User/mcp.json
 Zed:              ~/.config/zed/settings.json
+Google Antigravity: ~/.antigravity/mcp_config.json
 ```
 
 ## View Client Status
