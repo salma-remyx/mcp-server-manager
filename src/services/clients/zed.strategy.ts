@@ -161,7 +161,6 @@ export class ZedStrategy extends BaseClientStrategy {
     hasSecondaryConfigPath: false,
     configFormat: "json",
     gatewayType: "url-only",
-    serversKey: "servers",
   };
 
   readonly paths: ClientPlatformPaths = {
@@ -174,6 +173,26 @@ export class ZedStrategy extends BaseClientStrategy {
       darwin: "/Applications/Zed.app",
     },
   };
+
+  // === Server Container Access (Zed uses context_servers, not standard MCP keys) ===
+  // These are implemented for abstract contract but gateway methods are fully overridden
+
+  protected getServersFromConfig(
+    _config: ClientMcpConfig
+  ): Record<string, ClientServerConfig> | undefined {
+    // Zed uses context_servers, not mcpServers/servers
+    // Gateway methods are fully overridden to use context_servers
+    return undefined;
+  }
+
+  protected setServersInConfig(
+    config: ClientMcpConfig,
+    _servers: Record<string, ClientServerConfig>
+  ): ClientMcpConfig {
+    // Zed uses context_servers, not mcpServers/servers
+    // Gateway methods are fully overridden to use context_servers
+    return config;
+  }
 
   readConfig(): ClientMcpConfig | null {
     const platform = this.getPlatform();

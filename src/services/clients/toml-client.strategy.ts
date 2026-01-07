@@ -1,18 +1,37 @@
 /**
  * TOML Client Strategy - Base class for TOML-based client strategies
  * Handles TOML config reading/writing with conversion to standard format
+ * Standard format uses "mcpServers" key
  */
 
 import fs from "fs";
 import TOML from "@iarna/toml";
 import { BaseClientStrategy } from "./base-client.strategy.js";
-import type { ClientMcpConfig } from "../../types/index.js";
+import type { ClientMcpConfig, ClientServerConfig } from "../../types/index.js";
 
 /**
  * Base class for TOML-based client strategies
  * Handles TOML config reading/writing with conversion to standard format
+ * Standard format uses "mcpServers" key
  */
 export abstract class TomlClientStrategy extends BaseClientStrategy {
+  // === Server Container Access (uses mcpServers in standard format) ===
+
+  protected getServersFromConfig(
+    config: ClientMcpConfig
+  ): Record<string, ClientServerConfig> | undefined {
+    return config.mcpServers;
+  }
+
+  protected setServersInConfig(
+    config: ClientMcpConfig,
+    servers: Record<string, ClientServerConfig>
+  ): ClientMcpConfig {
+    return { ...config, mcpServers: servers };
+  }
+
+  // === Configuration I/O ===
+
   readConfig(): ClientMcpConfig | null {
     const platform = this.getPlatform();
     const configPath = this.getPrimaryConfigPath(platform);

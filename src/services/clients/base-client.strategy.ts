@@ -98,6 +98,23 @@ export abstract class BaseClientStrategy implements IClientStrategy {
   abstract readConfig(): ClientMcpConfig | null;
   abstract writeConfig(config: ClientMcpConfig): boolean;
 
+  // === Server Container Access (Abstract - each strategy is self-aware) ===
+
+  /**
+   * Get the servers container from config (each strategy knows its own key)
+   */
+  protected abstract getServersFromConfig(
+    config: ClientMcpConfig
+  ): Record<string, ClientServerConfig> | undefined;
+
+  /**
+   * Create a new config with the servers container set (each strategy knows its own key)
+   */
+  protected abstract setServersInConfig(
+    config: ClientMcpConfig,
+    servers: Record<string, ClientServerConfig>
+  ): ClientMcpConfig;
+
   // === Gateway Management ===
 
   abstract buildGatewayConfig(port: number): ClientServerConfig;
@@ -105,8 +122,7 @@ export abstract class BaseClientStrategy implements IClientStrategy {
   hasGateway(config: ClientMcpConfig | null): boolean {
     if (!config) return false;
 
-    const serversKey = this.capabilities.serversKey;
-    const servers = serversKey === "servers" ? config.servers : config.mcpServers;
+    const servers = this.getServersFromConfig(config);
     const gateway = servers?.mcpsm;
 
     if (!gateway) return false;
@@ -121,41 +137,17 @@ export abstract class BaseClientStrategy implements IClientStrategy {
   }
 
   addGateway(config: ClientMcpConfig, port: number): ClientMcpConfig {
-    const serversKey = this.capabilities.serversKey;
+    const servers = this.getServersFromConfig(config) || {};
     const gatewayConfig = this.buildGatewayConfig(port);
-
-    if (serversKey === "servers") {
-      return {
-        ...config,
-        servers: {
-          ...config.servers,
-          mcpsm: gatewayConfig,
-        },
-      };
-    }
-
-    return {
-      ...config,
-      mcpServers: {
-        ...config.mcpServers,
-        mcpsm: gatewayConfig,
-      },
-    };
+    return this.setServersInConfig(config, { ...servers, mcpsm: gatewayConfig });
   }
 
   removeGateway(config: ClientMcpConfig): ClientMcpConfig {
-    const serversKey = this.capabilities.serversKey;
-    const result = { ...config };
+    const servers = this.getServersFromConfig(config);
+    if (!servers?.mcpsm) return config;
 
-    if (serversKey === "servers" && result.servers?.mcpsm) {
-      const { mcpsm: _, ...rest } = result.servers;
-      result.servers = rest;
-    } else if (result.mcpServers?.mcpsm) {
-      const { mcpsm: _, ...rest } = result.mcpServers;
-      result.mcpServers = rest;
-    }
-
-    return result;
+    const { mcpsm: _, ...rest } = servers;
+    return this.setServersInConfig(config, rest);
   }
 
   // === High-Level Operations ===
@@ -216,10 +208,8 @@ export abstract class BaseClientStrategy implements IClientStrategy {
     const config = this.readConfig();
     if (!config) return 0;
 
-    let count = 0;
-    if (config.mcpServers) count += Object.keys(config.mcpServers).length;
-    if (config.servers) count += Object.keys(config.servers).length;
-    return count;
+    const servers = this.getServersFromConfig(config);
+    return servers ? Object.keys(servers).length : 0;
   }
 
   // === Helper Methods ===
