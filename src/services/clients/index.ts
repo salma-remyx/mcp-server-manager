@@ -16,6 +16,7 @@ import { CodexStrategy } from "./codex.strategy.js";
 import { GeminiStrategy } from "./gemini.strategy.js";
 import { ZedStrategy } from "./zed.strategy.js";
 import { AntigravityStrategy } from "./antigravity.strategy.js";
+import { OpenCodeStrategy } from "./opencode.strategy.js";
 
 /**
  * Strategy factory - creates strategy instances
@@ -30,6 +31,7 @@ const strategyFactories: Record<ClientId, () => IClientStrategy> = {
   gemini: () => new GeminiStrategy(),
   zed: () => new ZedStrategy(),
   antigravity: () => new AntigravityStrategy(),
+  opencode: () => new OpenCodeStrategy(),
 };
 
 /**
