@@ -188,7 +188,7 @@ async function handleRefresh(): Promise<void> {
 /** Handle daemon status */
 async function handleStatus(options: { json?: boolean }): Promise<void> {
   const daemonService = getDaemonService();
-  const status = daemonService.getStatus();
+  const status = await daemonService.getStatus();
 
   if (options.json) {
     outputJson(status);
@@ -198,7 +198,20 @@ async function handleStatus(options: { json?: boolean }): Promise<void> {
   console.log(`\n${colors.bright}${colors.cyan}Gateway Status${colors.reset}\n`);
 
   if (status.running) {
-    console.log(`  Status: ${colors.green}Running${colors.reset} (PID: ${status.pid})`);
+    if (status.healthy) {
+      console.log(`  Status: ${colors.green}Running${colors.reset} (PID: ${status.pid})`);
+      console.log(
+        `  Health: ${colors.green}Healthy${colors.reset} (${status.health?.servers || 0} servers, ${status.health?.tools || 0} tools)`
+      );
+    } else {
+      // Process is running but not responding
+      console.log(
+        `  Status: ${colors.yellow}Running but unhealthy${colors.reset} (PID: ${status.pid})`
+      );
+      console.log(
+        `  Health: ${colors.red}${status.health?.error || "Not responding"}${colors.reset}`
+      );
+    }
   } else {
     console.log(`  Status: ${colors.red}Stopped${colors.reset}`);
   }
