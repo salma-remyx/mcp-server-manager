@@ -29,11 +29,11 @@ export class OpenCodeStrategy extends JsonClientStrategy {
   };
 
   readonly paths: ClientPlatformPaths = {
-    // Primary path is the first location to check: $HOME/.opencode.json
+    // Primary path is the XDG standard location: $HOME/.config/opencode/config.json
     primary: {
-      darwin: path.join(this.getHomedir(), ".opencode.json"),
-      win32: path.join(this.getHomedir(), ".opencode.json"),
-      linux: path.join(this.getHomedir(), ".opencode.json"),
+      darwin: path.join(this.getHomedir(), ".config", "opencode", "config.json"),
+      win32: path.join(this.getHomedir(), ".config", "opencode", "config.json"),
+      linux: path.join(this.getHomedir(), ".config", "opencode", "config.json"),
     },
     binaryPaths: {
       darwin: "/usr/local/bin/opencode",
@@ -43,18 +43,16 @@ export class OpenCodeStrategy extends JsonClientStrategy {
 
   /**
    * Get all possible config paths in search order:
-   * 1. $HOME/.opencode.json
-   * 2. $XDG_CONFIG_HOME/opencode/.opencode.json
-   * 3. $HOME/.config/opencode/.opencode.json
+   * 1. $XDG_CONFIG_HOME/opencode/config.json (or $HOME/.config/opencode/config.json)
+   * 2. $HOME/.opencode.json (legacy fallback)
    */
   private getConfigSearchPaths(): string[] {
     const homedir = this.getHomedir();
     const xdgConfigHome = process.env.XDG_CONFIG_HOME || path.join(homedir, ".config");
 
     return [
+      path.join(xdgConfigHome, "opencode", "config.json"),
       path.join(homedir, ".opencode.json"),
-      path.join(xdgConfigHome, "opencode", ".opencode.json"),
-      path.join(homedir, ".config", "opencode", ".opencode.json"),
     ];
   }
 
@@ -72,14 +70,14 @@ export class OpenCodeStrategy extends JsonClientStrategy {
 
   /**
    * Get the path to use for writing config
-   * Uses existing path if found, otherwise uses primary path
+   * Uses existing path if found, otherwise uses XDG standard path
    */
   private getWriteConfigPath(): string {
     const existingPath = this.findExistingConfigPath();
     if (existingPath) {
       return existingPath;
     }
-    // Default to primary path ($HOME/.opencode.json)
+    // Default to XDG standard path ($HOME/.config/opencode/config.json)
     return this.getConfigSearchPaths()[0];
   }
 
@@ -90,16 +88,10 @@ export class OpenCodeStrategy extends JsonClientStrategy {
     // Check if any config file exists
     if (this.findExistingConfigPath()) return true;
 
-    // Check parent directories for any of the config locations
-    for (const configPath of this.getConfigSearchPaths()) {
-      const parentDir = path.dirname(configPath);
-      if (fs.existsSync(parentDir)) {
-        // For the home directory config, just check if home exists
-        if (configPath === this.getConfigSearchPaths()[0]) {
-          return true;
-        }
-      }
-    }
+    // Check if the opencode config directory exists (indicates opencode is installed)
+    const xdgConfigHome = process.env.XDG_CONFIG_HOME || path.join(this.getHomedir(), ".config");
+    const opencodeConfigDir = path.join(xdgConfigHome, "opencode");
+    if (fs.existsSync(opencodeConfigDir)) return true;
 
     // Check binary paths
     const binaryPath = this.paths.binaryPaths?.[platform];
