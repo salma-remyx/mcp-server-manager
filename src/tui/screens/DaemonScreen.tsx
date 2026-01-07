@@ -2,13 +2,13 @@
  * DaemonScreen - Manage gateway daemon (ink component)
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import fs from "fs";
 import { ScreenLayout } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
-import { getDaemonService } from "../../services/daemon.service.js";
+import { getDaemonService, type DaemonHealthResponse } from "../../services/daemon.service.js";
 import { useTheme } from "../theme/index.js";
 
 type View = "menu" | "logs" | "action";
@@ -39,6 +39,16 @@ interface DaemonState {
   actionResult: { success: boolean; message: string } | null;
   isLoading: boolean;
   logs: string[];
+  status: {
+    running: boolean;
+    pid?: number;
+    startupEnabled: boolean;
+    port: number;
+    logFile: string;
+    healthy: boolean;
+    health?: DaemonHealthResponse;
+  } | null;
+  statusLoading: boolean;
 }
 
 export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement {
@@ -51,7 +61,25 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
     actionResult: null,
     isLoading: false,
     logs: [],
+    status: null,
+    statusLoading: true,
   });
+
+  // Load status on mount and after actions
+  const loadStatus = useCallback(async () => {
+    setState((prev) => ({ ...prev, statusLoading: true }));
+    const status = await daemonService.getStatus();
+    setState((prev) => ({
+      ...prev,
+      status,
+      statusLoading: false,
+    }));
+  }, [daemonService]);
+
+  // Load status on mount
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
 
   // Handle menu option selection
   const handleMenuOption = useCallback(
@@ -79,6 +107,10 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
                 ? { success: true, message: `Daemon started (PID: ${result.pid})` }
                 : { success: false, message: `Failed: ${result.error}` },
             }));
+            // Reload status after starting
+            if (result.success) {
+              setTimeout(() => loadStatus(), 1000); // Give daemon time to initialize
+            }
           }
           break;
         }
@@ -102,6 +134,10 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
                 ? { success: true, message: "Daemon stopped" }
                 : { success: false, message: `Failed: ${result.error}` },
             }));
+            // Reload status after stopping
+            if (result.success) {
+              loadStatus();
+            }
           }
           break;
         }
@@ -117,6 +153,10 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
               ? { success: true, message: "Daemon refreshed" }
               : { success: false, message: `Failed: ${result.error}` },
           }));
+          // Reload status after refreshing
+          if (result.success) {
+            setTimeout(() => loadStatus(), 500);
+          }
           break;
         }
 
@@ -180,7 +220,7 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
         }
       }
     },
-    [daemonService]
+    [daemonService, loadStatus]
   );
 
   // Handle keyboard input
@@ -227,8 +267,7 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
     }
   });
 
-  const { currentIndex, view, actionResult, isLoading, logs } = state;
-  const status = daemonService.getStatus();
+  const { currentIndex, view, actionResult, isLoading, logs, status, statusLoading } = state;
 
   const daemonMenuSections = createMenuSections({
     actions: [{ key: "Enter", label: "Select" }],
@@ -294,22 +333,47 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
     );
   }
 
+  // Helper function to render health status
+  const renderHealthStatus = (): React.ReactElement => {
+    if (statusLoading || !status) {
+      return <Text dimColor>Loading...</Text>;
+    }
+
+    if (!status.running) {
+      return <Text color="red">● Stopped</Text>;
+    }
+
+    if (status.healthy) {
+      return (
+        <Text color="green">
+          ● Healthy (PID: {status.pid}, {status.health?.servers ?? 0} servers, {status.health?.tools ?? 0} tools)
+        </Text>
+      );
+    }
+
+    // Running but unhealthy
+    return (
+      <Box gap={1}>
+        <Text color="yellow">● Running but unhealthy (PID: {status.pid})</Text>
+        <Text color="red">{status.health?.error || "Not responding"}</Text>
+      </Box>
+    );
+  };
+
   // Menu view
   return (
     <ScreenLayout title="Daemon Management" menuSections={daemonMenuSections}>
       {/* Status summary - compact single line */}
       <Box gap={1} marginBottom={1} paddingY={1}>
         <Text>Status:</Text>
-        <Text color={status.running ? "green" : "red"}>
-          {status.running ? "●" : "●"} {status.running ? `Running (PID: ${status.pid})` : "Stopped"}
-        </Text>
+        {renderHealthStatus()}
         <Text dimColor>|</Text>
         <Text>Port:</Text>
-        <Text color={theme.colors.primary}>{status.port}</Text>
+        <Text color={theme.colors.primary}>{status?.port ?? "..."}</Text>
         <Text dimColor>|</Text>
         <Text>Auto-start:</Text>
-        <Text color={status.startupEnabled ? "green" : "gray"}>
-          {status.startupEnabled ? "enabled" : "disabled"}
+        <Text color={status?.startupEnabled ? "green" : "gray"}>
+          {status?.startupEnabled ? "enabled" : "disabled"}
         </Text>
       </Box>
 

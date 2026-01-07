@@ -33,8 +33,10 @@ describe("DaemonScreen", () => {
       expect(lastFrame()).toContain("Status");
     });
 
-    it("should display port information", () => {
+    it("should display port information", async () => {
       const { lastFrame } = render(<DaemonScreen onBack={mockOnBack} />);
+
+      await waitForStateUpdate();
 
       expect(lastFrame()).toContain("Port");
       expect(lastFrame()).toContain("8850");
@@ -153,25 +155,31 @@ describe("DaemonScreen", () => {
   });
 
   describe("Status Display", () => {
-    it("should show 'not running' when daemon is stopped", () => {
+    it("should show 'stopped' when daemon is not running", async () => {
       const { lastFrame } = render(<DaemonScreen onBack={mockOnBack} />);
 
-      expect(lastFrame()).toMatch(/not running|stopped|inactive/i);
+      await waitForStateUpdate();
+
+      expect(lastFrame()).toMatch(/stopped/i);
     });
 
-    it("should show 'running' when daemon is active", () => {
+    it("should show 'healthy' when daemon is running and responding", async () => {
       // Update mock to return running state
-      mockDaemonService.getStatus.mockReturnValueOnce({
+      mockDaemonService.getStatus.mockResolvedValueOnce({
         running: true,
         pid: 12345,
         port: 8850,
         startupEnabled: false,
         logFile: path.join(os.tmpdir(), "daemon.log"),
+        healthy: true,
+        health: { status: "ok", servers: 2, tools: 5 },
       });
 
       const { lastFrame } = render(<DaemonScreen onBack={mockOnBack} />);
 
-      expect(lastFrame()).toMatch(/running|active/i);
+      await waitForStateUpdate();
+
+      expect(lastFrame()).toMatch(/healthy/i);
     });
   });
 

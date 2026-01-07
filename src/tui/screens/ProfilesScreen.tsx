@@ -229,7 +229,7 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
 
           // Refresh daemon to load new profile's servers
           const daemonService = getDaemonService();
-          const statusResult = daemonService.getStatus();
+          const statusResult = daemonService.isDaemonRunning();
           if (statusResult.running) {
             daemonService.refreshDaemon().then((refreshResult) => {
               if (refreshResult.success) {
