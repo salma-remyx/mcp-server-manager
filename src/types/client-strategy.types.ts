@@ -18,6 +18,8 @@ export type ConfigFormat = "json" | "toml";
 
 /**
  * Gateway connection type - how the client connects to MCPSM
+ * - stdio: Uses supergateway (npx -y supergateway --streamableHttp ...)
+ * - url-only: Direct URL/HTTP connection (each strategy defines exact format)
  */
 export type GatewayType = "stdio" | "url-only";
 
