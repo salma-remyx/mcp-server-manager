@@ -2,13 +2,13 @@
  * DaemonScreen - Manage gateway daemon (ink component)
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import fs from "fs";
 import { ScreenLayout } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
-import { getDaemonService } from "../../services/daemon.service.js";
+import { getDaemonService, type DaemonHealthResponse } from "../../services/daemon.service.js";
 import { useTheme } from "../theme/index.js";
 
 type View = "menu" | "logs" | "action";
@@ -39,6 +39,9 @@ interface DaemonState {
   actionResult: { success: boolean; message: string } | null;
   isLoading: boolean;
   logs: string[];
+  healthy: boolean;
+  health?: DaemonHealthResponse;
+  healthLoading: boolean;
 }
 
 export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement {
@@ -51,7 +54,32 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
     actionResult: null,
     isLoading: false,
     logs: [],
+    healthy: false,
+    healthLoading: true,
   });
+
+  // Load health status on mount and after actions
+  const loadHealth = useCallback(async () => {
+    const basicStatus = daemonService.isDaemonRunning();
+    if (!basicStatus.running) {
+      setState((prev) => ({ ...prev, healthy: false, health: undefined, healthLoading: false }));
+      return;
+    }
+
+    setState((prev) => ({ ...prev, healthLoading: true }));
+    const health = await daemonService.checkHealth();
+    setState((prev) => ({
+      ...prev,
+      healthy: health.status === "ok",
+      health,
+      healthLoading: false,
+    }));
+  }, [daemonService]);
+
+  // Load health on mount
+  useEffect(() => {
+    loadHealth();
+  }, [loadHealth]);
 
   // Handle menu option selection
   const handleMenuOption = useCallback(
@@ -79,6 +107,10 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
                 ? { success: true, message: `Daemon started (PID: ${result.pid})` }
                 : { success: false, message: `Failed: ${result.error}` },
             }));
+            // Reload health after starting
+            if (result.success) {
+              setTimeout(() => loadHealth(), 1000); // Give daemon time to initialize
+            }
           }
           break;
         }
@@ -102,6 +134,10 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
                 ? { success: true, message: "Daemon stopped" }
                 : { success: false, message: `Failed: ${result.error}` },
             }));
+            // Reload health after stopping
+            if (result.success) {
+              loadHealth();
+            }
           }
           break;
         }
@@ -117,6 +153,10 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
               ? { success: true, message: "Daemon refreshed" }
               : { success: false, message: `Failed: ${result.error}` },
           }));
+          // Reload health after refreshing
+          if (result.success) {
+            setTimeout(() => loadHealth(), 500);
+          }
           break;
         }
 
@@ -180,7 +220,7 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
         }
       }
     },
-    [daemonService]
+    [daemonService, loadHealth]
   );
 
   // Handle keyboard input
@@ -227,7 +267,7 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
     }
   });
 
-  const { currentIndex, view, actionResult, isLoading, logs } = state;
+  const { currentIndex, view, actionResult, isLoading, logs, healthy, health, healthLoading } = state;
   const status = daemonService.getStatus();
 
   const daemonMenuSections = createMenuSections({
@@ -294,15 +334,45 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
     );
   }
 
+  // Helper function to render health status
+  const renderHealthStatus = (): React.ReactElement => {
+    if (!status.running) {
+      return <Text color="red">● Stopped</Text>;
+    }
+
+    if (healthLoading) {
+      return (
+        <Box gap={1}>
+          <Text color="yellow">● Running (PID: {status.pid})</Text>
+          <Text dimColor>checking health...</Text>
+        </Box>
+      );
+    }
+
+    if (healthy && health) {
+      return (
+        <Text color="green">
+          ● Healthy (PID: {status.pid}, {health.servers} servers, {health.tools} tools)
+        </Text>
+      );
+    }
+
+    // Running but unhealthy
+    return (
+      <Box gap={1}>
+        <Text color="yellow">● Running but unhealthy (PID: {status.pid})</Text>
+        <Text color="red">{health?.error || "Not responding"}</Text>
+      </Box>
+    );
+  };
+
   // Menu view
   return (
     <ScreenLayout title="Daemon Management" menuSections={daemonMenuSections}>
       {/* Status summary - compact single line */}
       <Box gap={1} marginBottom={1} paddingY={1}>
         <Text>Status:</Text>
-        <Text color={status.running ? "green" : "red"}>
-          {status.running ? "●" : "●"} {status.running ? `Running (PID: ${status.pid})` : "Stopped"}
-        </Text>
+        {renderHealthStatus()}
         <Text dimColor>|</Text>
         <Text>Port:</Text>
         <Text color={theme.colors.primary}>{status.port}</Text>

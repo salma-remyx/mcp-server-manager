@@ -13,10 +13,20 @@ import { createLogger } from "../shared/logger.js";
 
 const log = createLogger("DaemonService");
 
+/** Health check response from the daemon */
+export interface DaemonHealthResponse {
+  status: "ok" | "error";
+  servers?: number;
+  tools?: number;
+  error?: string;
+}
+
 /** Daemon status */
 export interface DaemonStatus {
   running: boolean;
   pid?: number;
+  healthy?: boolean;
+  health?: DaemonHealthResponse;
 }
 
 /** Daemon service class */
@@ -129,6 +139,55 @@ export class DaemonService {
   private isPortInUse(port: number): boolean {
     const pids = this.findProcessesByPort(port);
     return pids.length > 0;
+  }
+
+  /**
+   * Check daemon health by calling the /health endpoint.
+   * This verifies the daemon's HTTP server is actually responding.
+   */
+  async checkHealth(timeoutMs = 3000): Promise<DaemonHealthResponse> {
+    const configService = getConfigService();
+    const port = configService.getPort();
+    const url = `http://localhost:${port}/health`;
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      const response = await fetch(url, {
+        method: "GET",
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        return {
+          status: "error",
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        };
+      }
+
+      const data = (await response.json()) as { status: string; servers?: number; tools?: number };
+      return {
+        status: data.status === "ok" ? "ok" : "error",
+        servers: data.servers,
+        tools: data.tools,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.debug(`Health check failed: ${message}`);
+
+      // Provide more helpful error messages
+      if (message.includes("ECONNREFUSED")) {
+        return { status: "error", error: "Connection refused - daemon not responding" };
+      }
+      if (message.includes("abort")) {
+        return { status: "error", error: "Health check timed out" };
+      }
+
+      return { status: "error", error: message };
+    }
   }
 
   /** Start daemon */
@@ -552,6 +611,50 @@ WantedBy=default.target`;
       startupEnabled: this.isStartupEnabled(),
       port: configService.getPort(),
       logFile: this.logFile,
+    };
+  }
+
+  /**
+   * Get full status with health check.
+   * This is the recommended method to use for accurate daemon status,
+   * as it verifies the daemon is actually responding via HTTP.
+   */
+  async getStatusWithHealth(): Promise<{
+    running: boolean;
+    pid?: number;
+    startupEnabled: boolean;
+    port: number;
+    logFile: string;
+    healthy: boolean;
+    health?: DaemonHealthResponse;
+  }> {
+    const configService = getConfigService();
+    const daemonStatus = this.isDaemonRunning();
+    const port = configService.getPort();
+
+    // If process isn't running, skip health check
+    if (!daemonStatus.running) {
+      return {
+        running: false,
+        startupEnabled: this.isStartupEnabled(),
+        port,
+        logFile: this.logFile,
+        healthy: false,
+      };
+    }
+
+    // Process is running, verify with health check
+    const health = await this.checkHealth();
+    const healthy = health.status === "ok";
+
+    return {
+      running: daemonStatus.running,
+      pid: daemonStatus.pid,
+      startupEnabled: this.isStartupEnabled(),
+      port,
+      logFile: this.logFile,
+      healthy,
+      health,
     };
   }
 }
