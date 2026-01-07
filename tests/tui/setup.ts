@@ -129,14 +129,18 @@ export const mockSettingsService = {
 
 // Mock daemon service
 export const mockDaemonService = {
-  getStatus: vi.fn(() => ({
-    running: false,
-    pid: null,
-    port: 8850,
-    startupEnabled: false,
-    logFile: "/tmp/daemon.log",
-  })),
+  getStatus: vi.fn(() =>
+    Promise.resolve({
+      running: false,
+      pid: null,
+      port: 8850,
+      startupEnabled: false,
+      logFile: "/tmp/daemon.log",
+      healthy: false,
+    })
+  ),
   isDaemonRunning: vi.fn(() => ({ running: false, pid: null })),
+  checkHealth: vi.fn(() => Promise.resolve({ status: "ok", servers: 0, tools: 0 })),
   refreshDaemon: vi.fn(() => Promise.resolve({ success: true })),
   startDaemon: vi.fn(() => ({ success: true, pid: 12345 })),
   stopDaemon: vi.fn(() => ({ success: true })),

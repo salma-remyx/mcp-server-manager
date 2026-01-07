@@ -188,7 +188,7 @@ async function handleRefresh(): Promise<void> {
 /** Handle daemon status */
 async function handleStatus(options: { json?: boolean }): Promise<void> {
   const daemonService = getDaemonService();
-  const status = await daemonService.getStatusWithHealth();
+  const status = await daemonService.getStatus();
 
   if (options.json) {
     outputJson(status);

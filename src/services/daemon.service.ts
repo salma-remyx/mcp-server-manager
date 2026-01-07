@@ -594,32 +594,8 @@ WantedBy=default.target`;
     return { platform: process.platform, supported: false, type: "none" };
   }
 
-  /** Get full status */
-  getStatus(): {
-    running: boolean;
-    pid?: number;
-    startupEnabled: boolean;
-    port: number;
-    logFile: string;
-  } {
-    const configService = getConfigService();
-    const daemonStatus = this.isDaemonRunning();
-
-    return {
-      running: daemonStatus.running,
-      pid: daemonStatus.pid,
-      startupEnabled: this.isStartupEnabled(),
-      port: configService.getPort(),
-      logFile: this.logFile,
-    };
-  }
-
-  /**
-   * Get full status with health check.
-   * This is the recommended method to use for accurate daemon status,
-   * as it verifies the daemon is actually responding via HTTP.
-   */
-  async getStatusWithHealth(): Promise<{
+  /** Get full status with health check */
+  async getStatus(): Promise<{
     running: boolean;
     pid?: number;
     startupEnabled: boolean;
