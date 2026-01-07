@@ -24,7 +24,7 @@ export type GatewayType = "stdio" | "url-only";
 /**
  * The key used in the client config for MCP servers
  */
-export type ServersKey = "mcpServers" | "servers";
+export type ServersKey = "mcpServers" | "servers" | "mcp";
 
 /**
  * Client capability flags

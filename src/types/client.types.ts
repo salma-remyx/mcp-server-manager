@@ -12,7 +12,8 @@ export type ClientId =
   | "codex"
   | "gemini"
   | "zed"
-  | "antigravity";
+  | "antigravity"
+  | "opencode";
 
 /** Platform types */
 export type Platform = "darwin" | "win32" | "linux";
@@ -62,6 +63,7 @@ export interface ClientServerConfig {
 export interface ClientMcpConfig {
   mcpServers?: Record<string, ClientServerConfig>;
   servers?: Record<string, ClientServerConfig>;
+  mcp?: Record<string, ClientServerConfig>;
   [key: string]: unknown;
 }
 

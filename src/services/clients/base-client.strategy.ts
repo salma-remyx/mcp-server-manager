@@ -106,7 +106,14 @@ export abstract class BaseClientStrategy implements IClientStrategy {
     if (!config) return false;
 
     const serversKey = this.capabilities.serversKey;
-    const servers = serversKey === "servers" ? config.servers : config.mcpServers;
+    let servers: Record<string, ClientServerConfig> | undefined;
+    if (serversKey === "servers") {
+      servers = config.servers;
+    } else if (serversKey === "mcp") {
+      servers = config.mcp;
+    } else {
+      servers = config.mcpServers;
+    }
     const gateway = servers?.mcpsm;
 
     if (!gateway) return false;
@@ -134,6 +141,16 @@ export abstract class BaseClientStrategy implements IClientStrategy {
       };
     }
 
+    if (serversKey === "mcp") {
+      return {
+        ...config,
+        mcp: {
+          ...config.mcp,
+          mcpsm: gatewayConfig,
+        },
+      };
+    }
+
     return {
       ...config,
       mcpServers: {
@@ -150,6 +167,9 @@ export abstract class BaseClientStrategy implements IClientStrategy {
     if (serversKey === "servers" && result.servers?.mcpsm) {
       const { mcpsm: _, ...rest } = result.servers;
       result.servers = rest;
+    } else if (serversKey === "mcp" && result.mcp?.mcpsm) {
+      const { mcpsm: _, ...rest } = result.mcp;
+      result.mcp = rest;
     } else if (result.mcpServers?.mcpsm) {
       const { mcpsm: _, ...rest } = result.mcpServers;
       result.mcpServers = rest;
@@ -219,6 +239,7 @@ export abstract class BaseClientStrategy implements IClientStrategy {
     let count = 0;
     if (config.mcpServers) count += Object.keys(config.mcpServers).length;
     if (config.servers) count += Object.keys(config.servers).length;
+    if (config.mcp) count += Object.keys(config.mcp).length;
     return count;
   }
 
