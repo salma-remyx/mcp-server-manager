@@ -23,7 +23,6 @@ export class WindsurfStrategy extends JsonClientStrategy {
     hasSecondaryConfigPath: true,
     configFormat: "json",
     gatewayType: "stdio",
-    serversKey: "mcpServers",
   };
 
   readonly paths: ClientPlatformPaths = {

@@ -24,7 +24,6 @@ export class CursorStrategy extends JsonClientStrategy {
     hasSecondaryConfigPath: true,
     configFormat: "json",
     gatewayType: "url-only",
-    serversKey: "mcpServers",
   };
 
   readonly paths: ClientPlatformPaths = {

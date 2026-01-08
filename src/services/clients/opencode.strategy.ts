@@ -11,7 +11,7 @@ import type {
   ClientCapabilities,
   ClientPlatformPaths,
 } from "../../types/client-strategy.types.js";
-import type { ClientMcpConfig, Platform } from "../../types/index.js";
+import type { ClientMcpConfig, ClientServerConfig, Platform } from "../../types/index.js";
 
 export class OpenCodeStrategy extends JsonClientStrategy {
   readonly metadata: ClientMetadata = {
@@ -25,7 +25,6 @@ export class OpenCodeStrategy extends JsonClientStrategy {
     hasSecondaryConfigPath: false,
     configFormat: "json",
     gatewayType: "stdio",
-    serversKey: "mcp",
   };
 
   readonly paths: ClientPlatformPaths = {
@@ -40,6 +39,21 @@ export class OpenCodeStrategy extends JsonClientStrategy {
       linux: "/usr/local/bin/opencode",
     },
   };
+
+  // === Server Container Access (uses 'mcp' not 'mcpServers') ===
+
+  protected getServersFromConfig(
+    config: ClientMcpConfig
+  ): Record<string, ClientServerConfig> | undefined {
+    return config.mcp;
+  }
+
+  protected setServersInConfig(
+    config: ClientMcpConfig,
+    servers: Record<string, ClientServerConfig>
+  ): ClientMcpConfig {
+    return { ...config, mcp: servers };
+  }
 
   /**
    * Get all possible config paths in search order:

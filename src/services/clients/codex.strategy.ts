@@ -25,7 +25,6 @@ export class CodexStrategy extends TomlClientStrategy {
     hasSecondaryConfigPath: false,
     configFormat: "toml",
     gatewayType: "url-only",
-    serversKey: "mcpServers",
   };
 
   readonly paths: ClientPlatformPaths = {

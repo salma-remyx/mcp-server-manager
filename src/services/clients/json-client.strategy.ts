@@ -1,6 +1,7 @@
 /**
  * JSON Client Strategy - Base class for JSON-based client strategies
  * Handles JSON config reading/writing
+ * Default uses "mcpServers" key - override getServersFromConfig/setServersInConfig for other keys
  */
 
 import fs from "fs";
@@ -10,8 +11,26 @@ import type { ClientMcpConfig, ClientServerConfig } from "../../types/index.js";
 /**
  * Base class for JSON-based client strategies
  * Handles JSON config reading/writing
+ * Default uses "mcpServers" key - subclasses can override for other keys
  */
 export abstract class JsonClientStrategy extends BaseClientStrategy {
+  // === Server Container Access (default: mcpServers) ===
+
+  protected getServersFromConfig(
+    config: ClientMcpConfig
+  ): Record<string, ClientServerConfig> | undefined {
+    return config.mcpServers;
+  }
+
+  protected setServersInConfig(
+    config: ClientMcpConfig,
+    servers: Record<string, ClientServerConfig>
+  ): ClientMcpConfig {
+    return { ...config, mcpServers: servers };
+  }
+
+  // === Configuration I/O ===
+
   readConfig(): ClientMcpConfig | null {
     const platform = this.getPlatform();
     const configPath = this.getEffectiveConfigPath(platform);

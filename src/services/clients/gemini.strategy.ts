@@ -22,7 +22,6 @@ export class GeminiStrategy extends JsonClientStrategy {
     hasSecondaryConfigPath: false,
     configFormat: "json",
     gatewayType: "stdio",
-    serversKey: "mcpServers",
   };
 
   readonly paths: ClientPlatformPaths = {

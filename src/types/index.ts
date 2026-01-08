@@ -48,7 +48,6 @@ export type {
 export type {
   ConfigFormat,
   GatewayType,
-  ServersKey,
   ClientCapabilities,
   ClientPlatformPaths,
   ClientMetadata,

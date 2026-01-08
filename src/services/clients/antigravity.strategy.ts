@@ -24,7 +24,6 @@ export class AntigravityStrategy extends JsonClientStrategy {
     hasSecondaryConfigPath: false,
     configFormat: "json",
     gatewayType: "url-only",
-    serversKey: "mcpServers",
   };
 
   readonly paths: ClientPlatformPaths = {

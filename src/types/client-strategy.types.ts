@@ -24,11 +24,6 @@ export type ConfigFormat = "json" | "toml";
 export type GatewayType = "stdio" | "url-only";
 
 /**
- * The key used in the client config for MCP servers
- */
-export type ServersKey = "mcpServers" | "servers" | "mcp";
-
-/**
  * Client capability flags
  */
 export interface ClientCapabilities {
@@ -40,8 +35,6 @@ export interface ClientCapabilities {
   configFormat: ConfigFormat;
   /** Gateway connection type */
   gatewayType: GatewayType;
-  /** Key used for servers in config */
-  serversKey: ServersKey;
 }
 
 /**

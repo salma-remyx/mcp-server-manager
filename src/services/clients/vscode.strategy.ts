@@ -11,7 +11,7 @@ import type {
   ClientCapabilities,
   ClientPlatformPaths,
 } from "../../types/client-strategy.types.js";
-import type { ClientServerConfig, Platform } from "../../types/index.js";
+import type { ClientServerConfig, ClientMcpConfig, Platform } from "../../types/index.js";
 
 export class VSCodeStrategy extends JsonClientStrategy {
   readonly metadata: ClientMetadata = {
@@ -25,7 +25,6 @@ export class VSCodeStrategy extends JsonClientStrategy {
     hasSecondaryConfigPath: false, // VS Code uses primary path for real-time loading
     configFormat: "json",
     gatewayType: "stdio",
-    serversKey: "servers", // VS Code uses 'servers' not 'mcpServers'
   };
 
   readonly paths: ClientPlatformPaths = {
@@ -38,6 +37,21 @@ export class VSCodeStrategy extends JsonClientStrategy {
       darwin: "/Applications/Visual Studio Code.app",
     },
   };
+
+  // === Server Container Access (uses 'servers' not 'mcpServers') ===
+
+  protected getServersFromConfig(
+    config: ClientMcpConfig
+  ): Record<string, ClientServerConfig> | undefined {
+    return config.servers;
+  }
+
+  protected setServersInConfig(
+    config: ClientMcpConfig,
+    servers: Record<string, ClientServerConfig>
+  ): ClientMcpConfig {
+    return { ...config, servers };
+  }
 
   // Override to include 'type' field required by VS Code
   buildGatewayConfig(port: number): ClientServerConfig {
