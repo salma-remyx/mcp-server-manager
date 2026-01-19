@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { spawn, execSync, ChildProcess } from "child_process";
+import { ofetch } from "ofetch";
 import { getConfigService } from "./config.service.js";
 import { getEnvironmentService } from "./environment.service.js";
 import type { Result } from "../types/index.js";
@@ -162,24 +163,11 @@ export class DaemonService {
     const url = `http://localhost:${port}/health`;
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-      const response = await fetch(url, {
-        method: "GET",
-        signal: controller.signal,
+      const data = await ofetch<{ status: string; servers?: number; tools?: number }>(url, {
+        timeout: timeoutMs,
+        retry: 0,
       });
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        return {
-          status: "error",
-          error: `HTTP ${response.status}: ${response.statusText}`,
-        };
-      }
-
-      const data = (await response.json()) as { status: string; servers?: number; tools?: number };
       return {
         status: data.status === "ok" ? "ok" : "error",
         servers: data.servers,
@@ -189,11 +177,10 @@ export class DaemonService {
       const message = error instanceof Error ? error.message : String(error);
       log.debug(`Health check failed: ${message}`);
 
-      // Provide more helpful error messages
       if (message.includes("ECONNREFUSED")) {
         return { status: "error", error: "Connection refused - daemon not responding" };
       }
-      if (message.includes("abort")) {
+      if (message.includes("timeout") || message.includes("abort")) {
         return { status: "error", error: "Health check timed out" };
       }
 
@@ -388,9 +375,24 @@ export class DaemonService {
 
     try {
       process.kill(status.pid, "SIGHUP");
+
+      // Wait for daemon to be healthy after refresh
+      const configService = getConfigService();
+      const port = configService.getPort();
+      await ofetch(`http://localhost:${port}/health`, {
+        timeout: 500,
+        retry: 5,
+        retryDelay: 100,
+      });
+
       return { success: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      // If health check fails but signal was sent, still return success
+      if (message.includes("ECONNREFUSED") || message.includes("timeout")) {
+        log.debug(`Refresh signal sent but health check failed: ${message}`);
+        return { success: true };
+      }
       log.warn(`Failed to send refresh signal: ${message}`);
       return { success: false, error: message };
     }

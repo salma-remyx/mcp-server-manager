@@ -5,8 +5,19 @@
 import React from "react";
 import { vi } from "vitest";
 import { render as inkRender } from "ink-testing-library";
-import type { RenderOptions } from "ink-testing-library";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "../../src/tui/theme/ThemeContext.js";
+
+// Create a fresh QueryClient for each test
+const createTestQueryClient = (): QueryClient =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        staleTime: Infinity,
+      },
+    },
+  });
 
 // Mock config service
 export const mockConfigService = {
@@ -286,12 +297,16 @@ export const KEYS = {
 };
 
 /**
- * Render a component with ThemeProvider wrapper
- * This ensures all components have access to the theme context
+ * Render a component with QueryClientProvider and ThemeProvider wrappers
+ * This ensures all components have access to the query client and theme context
  */
-export function render(
-  component: React.ReactElement,
-  options?: RenderOptions
-): ReturnType<typeof inkRender> {
-  return inkRender(React.createElement(ThemeProvider, null, component), options);
+export function render(component: React.ReactElement): ReturnType<typeof inkRender> {
+  const queryClient = createTestQueryClient();
+  return inkRender(
+    React.createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      React.createElement(ThemeProvider, null, component)
+    )
+  );
 }
