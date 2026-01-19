@@ -64,13 +64,15 @@ export class DaemonService {
     }
   }
 
-  /** Find PIDs of processes using a specific port */
+  /** Find PIDs of processes LISTENING on a specific port (excludes clients) */
   private findProcessesByPort(port: number): number[] {
     const pids: number[] = [];
+    const currentPid = process.pid;
     try {
       if (process.platform === "darwin" || process.platform === "linux") {
-        // Use lsof to find processes using the port
-        const output = execSync(`lsof -ti :${port}`, {
+        // Use lsof with -sTCP:LISTEN to only find processes LISTENING on the port
+        // This excludes client connections (like the TUI polling the daemon)
+        const output = execSync(`lsof -iTCP:${port} -sTCP:LISTEN -t`, {
           encoding: "utf8",
           stdio: ["ignore", "pipe", "ignore"],
         });
@@ -80,14 +82,15 @@ export class DaemonService {
           .filter((line) => line.trim());
         for (const line of lines) {
           const pid = parseInt(line.trim(), 10);
-          if (!isNaN(pid) && pid > 0) {
+          // Never include our own process in the kill list
+          if (!isNaN(pid) && pid > 0 && pid !== currentPid) {
             pids.push(pid);
           }
         }
       }
     } catch {
       // lsof returns non-zero exit code if no processes found, which is fine
-      log.debug(`No processes found on port ${port}`);
+      log.debug(`No processes found listening on port ${port}`);
     }
     return pids;
   }
@@ -276,17 +279,21 @@ export class DaemonService {
     const configService = getConfigService();
     const port = configService.getPort();
     const pidsToKill = new Set<number>();
+    const currentPid = process.pid;
 
     // Get PID from file if it exists
     const status = this.isDaemonRunning();
-    if (status.running && status.pid) {
+    if (status.running && status.pid && status.pid !== currentPid) {
       pidsToKill.add(status.pid);
     }
 
     // Also find any processes using the port (in case PID file is stale)
     const portPids = this.findProcessesByPort(port);
     for (const pid of portPids) {
-      pidsToKill.add(pid);
+      // findProcessesByPort already excludes currentPid, but double-check
+      if (pid !== currentPid) {
+        pidsToKill.add(pid);
+      }
     }
 
     if (pidsToKill.size === 0) {
