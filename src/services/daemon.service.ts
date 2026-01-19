@@ -6,12 +6,21 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { spawn, execSync, ChildProcess } from "child_process";
+import { ofetch } from "ofetch";
 import { getConfigService } from "./config.service.js";
 import { getEnvironmentService } from "./environment.service.js";
 import type { Result } from "../types/index.js";
 import { createLogger } from "../shared/logger.js";
 
 const log = createLogger("DaemonService");
+
+/** Health check configuration constants */
+const HEALTH_CHECK_TIMEOUT_MS = 2000;
+const REFRESH_HEALTH_CHECK_TIMEOUT_MS = 500;
+const REFRESH_HEALTH_CHECK_RETRY_COUNT = 5;
+const REFRESH_HEALTH_CHECK_RETRY_DELAY_MS = 100;
+export const STARTUP_HEALTH_CHECK_MAX_ATTEMPTS = 30;
+export const STARTUP_HEALTH_CHECK_INTERVAL_MS = 500;
 
 /** Health check response from the daemon */
 export interface DaemonHealthResponse {
@@ -114,25 +123,36 @@ export class DaemonService {
 
   /** Check if daemon is running */
   isDaemonRunning(): DaemonStatus {
-    if (!fs.existsSync(this.pidFile)) {
-      return { running: false };
+    // First check PID file
+    if (fs.existsSync(this.pidFile)) {
+      try {
+        const pid = parseInt(fs.readFileSync(this.pidFile, "utf8").trim());
+        // Check if process is alive (signal 0 doesn't kill, just checks)
+        process.kill(pid, 0);
+        return { running: true, pid };
+      } catch (error) {
+        log.debug("Daemon process not found from PID file:", error);
+        // Process not found, clean up stale pid file
+        try {
+          fs.unlinkSync(this.pidFile);
+        } catch (cleanupError) {
+          log.debug("Failed to remove stale PID file:", cleanupError);
+        }
+      }
     }
 
-    try {
-      const pid = parseInt(fs.readFileSync(this.pidFile, "utf8").trim());
-      // Check if process is alive (signal 0 doesn't kill, just checks)
-      process.kill(pid, 0);
-      return { running: true, pid };
-    } catch (error) {
-      log.debug("Daemon process not found, cleaning up stale PID file:", error);
-      // Process not found, clean up stale pid file
-      try {
-        fs.unlinkSync(this.pidFile);
-      } catch (cleanupError) {
-        log.debug("Failed to remove stale PID file:", cleanupError);
-      }
-      return { running: false };
+    // Fallback: check if something is using the port
+    const configService = getConfigService();
+    const port = configService.getPort();
+    const pids = this.findProcessesByPort(port);
+    if (pids.length > 0) {
+      // Something is on the port - consider it running
+      // Use the first PID found (there should typically only be one)
+      log.debug(`Found process on port ${port}: PID ${pids[0]}`);
+      return { running: true, pid: pids[0] };
     }
+
+    return { running: false };
   }
 
   /** Check if any process is using the daemon port */
@@ -145,30 +165,17 @@ export class DaemonService {
    * Check daemon health by calling the /health endpoint.
    * This verifies the daemon's HTTP server is actually responding.
    */
-  async checkHealth(timeoutMs = 3000): Promise<DaemonHealthResponse> {
+  async checkHealth(timeoutMs = HEALTH_CHECK_TIMEOUT_MS): Promise<DaemonHealthResponse> {
     const configService = getConfigService();
     const port = configService.getPort();
     const url = `http://localhost:${port}/health`;
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-      const response = await fetch(url, {
-        method: "GET",
-        signal: controller.signal,
+      const data = await ofetch<{ status: string; servers?: number; tools?: number }>(url, {
+        timeout: timeoutMs,
+        retry: 0,
       });
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        return {
-          status: "error",
-          error: `HTTP ${response.status}: ${response.statusText}`,
-        };
-      }
-
-      const data = (await response.json()) as { status: string; servers?: number; tools?: number };
       return {
         status: data.status === "ok" ? "ok" : "error",
         servers: data.servers,
@@ -178,11 +185,10 @@ export class DaemonService {
       const message = error instanceof Error ? error.message : String(error);
       log.debug(`Health check failed: ${message}`);
 
-      // Provide more helpful error messages
       if (message.includes("ECONNREFUSED")) {
         return { status: "error", error: "Connection refused - daemon not responding" };
       }
-      if (message.includes("abort")) {
+      if (message.includes("timeout") || message.includes("abort")) {
         return { status: "error", error: "Health check timed out" };
       }
 
@@ -375,13 +381,35 @@ export class DaemonService {
       return { success: false, error: "Daemon is not running" };
     }
 
+    // Send SIGHUP signal to trigger refresh
     try {
       process.kill(status.pid, "SIGHUP");
-      return { success: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("ESRCH")) {
+        log.warn("Failed to send refresh signal: process not found");
+        return { success: false, error: "Daemon process not found" };
+      }
       log.warn(`Failed to send refresh signal: ${message}`);
       return { success: false, error: message };
+    }
+
+    // Wait for daemon to be healthy after refresh
+    try {
+      const configService = getConfigService();
+      const port = configService.getPort();
+      await ofetch(`http://localhost:${port}/health`, {
+        timeout: REFRESH_HEALTH_CHECK_TIMEOUT_MS,
+        retry: REFRESH_HEALTH_CHECK_RETRY_COUNT,
+        retryDelay: REFRESH_HEALTH_CHECK_RETRY_DELAY_MS,
+      });
+      return { success: true };
+    } catch (error) {
+      // Signal was sent successfully, but health check failed
+      // This is expected if daemon is slow to respond - still consider success
+      const message = error instanceof Error ? error.message : String(error);
+      log.debug(`Refresh signal sent but health check inconclusive: ${message}`);
+      return { success: true };
     }
   }
 

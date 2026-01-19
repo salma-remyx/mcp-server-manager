@@ -6,9 +6,15 @@ import React, { useState, useCallback, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import fs from "fs";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScreenLayout } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
-import { getDaemonService, type DaemonHealthResponse } from "../../services/daemon.service.js";
+import {
+  getDaemonService,
+  type DaemonHealthResponse,
+  STARTUP_HEALTH_CHECK_MAX_ATTEMPTS,
+  STARTUP_HEALTH_CHECK_INTERVAL_MS,
+} from "../../services/daemon.service.js";
 import { useTheme } from "../theme/index.js";
 
 type View = "menu" | "logs" | "action";
@@ -33,53 +39,121 @@ interface DaemonScreenProps {
   onBack: () => void;
 }
 
-interface DaemonState {
-  currentIndex: number;
-  view: View;
-  actionResult: { success: boolean; message: string } | null;
-  isLoading: boolean;
-  logs: string[];
-  status: {
-    running: boolean;
-    pid?: number;
-    startupEnabled: boolean;
-    port: number;
-    logFile: string;
-    healthy: boolean;
-    health?: DaemonHealthResponse;
-  } | null;
-  statusLoading: boolean;
+interface DaemonStatus {
+  running: boolean;
+  pid?: number;
+  startupEnabled: boolean;
+  port: number;
+  logFile: string;
+  healthy: boolean;
+  health?: DaemonHealthResponse;
 }
 
 export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement {
   const { theme } = useTheme();
   const daemonService = getDaemonService();
+  const queryClient = useQueryClient();
 
-  const [state, setState] = useState<DaemonState>({
-    currentIndex: 0,
-    view: "menu",
-    actionResult: null,
-    isLoading: false,
-    logs: [],
-    status: null,
-    statusLoading: true,
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [view, setView] = useState<View>("menu");
+  const [actionResult, setActionResult] = useState<{ success: boolean; message: string } | null>(
+    null
+  );
+  const [logs, setLogs] = useState<string[]>([]);
+  const [lastCheckedAt, setLastCheckedAt] = useState<number>(Date.now());
+
+  // Query for daemon status
+  // NOTE: refetchInterval doesn't work in Ink/TUI, so we manually refetch below
+  const {
+    data: status,
+    isLoading: statusLoading,
+    isFetching,
+    refetch,
+  } = useQuery<DaemonStatus>({
+    queryKey: ["daemon-status"],
+    queryFn: async () => {
+      const result = await daemonService.getStatus();
+      setLastCheckedAt(Date.now());
+      return result;
+    },
   });
 
-  // Load status on mount and after actions
-  const loadStatus = useCallback(async () => {
-    setState((prev) => ({ ...prev, statusLoading: true }));
-    const status = await daemonService.getStatus();
-    setState((prev) => ({
-      ...prev,
-      status,
-      statusLoading: false,
-    }));
-  }, [daemonService]);
-
-  // Load status on mount
+  // Manually trigger refetch (refetchInterval doesn't work in Ink)
+  // Note: refetch is stable in React Query, so empty deps is safe
   useEffect(() => {
-    loadStatus();
-  }, [loadStatus]);
+    const interval = setInterval(() => {
+      void refetch();
+    }, 2000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Mutation for starting daemon - waits until healthy
+  const startMutation = useMutation({
+    mutationFn: async (): Promise<{ success: boolean; pid?: number; healthy?: boolean; error?: string }> => {
+      const startResult = await daemonService.startDaemon();
+      if (!startResult.success) {
+        return { success: false, error: startResult.error };
+      }
+
+      // Poll for health status until daemon is healthy
+      for (let i = 0; i < STARTUP_HEALTH_CHECK_MAX_ATTEMPTS; i++) {
+        await new Promise((resolve) => setTimeout(resolve, STARTUP_HEALTH_CHECK_INTERVAL_MS));
+        const health = await daemonService.checkHealth();
+        if (health.status === "ok") {
+          return { success: true, pid: startResult.pid, healthy: true };
+        }
+      }
+
+      // Started but never became healthy
+      return { success: true, pid: startResult.pid, healthy: false, error: "Health check timed out" };
+    },
+    onSuccess: (result) => {
+      setView("action");
+      if (!result.success) {
+        setActionResult({ success: false, message: `Failed: ${result.error}` });
+      } else if (result.healthy) {
+        setActionResult({ success: true, message: `Daemon started and healthy (PID: ${result.pid})` });
+      } else {
+        setActionResult({ success: false, message: `Daemon started (PID: ${result.pid}) but not healthy: ${result.error}` });
+      }
+      queryClient.invalidateQueries({ queryKey: ["daemon-status"] });
+    },
+  });
+
+  // Mutation for stopping daemon
+  const stopMutation = useMutation({
+    mutationFn: () => daemonService.stopDaemon(),
+    onSuccess: (result) => {
+      setView("action");
+      setActionResult(
+        result.success
+          ? { success: true, message: "Daemon stopped" }
+          : { success: false, message: `Failed: ${result.error}` }
+      );
+      if (result.success) {
+        queryClient.invalidateQueries({ queryKey: ["daemon-status"] });
+      }
+    },
+  });
+
+  // Mutation for refreshing daemon
+  const refreshMutation = useMutation({
+    mutationFn: () => daemonService.refreshDaemon(),
+    onSuccess: async (result) => {
+      if (result.success) {
+        await queryClient.invalidateQueries({ queryKey: ["daemon-status"] });
+      }
+      setView("action");
+      setActionResult(
+        result.success
+          ? { success: true, message: "Daemon refreshed" }
+          : { success: false, message: `Failed: ${result.error}` }
+      );
+    },
+  });
+
+  const isLoading = startMutation.isPending || stopMutation.isPending || refreshMutation.isPending;
 
   // Handle menu option selection
   const handleMenuOption = useCallback(
@@ -88,29 +162,13 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
         case "start": {
           const runningStatus = daemonService.isDaemonRunning();
           if (runningStatus.running) {
-            setState((prev) => ({
-              ...prev,
-              view: "action",
-              actionResult: {
-                success: false,
-                message: `Daemon already running (PID: ${runningStatus.pid})`,
-              },
-            }));
+            setView("action");
+            setActionResult({
+              success: false,
+              message: `Daemon already running (PID: ${runningStatus.pid})`,
+            });
           } else {
-            setState((prev) => ({ ...prev, isLoading: true }));
-            const result = await daemonService.startDaemon();
-            setState((prev) => ({
-              ...prev,
-              isLoading: false,
-              view: "action",
-              actionResult: result.success
-                ? { success: true, message: `Daemon started (PID: ${result.pid})` }
-                : { success: false, message: `Failed: ${result.error}` },
-            }));
-            // Reload status after starting
-            if (result.success) {
-              setTimeout(() => loadStatus(), 1000); // Give daemon time to initialize
-            }
+            startMutation.mutate();
           }
           break;
         }
@@ -118,58 +176,30 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
         case "stop": {
           const runningStatus = daemonService.isDaemonRunning();
           if (!runningStatus.running) {
-            setState((prev) => ({
-              ...prev,
-              view: "action",
-              actionResult: { success: false, message: "Daemon is not running" },
-            }));
+            setView("action");
+            setActionResult({ success: false, message: "Daemon is not running" });
           } else {
-            setState((prev) => ({ ...prev, isLoading: true }));
-            const result = await daemonService.stopDaemon();
-            setState((prev) => ({
-              ...prev,
-              isLoading: false,
-              view: "action",
-              actionResult: result.success
-                ? { success: true, message: "Daemon stopped" }
-                : { success: false, message: `Failed: ${result.error}` },
-            }));
-            // Reload status after stopping
-            if (result.success) {
-              loadStatus();
-            }
+            stopMutation.mutate();
           }
           break;
         }
 
         case "refresh": {
-          setState((prev) => ({ ...prev, isLoading: true }));
-          const result = await daemonService.refreshDaemon();
-          setState((prev) => ({
-            ...prev,
-            isLoading: false,
-            view: "action",
-            actionResult: result.success
-              ? { success: true, message: "Daemon refreshed" }
-              : { success: false, message: `Failed: ${result.error}` },
-          }));
-          // Reload status after refreshing
-          if (result.success) {
-            setTimeout(() => loadStatus(), 500);
-          }
+          refreshMutation.mutate();
           break;
         }
 
         case "logs": {
           const logPath = daemonService.getLogFilePath();
-          let logs: string[] = [];
+          let logLines: string[] = [];
 
           if (fs.existsSync(logPath)) {
             const content = fs.readFileSync(logPath, "utf8");
-            logs = content.trim().split("\n").slice(-30);
+            logLines = content.trim().split("\n").slice(-30);
           }
 
-          setState((prev) => ({ ...prev, view: "logs", logs }));
+          setLogs(logLines);
+          setView("logs");
           break;
         }
 
@@ -177,59 +207,52 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
           const logPath = daemonService.getLogFilePath();
           try {
             fs.writeFileSync(logPath, "");
-            setState((prev) => ({
-              ...prev,
-              view: "action",
-              actionResult: { success: true, message: "Logs cleared" },
-            }));
+            setView("action");
+            setActionResult({ success: true, message: "Logs cleared" });
           } catch (error) {
-            setState((prev) => ({
-              ...prev,
-              view: "action",
-              actionResult: {
-                success: false,
-                message: `Failed to clear logs: ${error instanceof Error ? error.message : String(error)}`,
-              },
-            }));
+            setView("action");
+            setActionResult({
+              success: false,
+              message: `Failed to clear logs: ${error instanceof Error ? error.message : String(error)}`,
+            });
           }
           break;
         }
 
         case "startup-enable": {
           const result = daemonService.enableStartup();
-          setState((prev) => ({
-            ...prev,
-            view: "action",
-            actionResult: result.success
+          setView("action");
+          setActionResult(
+            result.success
               ? { success: true, message: "Auto-start enabled" }
-              : { success: false, message: `Failed: ${result.error}` },
-          }));
+              : { success: false, message: `Failed: ${result.error}` }
+          );
           break;
         }
 
         case "startup-disable": {
           const result = daemonService.disableStartup();
-          setState((prev) => ({
-            ...prev,
-            view: "action",
-            actionResult: result.success
+          setView("action");
+          setActionResult(
+            result.success
               ? { success: true, message: "Auto-start disabled" }
-              : { success: false, message: `Failed: ${result.error}` },
-          }));
+              : { success: false, message: `Failed: ${result.error}` }
+          );
           break;
         }
       }
     },
-    [daemonService, loadStatus]
+    [daemonService, startMutation, stopMutation, refreshMutation]
   );
 
   // Handle keyboard input
   useInput((input, key) => {
-    const { currentIndex, view } = state;
-
     // Any key to go back from sub-views
     if (view !== "menu") {
-      setState((prev) => ({ ...prev, view: "menu", actionResult: null }));
+      setView("menu");
+      setActionResult(null);
+      // Force refetch status when returning to menu
+      queryClient.invalidateQueries({ queryKey: ["daemon-status"] });
       return;
     }
 
@@ -241,19 +264,13 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
 
     // Navigation - Up
     if (key.upArrow) {
-      setState((prev) => ({
-        ...prev,
-        currentIndex: Math.max(0, currentIndex - 1),
-      }));
+      setCurrentIndex((prev) => Math.max(0, prev - 1));
       return;
     }
 
     // Navigation - Down
     if (key.downArrow) {
-      setState((prev) => ({
-        ...prev,
-        currentIndex: Math.min(MENU_OPTIONS.length - 1, currentIndex + 1),
-      }));
+      setCurrentIndex((prev) => Math.min(MENU_OPTIONS.length - 1, prev + 1));
       return;
     }
 
@@ -267,8 +284,6 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
     }
   });
 
-  const { currentIndex, view, actionResult, isLoading, logs, status, statusLoading } = state;
-
   const daemonMenuSections = createMenuSections({
     actions: [{ key: "Enter", label: "Select" }],
     showData: false,
@@ -278,13 +293,19 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
 
   // Loading view
   if (isLoading) {
+    const loadingMessage = startMutation.isPending
+      ? "Starting daemon and waiting for health check..."
+      : stopMutation.isPending
+        ? "Stopping daemon..."
+        : "Refreshing daemon...";
+
     return (
       <ScreenLayout title="Daemon Management" menuSections={daemonMenuSections}>
         <Box paddingY={1} gap={1}>
           <Text color={theme.colors.primary}>
             <Spinner type="dots" />
           </Text>
-          <Text>Starting daemon...</Text>
+          <Text>{loadingMessage}</Text>
         </Box>
       </ScreenLayout>
     );
@@ -293,10 +314,7 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
   // Logs view
   if (view === "logs") {
     return (
-      <ScreenLayout
-        title="Recent Logs"
-        shortcuts={[{ key: "Any", label: "Go back" }]}
-      >
+      <ScreenLayout title="Recent Logs" shortcuts={[{ key: "Any", label: "Go back" }]}>
         <Box flexDirection="column" paddingY={1}>
           <Box marginBottom={1}>
             <Text dimColor>{daemonService.getLogFilePath()}</Text>
@@ -319,10 +337,7 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
   // Action result view
   if (view === "action" && actionResult) {
     return (
-      <ScreenLayout
-        title="Daemon Management"
-        shortcuts={[{ key: "Any", label: "Continue" }]}
-      >
+      <ScreenLayout title="Daemon Management" shortcuts={[{ key: "Any", label: "Continue" }]}>
         <Box paddingY={1} gap={1}>
           <Text color={actionResult.success ? "green" : "yellow"}>
             {actionResult.success ? "✓" : "⚠"}
@@ -346,7 +361,8 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
     if (status.healthy) {
       return (
         <Text color="green">
-          ● Healthy (PID: {status.pid}, {status.health?.servers ?? 0} servers, {status.health?.tools ?? 0} tools)
+          ● Healthy (PID: {status.pid}, {status.health?.servers ?? 0} servers,{" "}
+          {status.health?.tools ?? 0} tools)
         </Text>
       );
     }
@@ -376,6 +392,19 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
           {status?.startupEnabled ? "enabled" : "disabled"}
         </Text>
       </Box>
+      <Box marginBottom={1} gap={1}>
+        <Text dimColor>
+          Last checked: {lastCheckedAt > 0 ? new Date(lastCheckedAt).toLocaleTimeString() : "never"}
+        </Text>
+        {isFetching && (
+          <>
+            <Text dimColor>|</Text>
+            <Text color="cyan">
+              <Spinner type="dots" />
+            </Text>
+          </>
+        )}
+      </Box>
 
       {/* Menu options */}
       {MENU_OPTIONS.map((option, idx) => {
@@ -384,7 +413,9 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
         return (
           <Box key={option.id} flexDirection="column" marginBottom={1}>
             <Box gap={1}>
-              <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>{isCurrent ? "→" : " "}</Text>
+              <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>
+                {isCurrent ? "→" : " "}
+              </Text>
               <Text color={isCurrent ? theme.colors.highlightText : undefined} bold={isCurrent}>
                 {option.label}
               </Text>

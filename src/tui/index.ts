@@ -6,8 +6,27 @@
 
 import React from "react";
 import { render } from "ink";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App.js";
 import { ThemeProvider } from "./theme/index.js";
+import { createLogger } from "../shared/logger.js";
+
+const log = createLogger("TUI");
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 1000,
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      onError: (error): void => {
+        log.error("Mutation error:", error);
+      },
+    },
+  },
+});
 
 const ENTER_ALT_SCREEN = "\x1b[?1049h";
 const EXIT_ALT_SCREEN = "\x1b[?1049l";
@@ -56,7 +75,11 @@ export async function startTui(): Promise<void> {
   process.once("exit", cleanup);
 
   const { waitUntilExit } = render(
-    React.createElement(ThemeProvider, null, React.createElement(App))
+    React.createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      React.createElement(ThemeProvider, null, React.createElement(App))
+    )
   );
 
   const handleResize = (): void => {

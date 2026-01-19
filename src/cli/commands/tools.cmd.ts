@@ -7,6 +7,15 @@ import { colors, c } from "../../shared/colors.js";
 import { formatTokens, outputJson } from "../../shared/formatters.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getTestingService } from "../../services/testing.service.js";
+import { getDaemonService } from "../../services/daemon.service.js";
+
+async function refreshDaemonIfRunning(): Promise<void> {
+  const daemonService = getDaemonService();
+  const status = daemonService.isDaemonRunning();
+  if (status.running) {
+    await daemonService.refreshDaemon();
+  }
+}
 
 /** Register tools commands */
 export function registerToolsCommands(program: Command): void {
@@ -190,6 +199,7 @@ export function registerToolsCommands(program: Command): void {
       const testResult = await testingService.testServer(server, type);
 
       if (testResult.success) {
+        await refreshDaemonIfRunning();
         console.log(`${c.checkmark} Discovered ${testResult.toolCount} tools for '${server.name}'`);
       } else {
         console.log(`${c.cross} Failed to discover tools: ${testResult.error}`);
@@ -229,6 +239,7 @@ export function registerToolsCommands(program: Command): void {
           ...filter,
           enabled: [...filter.allTools],
         });
+        await refreshDaemonIfRunning();
         console.log(
           `${c.checkmark} Enabled all ${filter.allTools.length} tools for '${server.name}'`
         );
@@ -253,6 +264,7 @@ export function registerToolsCommands(program: Command): void {
         ...filter,
         enabled: Array.from(enabled),
       });
+      await refreshDaemonIfRunning();
 
       console.log(`${c.checkmark} Enabled tool '${toolName}' for '${server.name}'`);
     });
@@ -289,6 +301,7 @@ export function registerToolsCommands(program: Command): void {
           ...filter,
           enabled: [],
         });
+        await refreshDaemonIfRunning();
         console.log(`${c.checkmark} Disabled all tools for '${server.name}'`);
         return;
       }
@@ -318,6 +331,7 @@ export function registerToolsCommands(program: Command): void {
         ...filter,
         enabled: Array.from(enabled),
       });
+      await refreshDaemonIfRunning();
 
       console.log(`${c.checkmark} Disabled tool '${toolName}' for '${server.name}'`);
     });
