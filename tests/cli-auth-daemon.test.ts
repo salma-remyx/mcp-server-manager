@@ -46,8 +46,6 @@ const mockDaemonService = {
   clearLogs: vi.fn(),
   enableStartup: vi.fn(() => ({ success: true })),
   disableStartup: vi.fn(() => ({ success: true })),
-  writePidFile: vi.fn(),
-  removePidFile: vi.fn(),
 };
 
 const mockProfileService = {

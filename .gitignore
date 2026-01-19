@@ -29,3 +29,4 @@ docs/.vitepress/cache/
 
 # TODO file for tracking planned features
 TODO.md
+.claude/settings.local.json

@@ -439,22 +439,6 @@ export class DaemonService {
     return this.logFile;
   }
 
-  /** Write the current process PID to the PID file (for foreground mode) */
-  writePidFile(): void {
-    fs.writeFileSync(this.pidFile, process.pid.toString());
-  }
-
-  /** Remove the PID file (for foreground mode cleanup) */
-  removePidFile(): void {
-    if (fs.existsSync(this.pidFile)) {
-      try {
-        fs.unlinkSync(this.pidFile);
-      } catch (error) {
-        log.debug("Failed to remove PID file:", error);
-      }
-    }
-  }
-
   // === Startup Management ===
 
   /** Get LaunchAgent path for macOS */

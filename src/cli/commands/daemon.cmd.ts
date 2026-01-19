@@ -138,23 +138,6 @@ async function handleStart(
     console.log(`${colors.cyan}Starting gateway in foreground mode...${colors.reset}`);
     console.log(`${colors.gray}Press Ctrl+C to stop${colors.reset}\n`);
 
-    // Write our actual PID to the PID file so status detection works
-    daemonService.writePidFile();
-
-    // Clean up PID file on exit
-    const cleanupPid = (): void => {
-      daemonService.removePidFile();
-    };
-    process.on("exit", cleanupPid);
-    process.on("SIGINT", () => {
-      cleanupPid();
-      process.exit(0);
-    });
-    process.on("SIGTERM", () => {
-      cleanupPid();
-      process.exit(0);
-    });
-
     const { runGatewayForeground } = await import("../../services/gateway.service.js");
     await runGatewayForeground(selectedServers.length > 0 ? selectedServers : undefined);
     return;
