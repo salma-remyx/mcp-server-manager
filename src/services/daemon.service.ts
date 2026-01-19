@@ -114,25 +114,36 @@ export class DaemonService {
 
   /** Check if daemon is running */
   isDaemonRunning(): DaemonStatus {
-    if (!fs.existsSync(this.pidFile)) {
-      return { running: false };
+    // First check PID file
+    if (fs.existsSync(this.pidFile)) {
+      try {
+        const pid = parseInt(fs.readFileSync(this.pidFile, "utf8").trim());
+        // Check if process is alive (signal 0 doesn't kill, just checks)
+        process.kill(pid, 0);
+        return { running: true, pid };
+      } catch (error) {
+        log.debug("Daemon process not found from PID file:", error);
+        // Process not found, clean up stale pid file
+        try {
+          fs.unlinkSync(this.pidFile);
+        } catch (cleanupError) {
+          log.debug("Failed to remove stale PID file:", cleanupError);
+        }
+      }
     }
 
-    try {
-      const pid = parseInt(fs.readFileSync(this.pidFile, "utf8").trim());
-      // Check if process is alive (signal 0 doesn't kill, just checks)
-      process.kill(pid, 0);
-      return { running: true, pid };
-    } catch (error) {
-      log.debug("Daemon process not found, cleaning up stale PID file:", error);
-      // Process not found, clean up stale pid file
-      try {
-        fs.unlinkSync(this.pidFile);
-      } catch (cleanupError) {
-        log.debug("Failed to remove stale PID file:", cleanupError);
-      }
-      return { running: false };
+    // Fallback: check if something is using the port
+    const configService = getConfigService();
+    const port = configService.getPort();
+    const pids = this.findProcessesByPort(port);
+    if (pids.length > 0) {
+      // Something is on the port - consider it running
+      // Use the first PID found (there should typically only be one)
+      log.debug(`Found process on port ${port}: PID ${pids[0]}`);
+      return { running: true, pid: pids[0] };
     }
+
+    return { running: false };
   }
 
   /** Check if any process is using the daemon port */
@@ -426,6 +437,22 @@ export class DaemonService {
   /** Get log file path */
   getLogFilePath(): string {
     return this.logFile;
+  }
+
+  /** Write the current process PID to the PID file (for foreground mode) */
+  writePidFile(): void {
+    fs.writeFileSync(this.pidFile, process.pid.toString());
+  }
+
+  /** Remove the PID file (for foreground mode cleanup) */
+  removePidFile(): void {
+    if (fs.existsSync(this.pidFile)) {
+      try {
+        fs.unlinkSync(this.pidFile);
+      } catch (error) {
+        log.debug("Failed to remove PID file:", error);
+      }
+    }
   }
 
   // === Startup Management ===

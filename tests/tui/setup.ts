@@ -147,6 +147,8 @@ export const mockDaemonService = {
   enableStartup: vi.fn(() => ({ success: true })),
   disableStartup: vi.fn(() => ({ success: true })),
   getLogFilePath: vi.fn(() => "/tmp/daemon.log"),
+  writePidFile: vi.fn(),
+  removePidFile: vi.fn(),
 };
 
 export const mockAuthService = {
