@@ -9,6 +9,9 @@ import { render } from "ink";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App.js";
 import { ThemeProvider } from "./theme/index.js";
+import { createLogger } from "../shared/logger.js";
+
+const log = createLogger("TUI");
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,6 +19,11 @@ const queryClient = new QueryClient({
       retry: 2,
       staleTime: 1000,
       refetchOnWindowFocus: false,
+    },
+    mutations: {
+      onError: (error): void => {
+        log.error("Mutation error:", error);
+      },
     },
   },
 });

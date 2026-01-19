@@ -9,7 +9,12 @@ import fs from "fs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScreenLayout } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
-import { getDaemonService, type DaemonHealthResponse } from "../../services/daemon.service.js";
+import {
+  getDaemonService,
+  type DaemonHealthResponse,
+  STARTUP_HEALTH_CHECK_MAX_ATTEMPTS,
+  STARTUP_HEALTH_CHECK_INTERVAL_MS,
+} from "../../services/daemon.service.js";
 import { useTheme } from "../theme/index.js";
 
 type View = "menu" | "logs" | "action";
@@ -74,10 +79,14 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
   });
 
   // Manually trigger refetch (refetchInterval doesn't work in Ink)
+  // Note: refetch is stable in React Query, so empty deps is safe
   useEffect(() => {
-    const interval = setInterval(() => refetch(), 2000);
+    const interval = setInterval(() => {
+      void refetch();
+    }, 2000);
     return () => clearInterval(interval);
-  }, [refetch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Mutation for starting daemon - waits until healthy
   const startMutation = useMutation({
@@ -87,11 +96,10 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
         return { success: false, error: startResult.error };
       }
 
-      // Poll for health status (max 15 seconds, check every 500ms)
-      const maxAttempts = 30;
-      for (let i = 0; i < maxAttempts; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        const health = await daemonService.checkHealth(2000);
+      // Poll for health status until daemon is healthy
+      for (let i = 0; i < STARTUP_HEALTH_CHECK_MAX_ATTEMPTS; i++) {
+        await new Promise((resolve) => setTimeout(resolve, STARTUP_HEALTH_CHECK_INTERVAL_MS));
+        const health = await daemonService.checkHealth();
         if (health.status === "ok") {
           return { success: true, pid: startResult.pid, healthy: true };
         }

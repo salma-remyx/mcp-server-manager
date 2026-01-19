@@ -14,6 +14,14 @@ import { createLogger } from "../shared/logger.js";
 
 const log = createLogger("DaemonService");
 
+/** Health check configuration constants */
+const HEALTH_CHECK_TIMEOUT_MS = 2000;
+const REFRESH_HEALTH_CHECK_TIMEOUT_MS = 500;
+const REFRESH_HEALTH_CHECK_RETRY_COUNT = 5;
+const REFRESH_HEALTH_CHECK_RETRY_DELAY_MS = 100;
+export const STARTUP_HEALTH_CHECK_MAX_ATTEMPTS = 30;
+export const STARTUP_HEALTH_CHECK_INTERVAL_MS = 500;
+
 /** Health check response from the daemon */
 export interface DaemonHealthResponse {
   status: "ok" | "error";
@@ -157,7 +165,7 @@ export class DaemonService {
    * Check daemon health by calling the /health endpoint.
    * This verifies the daemon's HTTP server is actually responding.
    */
-  async checkHealth(timeoutMs = 3000): Promise<DaemonHealthResponse> {
+  async checkHealth(timeoutMs = HEALTH_CHECK_TIMEOUT_MS): Promise<DaemonHealthResponse> {
     const configService = getConfigService();
     const port = configService.getPort();
     const url = `http://localhost:${port}/health`;
@@ -373,28 +381,35 @@ export class DaemonService {
       return { success: false, error: "Daemon is not running" };
     }
 
+    // Send SIGHUP signal to trigger refresh
     try {
       process.kill(status.pid, "SIGHUP");
-
-      // Wait for daemon to be healthy after refresh
-      const configService = getConfigService();
-      const port = configService.getPort();
-      await ofetch(`http://localhost:${port}/health`, {
-        timeout: 500,
-        retry: 5,
-        retryDelay: 100,
-      });
-
-      return { success: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      // If health check fails but signal was sent, still return success
-      if (message.includes("ECONNREFUSED") || message.includes("timeout")) {
-        log.debug(`Refresh signal sent but health check failed: ${message}`);
-        return { success: true };
+      if (message.includes("ESRCH")) {
+        log.warn("Failed to send refresh signal: process not found");
+        return { success: false, error: "Daemon process not found" };
       }
       log.warn(`Failed to send refresh signal: ${message}`);
       return { success: false, error: message };
+    }
+
+    // Wait for daemon to be healthy after refresh
+    try {
+      const configService = getConfigService();
+      const port = configService.getPort();
+      await ofetch(`http://localhost:${port}/health`, {
+        timeout: REFRESH_HEALTH_CHECK_TIMEOUT_MS,
+        retry: REFRESH_HEALTH_CHECK_RETRY_COUNT,
+        retryDelay: REFRESH_HEALTH_CHECK_RETRY_DELAY_MS,
+      });
+      return { success: true };
+    } catch (error) {
+      // Signal was sent successfully, but health check failed
+      // This is expected if daemon is slow to respond - still consider success
+      const message = error instanceof Error ? error.message : String(error);
+      log.debug(`Refresh signal sent but health check inconclusive: ${message}`);
+      return { success: true };
     }
   }
 
