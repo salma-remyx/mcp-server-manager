@@ -453,9 +453,19 @@ export class AuthService {
 
   /** Handle OAuth callback */
   private handleCallback(req: IncomingMessage, res: ServerResponse): void {
-    const url = new URL(req.url || "", `http://127.0.0.1:${this.callbackPort}`);
+    // Check if we have a valid port (use local variable for type narrowing)
+    const port = this.callbackPort;
+    if (!port) {
+      log.warn("OAuth callback received but server port is null");
+      res.writeHead(500, { "Content-Type": "text/plain" });
+      res.end("Callback server not properly initialized");
+      return;
+    }
+
+    const url = new URL(req.url || "", `http://127.0.0.1:${port}`);
 
     if (url.pathname !== "/callback") {
+      // Silently ignore favicon and other non-callback requests
       res.writeHead(404, { "Content-Type": "text/plain" });
       res.end("Not Found");
       return;
