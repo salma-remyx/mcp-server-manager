@@ -95,6 +95,10 @@ export class DaemonService {
   /** Kill a process and wait for it to terminate */
   private async killProcess(pid: number, signal: string = "SIGTERM"): Promise<boolean> {
     try {
+      if (pid === process.pid) {
+        log.warn(`Refusing to signal current process (PID: ${pid})`);
+        return false;
+      }
       process.kill(pid, signal as "SIGTERM" | "SIGKILL");
 
       // Wait for process to terminate (check every 100ms, max 5 seconds)
@@ -123,13 +127,17 @@ export class DaemonService {
 
   /** Check if daemon is running */
   isDaemonRunning(): DaemonStatus {
+    const configService = getConfigService();
+    const port = configService.getPort();
+    let pidFromFile: number | undefined;
+
     // First check PID file
     if (fs.existsSync(this.pidFile)) {
       try {
         const pid = parseInt(fs.readFileSync(this.pidFile, "utf8").trim());
         // Check if process is alive (signal 0 doesn't kill, just checks)
         process.kill(pid, 0);
-        return { running: true, pid };
+        pidFromFile = pid;
       } catch (error) {
         log.debug("Daemon process not found from PID file:", error);
         // Process not found, clean up stale pid file
@@ -141,15 +149,32 @@ export class DaemonService {
       }
     }
 
-    // Fallback: check if something is using the port
-    const configService = getConfigService();
-    const port = configService.getPort();
-    const pids = this.findProcessesByPort(port);
-    if (pids.length > 0) {
-      // Something is on the port - consider it running
-      // Use the first PID found (there should typically only be one)
-      log.debug(`Found process on port ${port}: PID ${pids[0]}`);
-      return { running: true, pid: pids[0] };
+    const portPids = this.findProcessesByPort(port);
+    if (portPids.length > 0) {
+      if (pidFromFile && portPids.includes(pidFromFile)) {
+        return { running: true, pid: pidFromFile };
+      }
+
+      if (pidFromFile) {
+        log.debug(`PID file ${pidFromFile} is not bound to port ${port}, ignoring`);
+        try {
+          fs.unlinkSync(this.pidFile);
+        } catch (cleanupError) {
+          log.debug("Failed to remove stale PID file:", cleanupError);
+        }
+      }
+
+      log.debug(`Found process on port ${port}: PID ${portPids[0]}`);
+      return { running: true, pid: portPids[0] };
+    }
+
+    if (pidFromFile) {
+      log.debug(`PID file ${pidFromFile} exists but port ${port} is unused, ignoring`);
+      try {
+        fs.unlinkSync(this.pidFile);
+      } catch (cleanupError) {
+        log.debug("Failed to remove stale PID file:", cleanupError);
+      }
     }
 
     return { running: false };
@@ -277,13 +302,7 @@ export class DaemonService {
     const port = configService.getPort();
     const pidsToKill = new Set<number>();
 
-    // Get PID from file if it exists
-    const status = this.isDaemonRunning();
-    if (status.running && status.pid) {
-      pidsToKill.add(status.pid);
-    }
-
-    // Also find any processes using the port (in case PID file is stale)
+    // Only stop processes that are bound to the daemon port
     const portPids = this.findProcessesByPort(port);
     for (const pid of portPids) {
       pidsToKill.add(pid);
@@ -338,6 +357,27 @@ export class DaemonService {
     // Return success if port is free, even if some kill operations had issues
     // (the port being free is what matters)
     return { success: true };
+  }
+
+  /** Ask the running daemon to refresh tool filters without reconnecting servers */
+  async refreshTools(): Promise<Result> {
+    const status = this.isDaemonRunning();
+    if (!status.running || !status.pid) {
+      return { success: false, error: "Daemon is not running" };
+    }
+
+    try {
+      process.kill(status.pid, "SIGUSR1");
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("ESRCH")) {
+        log.warn("Failed to send tool refresh signal: process not found");
+        return { success: false, error: "Daemon process not found" };
+      }
+      log.warn(`Failed to send tool refresh signal: ${message}`);
+      return { success: false, error: message };
+    }
   }
 
   /** Queue daemon restarts so we don't spawn overlapping processes */

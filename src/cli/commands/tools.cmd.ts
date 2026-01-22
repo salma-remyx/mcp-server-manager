@@ -13,7 +13,7 @@ async function refreshDaemonIfRunning(): Promise<void> {
   const daemonService = getDaemonService();
   const status = daemonService.isDaemonRunning();
   if (status.running) {
-    await daemonService.refreshDaemon();
+    await daemonService.refreshTools();
   }
 }
 

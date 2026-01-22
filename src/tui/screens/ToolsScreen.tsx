@@ -96,20 +96,17 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
   );
 
   // Show temporary message
-  const showMessage = useCallback(
-    (msg: string, type: "success" | "error" | "info" = "info") => {
-      setState((prev) => ({ ...prev, message: msg, messageType: type }));
-      setTimeout(() => {
-        setState((prev) => ({ ...prev, message: null }));
-      }, 2000);
-    },
-    []
-  );
+  const showMessage = useCallback((msg: string, type: "success" | "error" | "info" = "info") => {
+    setState((prev) => ({ ...prev, message: msg, messageType: type }));
+    setTimeout(() => {
+      setState((prev) => ({ ...prev, message: null }));
+    }, 2000);
+  }, []);
 
   const refreshDaemonIfRunning = useCallback(() => {
     if (daemonService.isDaemonRunning().running) {
-      daemonService.refreshDaemon().catch((error) => {
-        console.error("Failed to refresh daemon after tool changes:", error);
+      daemonService.refreshTools().catch((error) => {
+        console.error("Failed to refresh tool list after changes:", error);
       });
     }
   }, [daemonService]);
@@ -157,7 +154,12 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
       return;
     }
 
-    setState((prev) => ({ ...prev, isTesting: true, message: "Discovering tools...", messageType: "info" }));
+    setState((prev) => ({
+      ...prev,
+      isTesting: true,
+      message: "Discovering tools...",
+      messageType: "info",
+    }));
 
     try {
       const testResult = await testingService.testServer(result.server, result.type);
@@ -168,15 +170,19 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
         showMessage(testResult.error || "Discovery failed", "error");
       }
     } catch (error) {
-      showMessage(
-        error instanceof Error ? error.message : "Failed to discover tools",
-        "error"
-      );
+      showMessage(error instanceof Error ? error.message : "Failed to discover tools", "error");
     } finally {
       setState((prev) => ({ ...prev, isTesting: false }));
       refreshDaemonIfRunning();
     }
-  }, [configService, refreshDaemonIfRunning, reloadTools, showMessage, state.serverId, testingService]);
+  }, [
+    configService,
+    refreshDaemonIfRunning,
+    reloadTools,
+    showMessage,
+    state.serverId,
+    testingService,
+  ]);
 
   // Handle keyboard input
   useInput((input, key) => {
@@ -206,7 +212,9 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
         setState((prev) => ({
           ...prev,
           globalIndex:
-            prev.globalIndex <= 0 ? globalItems.length - 1 : (prev.globalIndex - 1) % globalItems.length,
+            prev.globalIndex <= 0
+              ? globalItems.length - 1
+              : (prev.globalIndex - 1) % globalItems.length,
         }));
         return;
       }
@@ -292,8 +300,17 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
     }
   });
 
-  const { serverName, tools, currentToolIndex, filter, message, messageType, isTesting, view, globalIndex } =
-    state;
+  const {
+    serverName,
+    tools,
+    currentToolIndex,
+    filter,
+    message,
+    messageType,
+    isTesting,
+    view,
+    globalIndex,
+  } = state;
   const { items: globalItems, grandTotal } = buildGlobalTotals();
 
   // Global view or no server selected
@@ -330,7 +347,9 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
               const isCurrent = idx === globalIndex;
               return (
                 <Box key={id} gap={1} paddingX={1}>
-                  <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>{isCurrent ? "→" : " "}</Text>
+                  <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>
+                    {isCurrent ? "→" : " "}
+                  </Text>
                   <Text color={isCurrent ? theme.colors.highlightText : undefined} bold={isCurrent}>
                     {item.name}
                   </Text>
@@ -374,8 +393,17 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
 
   const footer = message ? (
     <Box flexDirection="column">
-      <Text color={messageType === "success" ? theme.colors.success : messageType === "error" ? theme.colors.error : theme.colors.warning}>
-        {messageType === "success" ? "✓" : messageType === "error" ? "✗" : isTesting ? "…" : "ℹ"} {message}
+      <Text
+        color={
+          messageType === "success"
+            ? theme.colors.success
+            : messageType === "error"
+              ? theme.colors.error
+              : theme.colors.warning
+        }
+      >
+        {messageType === "success" ? "✓" : messageType === "error" ? "✗" : isTesting ? "…" : "ℹ"}{" "}
+        {message}
       </Text>
       <Text dimColor>
         Enabled: {enabledCount}/{allTools.length} · Tokens:{" "}
@@ -415,8 +443,12 @@ export function ToolsScreen({ onBack, initialServerId }: ToolsScreenProps): Reac
 
             return (
               <Box key={tool} gap={1} paddingX={1}>
-                <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>{isCurrent ? "→" : " "}</Text>
-                <Text color={isEnabled ? theme.colors.success : theme.colors.error}>{isEnabled ? "[✓]" : "[ ]"}</Text>
+                <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>
+                  {isCurrent ? "→" : " "}
+                </Text>
+                <Text color={isEnabled ? theme.colors.success : theme.colors.error}>
+                  {isEnabled ? "[✓]" : "[ ]"}
+                </Text>
                 <Text
                   color={isCurrent ? "magenta" : isEnabled ? undefined : "gray"}
                   bold={isCurrent}

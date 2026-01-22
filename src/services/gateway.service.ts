@@ -666,6 +666,66 @@ export async function refreshGateway(
 }
 
 /**
+ * Refresh tool filters without reconnecting servers.
+ */
+export async function refreshGatewayTools(
+  reason = "manual"
+): Promise<{ success: boolean; error?: string }> {
+  if (!gatewayState.running || !gatewayState.mcpServer) {
+    return { success: false, error: "Gateway is not running" };
+  }
+
+  const runRefresh = async (): Promise<void> => {
+    logger.info(`Refreshing gateway tools (${reason})...`);
+
+    const configService = getConfigService();
+    configService.reload();
+
+    const toolFilters = configService.getToolFilters();
+    const servers = Array.from(gatewayState.connectedServers.values());
+
+    const refreshResults = await Promise.all(
+      servers.map(async (server) => {
+        try {
+          const toolsResult = await server.client.listTools();
+          const allTools = toolsResult.tools || [];
+          const disabledTools = new Set(toolFilters[server.id]?.disabledTools || []);
+          server.tools = allTools.filter((tool) => !disabledTools.has(tool.name));
+          return { id: server.id, success: true };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          logger.warn(`Failed to refresh tools for ${server.name}: ${message}`);
+          return { id: server.id, success: false };
+        }
+      })
+    );
+
+    const failedCount = refreshResults.filter((result) => !result.success).length;
+    if (failedCount > 0) {
+      logger.warn(`Tool refresh skipped ${failedCount} server(s) due to errors`);
+    }
+
+    const aggregatedTools = refreshAggregatedTools();
+    gatewayState.mcpServer?.sendToolListChanged();
+    logger.info(`Gateway tool refresh complete: ${aggregatedTools.length} tool(s)`);
+  };
+
+  refreshLock = refreshLock.then(
+    () => runRefresh(),
+    () => runRefresh()
+  );
+
+  try {
+    await refreshLock;
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Gateway tool refresh failed: ${message}`);
+    return { success: false, error: message };
+  }
+}
+
+/**
  * Run gateway in foreground mode (blocking)
  */
 export async function runGatewayForeground(selectedServerIds?: string[]): Promise<void> {
@@ -702,10 +762,18 @@ export async function runGatewayForeground(selectedServerIds?: string[]): Promis
     });
   };
 
+  const handleToolRefreshSignal = (): void => {
+    refreshGatewayTools("signal").then((result) => {
+      if (!result.success) {
+        logger.warn(`Gateway tool refresh from signal failed: ${result.error}`);
+      }
+    });
+  };
+
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
   process.on("SIGHUP", handleRefreshSignal);
-  process.on("SIGUSR1", handleRefreshSignal);
+  process.on("SIGUSR1", handleToolRefreshSignal);
   process.on("uncaughtException", handleError);
   process.on("unhandledRejection", (reason) => {
     const error = reason instanceof Error ? reason : new Error(String(reason));
