@@ -64,13 +64,14 @@ export class DaemonService {
     }
   }
 
-  /** Find PIDs of processes using a specific port */
+  /** Find PIDs of processes LISTENING on a specific port (not clients connected to it) */
   private findProcessesByPort(port: number): number[] {
     const pids: number[] = [];
     try {
       if (process.platform === "darwin" || process.platform === "linux") {
-        // Use lsof to find processes using the port
-        const output = execSync(`lsof -ti :${port}`, {
+        // Use lsof to find processes LISTENING on the port (not clients)
+        // -sTCP:LISTEN filters to only show processes in LISTEN state
+        const output = execSync(`lsof -ti :${port} -sTCP:LISTEN`, {
           encoding: "utf8",
           stdio: ["ignore", "pipe", "ignore"],
         });
@@ -87,7 +88,7 @@ export class DaemonService {
       }
     } catch {
       // lsof returns non-zero exit code if no processes found, which is fine
-      log.debug(`No processes found on port ${port}`);
+      log.debug(`No processes found listening on port ${port}`);
     }
     return pids;
   }
@@ -129,55 +130,36 @@ export class DaemonService {
   isDaemonRunning(): DaemonStatus {
     const configService = getConfigService();
     const port = configService.getPort();
-    let pidFromFile: number | undefined;
 
-    // First check PID file
-    if (fs.existsSync(this.pidFile)) {
-      try {
-        const pid = parseInt(fs.readFileSync(this.pidFile, "utf8").trim());
-        // Check if process is alive (signal 0 doesn't kill, just checks)
-        process.kill(pid, 0);
-        pidFromFile = pid;
-      } catch (error) {
-        log.debug("Daemon process not found from PID file:", error);
-        // Process not found, clean up stale pid file
-        try {
-          fs.unlinkSync(this.pidFile);
-        } catch (cleanupError) {
-          log.debug("Failed to remove stale PID file:", cleanupError);
-        }
-      }
-    }
-
+    // Primary check: Is there a process listening on the daemon port?
     const portPids = this.findProcessesByPort(port);
-    if (portPids.length > 0) {
-      if (pidFromFile && portPids.includes(pidFromFile)) {
-        return { running: true, pid: pidFromFile };
-      }
-
-      if (pidFromFile) {
-        log.debug(`PID file ${pidFromFile} is not bound to port ${port}, ignoring`);
+    if (portPids.length === 0) {
+      // No process on port = daemon not running
+      // Clean up stale PID file if it exists
+      if (fs.existsSync(this.pidFile)) {
         try {
           fs.unlinkSync(this.pidFile);
-        } catch (cleanupError) {
-          log.debug("Failed to remove stale PID file:", cleanupError);
+          log.debug("Cleaned up stale PID file (no process on port)");
+        } catch (error) {
+          log.debug("Failed to remove stale PID file:", error);
         }
       }
-
-      log.debug(`Found process on port ${port}: PID ${portPids[0]}`);
-      return { running: true, pid: portPids[0] };
+      return { running: false };
     }
 
-    if (pidFromFile) {
-      log.debug(`PID file ${pidFromFile} exists but port ${port} is unused, ignoring`);
-      try {
-        fs.unlinkSync(this.pidFile);
-      } catch (cleanupError) {
-        log.debug("Failed to remove stale PID file:", cleanupError);
-      }
+    // Found process(es) on the port
+    const pid = portPids[0];
+    log.debug(`Found process on port ${port}: PID ${pid}`);
+
+    // Update PID file to reflect the actual running process
+    // (This handles cases where daemon was started externally or PID file is stale)
+    try {
+      fs.writeFileSync(this.pidFile, pid.toString());
+    } catch (error) {
+      log.debug("Failed to update PID file:", error);
     }
 
-    return { running: false };
+    return { running: true, pid };
   }
 
   /** Check if any process is using the daemon port */
@@ -279,7 +261,7 @@ export class DaemonService {
     const shellCommand = envService.getShellCommand();
     const fullCommand = `node ${finalCliPath} daemon start --foreground`;
 
-    const child: ChildProcess = spawn(shellCommand, ["-c", fullCommand], {
+    const child: ChildProcess = spawn(shellCommand, ["-l", "-c", fullCommand], {
       detached: true,
       stdio: ["ignore", logStream, logStream],
       env,
