@@ -26,6 +26,7 @@ import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { getConfigService } from "./config.service.js";
 import { getAuthService } from "./auth.service.js";
+import { getEnvironmentService } from "./environment.service.js";
 import { createTransportAuthProvider } from "./oauth-transport.provider.js";
 import { createLogger } from "../shared/logger.js";
 import { VERSION } from "../shared/version.js";
@@ -91,13 +92,22 @@ let refreshLock: Promise<void> = Promise.resolve();
  */
 async function connectLocalServer(server: LocalServer): Promise<ConnectedServer | null> {
   const configService = getConfigService();
+  const envService = getEnvironmentService();
 
   try {
     logger.info(`Connecting to local server: ${server.name}`);
 
+    // Use shell wrapping to ensure PATH resolution
+    // This ensures commands like npx, uvx are found even with limited PATH
+    const shellCommand = envService.getShellCommand();
+    const fullCommand =
+      server.args && server.args.length > 0
+        ? `${server.command} ${server.args.join(" ")}`
+        : server.command;
+
     const transport = new StdioClientTransport({
-      command: server.command,
-      args: server.args || [],
+      command: shellCommand, // e.g., "/bin/zsh" or "/bin/bash"
+      args: ["-l", "-c", fullCommand], // -l = login shell (loads full PATH)
       env: { ...process.env, ...(server.env || {}) } as Record<string, string>,
     });
 
@@ -706,7 +716,15 @@ export async function refreshGatewayTools(
     }
 
     const aggregatedTools = refreshAggregatedTools();
-    gatewayState.mcpServer?.sendToolListChanged();
+
+    // Notify clients about tool list changes (with error handling)
+    try {
+      await gatewayState.mcpServer?.sendToolListChanged();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn(`Failed to notify clients of tool changes: ${message}`);
+    }
+
     logger.info(`Gateway tool refresh complete: ${aggregatedTools.length} tool(s)`);
   };
 
@@ -755,19 +773,29 @@ export async function runGatewayForeground(selectedServerIds?: string[]): Promis
   };
 
   const handleRefreshSignal = (): void => {
-    refreshGateway("signal").then((result) => {
-      if (!result.success) {
-        logger.warn(`Gateway refresh from signal failed: ${result.error}`);
-      }
-    });
+    refreshGateway("signal")
+      .then((result) => {
+        if (!result.success) {
+          logger.warn(`Gateway refresh from signal failed: ${result.error}`);
+        }
+      })
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error(`Gateway refresh from signal crashed: ${message}`);
+      });
   };
 
   const handleToolRefreshSignal = (): void => {
-    refreshGatewayTools("signal").then((result) => {
-      if (!result.success) {
-        logger.warn(`Gateway tool refresh from signal failed: ${result.error}`);
-      }
-    });
+    refreshGatewayTools("signal")
+      .then((result) => {
+        if (!result.success) {
+          logger.warn(`Gateway tool refresh from signal failed: ${result.error}`);
+        }
+      })
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error(`Gateway tool refresh from signal crashed: ${message}`);
+      });
   };
 
   process.on("SIGINT", shutdown);
