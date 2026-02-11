@@ -264,7 +264,7 @@ export class DaemonService {
     // effect after the login shell finishes sourcing profile scripts.
     // This ensures the daemon and child processes use the same Node version.
     const nodeBinDir = path.dirname(process.execPath);
-    const fullCommand = `export PATH="${nodeBinDir}:$PATH" && ${process.execPath} ${finalCliPath} daemon start --foreground`;
+    const fullCommand = `export PATH="${nodeBinDir}:$PATH" && "${process.execPath}" "${finalCliPath}" daemon start --foreground`;
 
     const child: ChildProcess = spawn(shellCommand, ["-l", "-c", fullCommand], {
       detached: true,
