@@ -259,7 +259,12 @@ export class DaemonService {
     // Get environment service to detect shell and use it to spawn the node process
     const envService = getEnvironmentService();
     const shellCommand = envService.getShellCommand();
-    const fullCommand = `node ${finalCliPath} daemon start --foreground`;
+
+    // Prepend the current Node's bin dir inside the command so it takes
+    // effect after the login shell finishes sourcing profile scripts.
+    // This ensures the daemon and child processes use the same Node version.
+    const nodeBinDir = path.dirname(process.execPath);
+    const fullCommand = `export PATH="${nodeBinDir}:$PATH" && "${process.execPath}" "${finalCliPath}" daemon start --foreground`;
 
     const child: ChildProcess = spawn(shellCommand, ["-l", "-c", fullCommand], {
       detached: true,
