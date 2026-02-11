@@ -28,6 +28,7 @@ import { getConfigService } from "./config.service.js";
 import { getAuthService } from "./auth.service.js";
 import { getEnvironmentService } from "./environment.service.js";
 import { createTransportAuthProvider } from "./oauth-transport.provider.js";
+import path from "node:path";
 import { createLogger } from "../shared/logger.js";
 import { VERSION } from "../shared/version.js";
 import type { LocalServer, RemoteServer } from "../types/index.js";
@@ -105,9 +106,15 @@ async function connectLocalServer(server: LocalServer): Promise<ConnectedServer 
         ? `${server.command} ${server.args.join(" ")}`
         : server.command;
 
+    // Prepend the current Node's bin dir inside the command so it takes
+    // effect after the login shell finishes sourcing profile scripts.
+    // This ensures npx/node resolve to the same version that started mcpsm.
+    const nodeBinDir = path.dirname(process.execPath);
+    const wrappedCommand = `export PATH="${nodeBinDir}:$PATH" && ${fullCommand}`;
+
     const transport = new StdioClientTransport({
       command: shellCommand, // e.g., "/bin/zsh" or "/bin/bash"
-      args: ["-l", "-c", fullCommand], // -l = login shell (loads full PATH)
+      args: ["-l", "-c", wrappedCommand], // -l = login shell (loads full PATH)
       env: { ...process.env, ...(server.env || {}) } as Record<string, string>,
     });
 
