@@ -685,6 +685,18 @@ export async function refreshGateway(
     }
 
     const aggregatedTools = refreshAggregatedTools();
+
+    // Notify ALL active session servers about tool list changes
+    const notifyPromises = Array.from(gatewayState.activeSessions.values()).map(async (session) => {
+      try {
+        await session.server.sendToolListChanged();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn(`Failed to notify session of tool changes: ${message}`);
+      }
+    });
+    await Promise.allSettled(notifyPromises);
+
     logger.info(
       `Gateway refresh complete: ${connectedServers.length} server(s), ${aggregatedTools.length} tool(s)`
     );
