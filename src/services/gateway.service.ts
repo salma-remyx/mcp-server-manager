@@ -62,11 +62,16 @@ async function closeServerConnection(server: ConnectedServer): Promise<void> {
   }
 }
 
+interface SessionEntry {
+  transport: StreamableHTTPServerTransport;
+  server: Server;
+}
+
 interface GatewayState {
   running: boolean;
   port: number;
   httpServer: HttpServer | null;
-  mcpServer: Server | null;
+  activeSessions: Map<string, SessionEntry>;
   connectedServers: Map<string, ConnectedServer>;
   toolToServerMap: Map<string, string>; // toolName -> serverId
   aggregatedTools: Tool[];
@@ -77,7 +82,7 @@ const createGatewayState = (): GatewayState => ({
   running: false,
   port: 8850,
   httpServer: null,
-  mcpServer: null,
+  activeSessions: new Map(),
   connectedServers: new Map(),
   toolToServerMap: new Map(),
   aggregatedTools: [],
@@ -368,32 +373,30 @@ export async function startGateway(
       `Aggregated ${aggregatedTools.length} tools from ${connectedServers.length} servers`
     );
 
-    // Create MCP server using the lower-level Server API to work directly with JSON Schema
-    const mcpServer = new Server(
-      { name: "mcpsm-gateway", version: VERSION },
-      {
-        capabilities: {
-          tools: {},
-        },
-      }
-    );
+    // Factory: create a new MCP Server instance per session
+    // Each server gets its own transport but shares the gateway's tool state
+    function createSessionServer(): Server {
+      const sessionServer = new Server(
+        { name: "mcpsm-gateway", version: VERSION },
+        {
+          capabilities: {
+            tools: {},
+          },
+        }
+      );
 
-    // Handle tools/list request - return all aggregated tools with their JSON Schema
-    mcpServer.setRequestHandler(ListToolsRequestSchema, () => ({
-      tools: gatewayState.aggregatedTools,
-    }));
+      sessionServer.setRequestHandler(ListToolsRequestSchema, () => ({
+        tools: gatewayState.aggregatedTools,
+      }));
 
-    // Handle tools/call request - route to appropriate server
-    mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const toolName = request.params.name;
-      const args = request.params.arguments || {};
+      sessionServer.setRequestHandler(CallToolRequestSchema, async (request) => {
+        const toolName = request.params.name;
+        const args = request.params.arguments || {};
+        return await handleToolCall(toolName, args);
+      });
 
-      const result = await handleToolCall(toolName, args);
-      return result;
-    });
-
-    // Track active transports per session
-    const activeSessions = new Map<string, StreamableHTTPServerTransport>();
+      return sessionServer;
+    }
 
     // Create HTTP server with StreamableHTTP transport
     const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
@@ -428,31 +431,40 @@ export async function startGateway(
       if (req.url === "/mcp" || req.url?.startsWith("/mcp?")) {
         // Check for existing session
         const sessionId = req.headers["mcp-session-id"] as string | undefined;
-        let transport = sessionId ? activeSessions.get(sessionId) : undefined;
+        let transport = sessionId
+          ? gatewayState.activeSessions.get(sessionId)?.transport
+          : undefined;
 
         if (!transport) {
-          // Create new transport for new sessions
+          // Create new transport AND server for new sessions
           let currentSessionId: string | undefined;
           const newTransport = new StreamableHTTPServerTransport({
             sessionIdGenerator: (): string => randomUUID(),
             enableJsonResponse: true,
             onsessioninitialized: (newSessionId): void => {
               currentSessionId = newSessionId;
-              activeSessions.set(newSessionId, newTransport);
+              gatewayState.activeSessions.set(newSessionId, {
+                transport: newTransport,
+                server: sessionServer,
+              });
             },
           });
 
           transport = newTransport;
+          const sessionServer = createSessionServer();
 
           // Clean up session when transport closes
           transport.onclose = (): void => {
             if (currentSessionId) {
-              activeSessions.delete(currentSessionId);
+              gatewayState.activeSessions.delete(currentSessionId);
+              sessionServer.close().catch((err) => {
+                logger.warn(`Error closing session server ${currentSessionId}:`, err);
+              });
               logger.debug(`Session ${currentSessionId} closed and cleaned up`);
             }
           };
 
-          await mcpServer.connect(transport);
+          await sessionServer.connect(transport);
         }
 
         await transport.handleRequest(req, res);
@@ -483,7 +495,6 @@ export async function startGateway(
       running: true,
       port,
       httpServer,
-      mcpServer,
     };
 
     return { success: true };
@@ -511,6 +522,23 @@ export async function stopGateway(): Promise<{ success: boolean; error?: string 
     // Wait for all connections to close (with timeout)
     await Promise.allSettled(closePromises);
 
+    // Close all active MCP sessions (servers + transports)
+    const sessionClosePromises = Array.from(gatewayState.activeSessions.values()).map(
+      async (session) => {
+        try {
+          await session.server.close();
+        } catch (err) {
+          logger.warn("Error closing session server:", err);
+        }
+        try {
+          await session.transport.close();
+        } catch (err) {
+          logger.warn("Error closing session transport:", err);
+        }
+      }
+    );
+    await Promise.allSettled(sessionClosePromises);
+
     // Close HTTP server
     if (gatewayState.httpServer) {
       const httpServer = gatewayState.httpServer;
@@ -519,16 +547,11 @@ export async function stopGateway(): Promise<{ success: boolean; error?: string 
       });
     }
 
-    // Close MCP server
-    if (gatewayState.mcpServer) {
-      await gatewayState.mcpServer.close();
-    }
-
     gatewayState = {
       running: false,
       port: 8850,
       httpServer: null,
-      mcpServer: null,
+      activeSessions: new Map(),
       connectedServers: new Map(),
       toolToServerMap: new Map(),
       aggregatedTools: [],
@@ -688,7 +711,7 @@ export async function refreshGateway(
 export async function refreshGatewayTools(
   reason = "manual"
 ): Promise<{ success: boolean; error?: string }> {
-  if (!gatewayState.running || !gatewayState.mcpServer) {
+  if (!gatewayState.running) {
     return { success: false, error: "Gateway is not running" };
   }
 
@@ -724,13 +747,16 @@ export async function refreshGatewayTools(
 
     const aggregatedTools = refreshAggregatedTools();
 
-    // Notify clients about tool list changes (with error handling)
-    try {
-      await gatewayState.mcpServer?.sendToolListChanged();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      logger.warn(`Failed to notify clients of tool changes: ${message}`);
-    }
+    // Notify ALL active session servers about tool list changes
+    const notifyPromises = Array.from(gatewayState.activeSessions.values()).map(async (session) => {
+      try {
+        await session.server.sendToolListChanged();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn(`Failed to notify session of tool changes: ${message}`);
+      }
+    });
+    await Promise.allSettled(notifyPromises);
 
     logger.info(`Gateway tool refresh complete: ${aggregatedTools.length} tool(s)`);
   };
