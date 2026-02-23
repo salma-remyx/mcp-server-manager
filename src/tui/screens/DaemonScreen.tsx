@@ -2,19 +2,19 @@
  * DaemonScreen - Manage gateway daemon (ink component)
  */
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import fs from "fs";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ScreenLayout } from "../components/index.js";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ScreenLayout, DaemonStatus } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import {
   getDaemonService,
-  type DaemonHealthResponse,
   STARTUP_HEALTH_CHECK_MAX_ATTEMPTS,
   STARTUP_HEALTH_CHECK_INTERVAL_MS,
 } from "../../services/daemon.service.js";
+import { useDaemonStatus } from "../hooks/useDaemonStatus.js";
 import { useTheme } from "../theme/index.js";
 
 type View = "menu" | "logs" | "action";
@@ -39,16 +39,6 @@ interface DaemonScreenProps {
   onBack: () => void;
 }
 
-interface DaemonStatus {
-  running: boolean;
-  pid?: number;
-  startupEnabled: boolean;
-  port: number;
-  logFile: string;
-  healthy: boolean;
-  health?: DaemonHealthResponse;
-}
-
 export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement {
   const { theme } = useTheme();
   const daemonService = getDaemonService();
@@ -60,33 +50,8 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
     null
   );
   const [logs, setLogs] = useState<string[]>([]);
-  const [lastCheckedAt, setLastCheckedAt] = useState<number>(Date.now());
 
-  // Query for daemon status
-  // NOTE: refetchInterval doesn't work in Ink/TUI, so we manually refetch below
-  const {
-    data: status,
-    isLoading: statusLoading,
-    isFetching,
-    refetch,
-  } = useQuery<DaemonStatus>({
-    queryKey: ["daemon-status"],
-    queryFn: async () => {
-      const result = await daemonService.getStatus();
-      setLastCheckedAt(Date.now());
-      return result;
-    },
-  });
-
-  // Manually trigger refetch (refetchInterval doesn't work in Ink)
-  // Note: refetch is stable in React Query, so empty deps is safe
-  useEffect(() => {
-    const interval = setInterval(() => {
-      void refetch();
-    }, 2000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const { status, isFetching } = useDaemonStatus();
 
   // Mutation for starting daemon - waits until healthy
   const startMutation = useMutation({
@@ -348,41 +313,13 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
     );
   }
 
-  // Helper function to render health status
-  const renderHealthStatus = (): React.ReactElement => {
-    if (statusLoading || !status) {
-      return <Text dimColor>Loading...</Text>;
-    }
-
-    if (!status.running) {
-      return <Text color="red">● Stopped</Text>;
-    }
-
-    if (status.healthy) {
-      return (
-        <Text color="green">
-          ● Healthy (PID: {status.pid}, {status.health?.servers ?? 0} servers,{" "}
-          {status.health?.tools ?? 0} tools)
-        </Text>
-      );
-    }
-
-    // Running but unhealthy
-    return (
-      <Box gap={1}>
-        <Text color="yellow">● Running but unhealthy (PID: {status.pid})</Text>
-        <Text color="red">{status.health?.error || "Not responding"}</Text>
-      </Box>
-    );
-  };
-
   // Menu view
   return (
     <ScreenLayout title="Daemon Management" menuSections={daemonMenuSections}>
       {/* Status summary - compact single line */}
       <Box gap={1} marginBottom={1} paddingY={1}>
         <Text>Status:</Text>
-        {renderHealthStatus()}
+        <DaemonStatus />
         <Text dimColor>|</Text>
         <Text>Port:</Text>
         <Text color={theme.colors.primary}>{status?.port ?? "..."}</Text>
@@ -390,11 +327,6 @@ export function DaemonScreen({ onBack }: DaemonScreenProps): React.ReactElement 
         <Text>Auto-start:</Text>
         <Text color={status?.startupEnabled ? "green" : "gray"}>
           {status?.startupEnabled ? "enabled" : "disabled"}
-        </Text>
-      </Box>
-      <Box marginBottom={1} gap={1}>
-        <Text dimColor>
-          Last checked: {lastCheckedAt > 0 ? new Date(lastCheckedAt).toLocaleTimeString() : "never"}
         </Text>
         {isFetching && (
           <>

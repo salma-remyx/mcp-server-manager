@@ -11,4 +11,5 @@ export { ScrollableList } from "./ScrollableList.js";
 export { ConfirmDialog } from "./ConfirmDialog.js";
 export { ShortcutsBar } from "./ShortcutsBar.js";
 export { VersionBanner } from "./VersionBanner.js";
+export { DaemonStatus } from "./DaemonStatus.js";
 export type { ConfirmDialogProps } from "./ConfirmDialog.js";
