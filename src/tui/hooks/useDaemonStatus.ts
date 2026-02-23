@@ -12,6 +12,10 @@ interface DaemonStatusData {
   health?: DaemonHealthResponse;
 }
 
+interface UseDaemonStatusOptions {
+  polling?: boolean;
+}
+
 interface UseDaemonStatusResult {
   status: DaemonStatusData | undefined;
   isLoading: boolean;
@@ -21,8 +25,9 @@ interface UseDaemonStatusResult {
 
 const POLL_INTERVAL_MS = 2000;
 
-export function useDaemonStatus(): UseDaemonStatusResult {
+export function useDaemonStatus(options?: UseDaemonStatusOptions): UseDaemonStatusResult {
   const daemonService = getDaemonService();
+  const polling = options?.polling ?? false;
 
   const {
     data: status,
@@ -35,12 +40,13 @@ export function useDaemonStatus(): UseDaemonStatusResult {
   });
 
   // refetchInterval doesn't work in Ink, so poll manually
-  useEffect((): (() => void) => {
+  useEffect((): (() => void) | void => {
+    if (!polling) return;
     const interval = setInterval((): void => {
       void refetch();
     }, POLL_INTERVAL_MS);
     return (): void => clearInterval(interval);
-  }, [refetch]);
+  }, [refetch, polling]);
 
   return { status, isLoading, isFetching, refetch: (): void => void refetch() };
 }

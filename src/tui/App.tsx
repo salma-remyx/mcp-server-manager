@@ -969,7 +969,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
       {/* Daemon status indicator */}
       <Box marginX={contentMargin} marginTop={1} gap={1}>
         <Text dimColor>Daemon:</Text>
-        <DaemonStatus compact />
+        <DaemonStatus compact polling />
       </Box>
 
       {/* Version update banner */}

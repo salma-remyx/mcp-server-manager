@@ -6,11 +6,12 @@ import { useTheme } from "../theme/index.js";
 
 interface DaemonStatusProps {
   compact?: boolean;
+  polling?: boolean;
 }
 
-export function DaemonStatus({ compact = false }: DaemonStatusProps): React.ReactElement {
+export function DaemonStatus({ compact = false, polling = false }: DaemonStatusProps): React.ReactElement {
   const { theme } = useTheme();
-  const { status, isLoading } = useDaemonStatus();
+  const { status, isLoading } = useDaemonStatus({ polling });
 
   if (isLoading || !status) {
     return (
@@ -38,7 +39,7 @@ export function DaemonStatus({ compact = false }: DaemonStatusProps): React.Reac
         <Box gap={1}>
           <Text color={theme.colors.success}>●</Text>
           <Text color={theme.colors.success}>
-            Healthy ({status.health?.servers ?? 0}s/{status.health?.tools ?? 0}t)
+            Healthy ({status.health?.servers ?? 0} srv, {status.health?.tools ?? 0} tools)
           </Text>
         </Box>
       );
