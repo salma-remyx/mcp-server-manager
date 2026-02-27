@@ -897,8 +897,12 @@ export function App({ onExit }: AppProps): React.ReactElement {
       }
     };
 
-    localServers.forEach((server) => accumulate(server.id));
-    remoteServers.forEach((server) => accumulate(`remote:${server.id}`));
+    localServers.forEach((server) => {
+      if (profileMemberIds.has(server.id)) accumulate(server.id);
+    });
+    remoteServers.forEach((server) => {
+      if (profileMemberIds.has(`remote:${server.id}`)) accumulate(`remote:${server.id}`);
+    });
 
     return hasData ? total : null;
   })();
