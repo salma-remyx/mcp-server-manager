@@ -963,13 +963,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
           profile={activeProfile}
           port={port}
           totalTokens={totalTokens}
+          trailing={<DaemonStatus compact polling />}
         />
-      </Box>
-
-      {/* Daemon status indicator */}
-      <Box marginX={contentMargin} marginTop={1} gap={1}>
-        <Text dimColor>Daemon:</Text>
-        <DaemonStatus compact polling />
       </Box>
 
       {/* Version update banner */}

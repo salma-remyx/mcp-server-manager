@@ -13,6 +13,7 @@ interface HeaderProps {
   profile?: string;
   port?: number;
   totalTokens?: number | null;
+  trailing?: React.ReactNode;
 }
 
 export function Header({
@@ -21,6 +22,7 @@ export function Header({
   profile,
   port,
   totalTokens,
+  trailing,
 }: HeaderProps): React.ReactElement {
   const { theme } = useTheme();
 
@@ -35,9 +37,12 @@ export function Header({
 
   return (
     <Box paddingX={2} paddingY={0} borderStyle="round" borderColor={theme.colors.headerBorder} flexDirection="column">
-      <Text color={theme.colors.primary} bold>
-        {title} {version && `v${version}`}
-      </Text>
+      <Box gap={1}>
+        <Text color={theme.colors.primary} bold>
+          {title} {version && `v${version}`}
+        </Text>
+        {trailing}
+      </Box>
       {subtitleParts.length > 0 && <Text dimColor>{subtitleParts.join(" | ")}</Text>}
     </Box>
   );
