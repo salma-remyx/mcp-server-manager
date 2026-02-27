@@ -35,10 +35,11 @@ describe("ProfilesScreen", () => {
       expect(lastFrame()).toContain("Development");
     });
 
-    it("should show active profile indicator", () => {
+    it("should show profile IDs", () => {
       const { lastFrame } = render(<ProfilesScreen onBack={mockOnBack} />);
 
-      expect(lastFrame()).toContain("(active)");
+      expect(lastFrame()).toContain("[default]");
+      expect(lastFrame()).toContain("[dev]");
     });
 
     it("should show server count for profiles", () => {
@@ -158,20 +159,16 @@ describe("ProfilesScreen", () => {
     });
   });
 
-  describe("Switch Profile", () => {
-    it("should switch profile when Enter is pressed", async () => {
-      const { stdin } = render(<ProfilesScreen onBack={mockOnBack} />);
+  describe("Rename Profile", () => {
+    it("should show rename view when R is pressed", async () => {
+      const { stdin, lastFrame } = render(<ProfilesScreen onBack={mockOnBack} />);
 
       await waitForStateUpdate();
-      // Navigate to Development profile
-      stdin.write(KEYS.DOWN);
+      // Press R to rename
+      stdin.write("r");
       await waitForStateUpdate();
 
-      // Press Enter to switch
-      stdin.write(KEYS.ENTER);
-      await waitForStateUpdate();
-
-      expect(mockProfileService.use).toHaveBeenCalledWith("dev");
+      expect(lastFrame()).toContain("Rename Profile");
     });
   });
 

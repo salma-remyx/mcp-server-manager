@@ -6,6 +6,7 @@ import { Command } from "commander";
 import { colors, c } from "../../shared/colors.js";
 import { outputJson } from "../../shared/formatters.js";
 import { getClientService } from "../../services/client.service.js";
+import { getProfileService } from "../../services/profile.service.js";
 import type { ClientId } from "../../types/index.js";
 
 /** Register client commands */
@@ -66,8 +67,10 @@ export function registerClientCommands(program: Command): void {
   clients
     .command("connect <client>")
     .description("Connect servers to a client")
-    .action(async (clientId: string) => {
+    .option("-p, --profile <profileId>", "Connect using a specific profile")
+    .action(async (clientId: string, options: { profile?: string }) => {
       const clientService = getClientService();
+      const clientName = clientService.getClientName(clientId as ClientId);
 
       if (!clientService.clientExists(clientId)) {
         console.log(`${c.cross} Unknown client '${clientId}'`);
@@ -76,24 +79,50 @@ export function registerClientCommands(program: Command): void {
       }
 
       if (!clientService.isClientInstalled(clientId as ClientId)) {
-        console.log(
-          `${c.cross} ${clientService.getClientName(clientId as ClientId)} is not installed`
-        );
+        console.log(`${c.cross} ${clientName} is not installed`);
         process.exit(1);
       }
 
-      console.log(`Connecting servers to ${clientService.getClientName(clientId as ClientId)}...`);
-      const result = clientService.connectClient(clientId as ClientId);
+      if (options.profile) {
+        const profileService = getProfileService();
+        if (!profileService.exists(options.profile)) {
+          console.log(`${c.cross} Profile '${options.profile}' not found`);
+          process.exit(1);
+        }
 
-      if (result.success) {
+        console.log(`Connecting profile '${options.profile}' to ${clientName}...`);
+        const result = clientService.connectClient(clientId as ClientId, options.profile);
+
+        if (result.success) {
+          console.log(`${c.checkmark} Connected profile '${options.profile}' to ${clientName}`);
+        } else {
+          console.log(`${c.cross} Failed: ${result.error}`);
+          process.exit(1);
+        }
+        return;
+      }
+
+      console.log(`Connecting all profiles to ${clientName}...`);
+      const { succeeded, failed } = clientService.connectAllProfiles(clientId as ClientId);
+
+      for (const id of succeeded) {
+        console.log(`  ${c.checkmark} ${id}`);
+      }
+      for (const f of failed) {
+        console.log(`  ${c.cross} ${f.id}: ${f.error}`);
+      }
+
+      if (succeeded.length === 0 && failed.length === 0) {
         console.log(
-          `${c.checkmark} Successfully connected servers to ${clientService.getClientName(
-            clientId as ClientId
-          )}`
+          `${colors.yellow}No profiles found. Create one first with: mcpsm profile create <name>${colors.reset}`
         );
-      } else {
-        console.log(`${c.cross} Failed: ${result.error}`);
+      } else if (failed.length > 0) {
+        console.log(`\n${c.cross} ${failed.length} profile(s) failed to connect`);
         process.exit(1);
+      } else {
+        console.log(
+          `\n${c.checkmark} All ${succeeded.length} profile(s) connected to ${clientName}`
+        );
       }
     });
 
@@ -101,8 +130,10 @@ export function registerClientCommands(program: Command): void {
   clients
     .command("disconnect <client>")
     .description("Disconnect servers from a client")
-    .action(async (clientId: string) => {
+    .option("-p, --profile <profileId>", "Disconnect a specific profile")
+    .action(async (clientId: string, options: { profile?: string }) => {
       const clientService = getClientService();
+      const clientName = clientService.getClientName(clientId as ClientId);
 
       if (!clientService.clientExists(clientId)) {
         console.log(`${c.cross} Unknown client '${clientId}'`);
@@ -111,26 +142,36 @@ export function registerClientCommands(program: Command): void {
       }
 
       if (!clientService.isClientInstalled(clientId as ClientId)) {
-        console.log(
-          `${c.cross} ${clientService.getClientName(clientId as ClientId)} is not installed`
-        );
+        console.log(`${c.cross} ${clientName} is not installed`);
         process.exit(1);
       }
 
-      console.log(
-        `Disconnecting servers from ${clientService.getClientName(clientId as ClientId)}...`
-      );
-      const result = clientService.disconnectClient(clientId as ClientId);
+      if (options.profile) {
+        console.log(`Disconnecting profile '${options.profile}' from ${clientName}...`);
+        const result = clientService.disconnectClient(clientId as ClientId, options.profile);
 
-      if (result.success) {
-        console.log(
-          `${c.checkmark} Successfully disconnected servers from ${clientService.getClientName(
-            clientId as ClientId
-          )}`
-        );
-      } else {
-        console.log(`${c.cross} Failed: ${result.error}`);
+        if (result.success) {
+          console.log(
+            `${c.checkmark} Disconnected profile '${options.profile}' from ${clientName}`
+          );
+        } else {
+          console.log(`${c.cross} Failed: ${result.error}`);
+          process.exit(1);
+        }
+        return;
+      }
+
+      console.log(`Disconnecting all profiles from ${clientName}...`);
+      const { failed } = clientService.disconnectAllProfiles(clientId as ClientId);
+
+      if (failed.length > 0) {
+        for (const f of failed) {
+          console.log(`  ${c.cross} ${f.id}: ${f.error}`);
+        }
+        console.log(`\n${c.cross} ${failed.length} profile(s) failed to disconnect`);
         process.exit(1);
+      } else {
+        console.log(`${c.checkmark} Disconnected all profiles from ${clientName}`);
       }
     });
 

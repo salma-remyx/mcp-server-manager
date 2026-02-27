@@ -14,6 +14,7 @@ import type {
   OperationResult,
 } from "../types/index.js";
 import { getConfigService } from "./config.service.js";
+import { getProfileService } from "./profile.service.js";
 import { getClientStrategy, getRegisteredClientIds, clearStrategyCache } from "./clients/index.js";
 
 /** Client service class */
@@ -59,7 +60,7 @@ export class ClientService {
   }
 
   /** Detect all installed clients */
-  detectClients(): DetectedClient[] {
+  detectClients(profileId?: string): DetectedClient[] {
     const platform = this.getPlatform();
     const clients: DetectedClient[] = [];
 
@@ -68,7 +69,7 @@ export class ClientService {
       if (!strategy) continue;
 
       const installed = strategy.isInstalled(platform);
-      const status = strategy.getStatus(platform);
+      const status = strategy.getStatus(platform, profileId);
       const serverCount = strategy.getServerCount();
 
       clients.push({
@@ -87,7 +88,7 @@ export class ClientService {
   }
 
   /** Connect servers to a specific client (add mcpsm gateway to client config) */
-  connectClient(clientId: ClientId): OperationResult {
+  connectClient(clientId: ClientId, profileId?: string): OperationResult {
     const strategy = getClientStrategy(clientId);
     if (!strategy) {
       return { success: false, error: "Unknown client" };
@@ -96,27 +97,88 @@ export class ClientService {
     const configService = getConfigService();
     const port = configService.getPort();
 
-    return strategy.connect(port);
+    return strategy.connect(port, profileId);
   }
 
   /** Disconnect servers from a specific client (remove our servers from client config) */
-  disconnectClient(clientId: ClientId): OperationResult {
+  disconnectClient(clientId: ClientId, profileId?: string): OperationResult {
     const strategy = getClientStrategy(clientId);
     if (!strategy) {
       return { success: false, error: "Unknown client" };
     }
 
-    return strategy.disconnect();
+    return strategy.disconnect(profileId);
+  }
+
+  /** Connect all profiles to a client (one gateway entry per profile) */
+  connectAllProfiles(clientId: ClientId): {
+    succeeded: string[];
+    failed: { id: string; error: string }[];
+  } {
+    const strategy = getClientStrategy(clientId);
+    if (!strategy) {
+      return { succeeded: [], failed: [{ id: "*", error: "Unknown client" }] };
+    }
+
+    const configService = getConfigService();
+    const port = configService.getPort();
+    const profileService = getProfileService();
+    const profiles = profileService.list();
+
+    const succeeded: string[] = [];
+    const failed: { id: string; error: string }[] = [];
+
+    for (const profile of profiles) {
+      const result = strategy.connect(port, profile.id);
+      if (result.success) {
+        succeeded.push(profile.id);
+      } else {
+        failed.push({ id: profile.id, error: result.error || "Unknown error" });
+      }
+    }
+
+    return { succeeded, failed };
+  }
+
+  /** Disconnect all profiles from a client */
+  disconnectAllProfiles(clientId: ClientId): {
+    succeeded: string[];
+    failed: { id: string; error: string }[];
+  } {
+    const strategy = getClientStrategy(clientId);
+    if (!strategy) {
+      return { succeeded: [], failed: [{ id: "*", error: "Unknown client" }] };
+    }
+
+    const profileService = getProfileService();
+    const profiles = profileService.list();
+
+    const succeeded: string[] = [];
+    const failed: { id: string; error: string }[] = [];
+
+    // Also disconnect the bare "mcpsm" entry (no profile)
+    strategy.disconnect();
+
+    for (const profile of profiles) {
+      const result = strategy.disconnect(profile.id);
+      if (result.success) {
+        succeeded.push(profile.id);
+      } else {
+        failed.push({ id: profile.id, error: result.error || "Unknown error" });
+      }
+    }
+
+    return { succeeded, failed };
   }
 
   /** Get connection status for a client */
-  getConnectionStatus(clientId: ClientId): ClientStatus {
+  getConnectionStatus(clientId: ClientId, profileId?: string): ClientStatus {
     const strategy = getClientStrategy(clientId);
     if (!strategy) {
       return "not-installed";
     }
 
-    return strategy.getStatus(this.getPlatform());
+    return strategy.getStatus(this.getPlatform(), profileId);
   }
 
   /** Open client config in editor */

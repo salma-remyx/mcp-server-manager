@@ -124,10 +124,11 @@ describe("App Component", () => {
       expect(lastFrame()).toContain("→");
     });
 
-    it("should show checkboxes for server selection", () => {
+    it("should show profile membership checkboxes", () => {
       const { lastFrame } = render(<App />);
 
-      expect(lastFrame()).toContain("[ ]");
+      // Default profile has "include all" semantics (empty arrays), so all servers show checked
+      expect(lastFrame()).toContain("[✓]");
     });
   });
 
@@ -405,17 +406,12 @@ describe("App Component", () => {
       expect(lastFrame()).toMatch(/Daemon Management|Start|Stop/i);
     });
 
-    it("should navigate to daemon management when servers are selected", async () => {
+    it("should navigate to daemon management when servers exist", async () => {
       mockConfigService.getLocalServers.mockReturnValue(sampleLocalServers);
-      // Mock selection state to return server1 as already selected
-      mockConfigService.getSelectionState.mockReturnValue({
-        local: ["server1"],
-        remote: [],
-      });
 
       const { lastFrame, stdin } = render(<App />);
 
-      // Press Enter - should go to daemon since server1 is pre-selected
+      // Press Enter - should go to daemon screen
       stdin.write(KEYS.ENTER);
       await waitForStateUpdate();
 
@@ -445,16 +441,12 @@ describe("App State Management", () => {
     expect(afterNav).toContain("Server One");
   });
 
-  it("should restore selection state on mount", () => {
+  it("should show profile membership checkmarks on mount", () => {
     mockConfigService.getLocalServers.mockReturnValue(sampleLocalServers);
-    mockConfigService.getSelectionState.mockReturnValue({
-      local: ["server1"],
-      remote: [],
-    });
 
     const { lastFrame } = render(<App />);
 
-    // Should show selected server
+    // Default profile has empty servers (include all), so all should be checked
     expect(lastFrame()).toContain("[✓]");
   });
 

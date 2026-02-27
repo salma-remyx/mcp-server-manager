@@ -57,7 +57,7 @@ interface UnifiedServer {
 interface AppState {
   screen: Screen;
   currentIndex: number;
-  selectedServers: Set<string>;
+  currentProfileIndex: number;
   toolCounts: Map<string, number>;
   serversNeedingAuth: Set<string>; // Remote server IDs that need authentication
   localServers: LocalServer[];
@@ -109,55 +109,10 @@ export function App({ onExit }: AppProps): React.ReactElement {
     const localServers = configService.getLocalServers().map((server) => ({ ...server }));
     const remoteServers = configService.getRemoteServers().map((server) => ({ ...server }));
 
-    // Restore selection state
-    const savedState = configService.getSelectionState();
-    const selectedServers = new Set<string>();
-
-    // Local servers - IDs stored without prefix
-    savedState.local.forEach((id) => {
-      if (localServers.find((s) => s.id === id)) {
-        selectedServers.add(id);
-      }
-    });
-
-    // Remote servers - IDs stored WITH "remote:" prefix
-    savedState.remote.forEach((id) => {
-      // The id in savedState.remote already has "remote:" prefix
-      const serverId = id.startsWith("remote:") ? id.replace("remote:", "") : id;
-      if (remoteServers.find((s) => s.id === serverId)) {
-        selectedServers.add(`remote:${serverId}`);
-      }
-    });
-
-    // Auto-select enabled servers that aren't in selection state yet
-    // This handles servers added before the auto-select fix
-    localServers.forEach((server) => {
-      if (!server.disabled && !selectedServers.has(server.id)) {
-        selectedServers.add(server.id);
-        // Also save to selection state
-        if (!savedState.local.includes(server.id)) {
-          savedState.local.push(server.id);
-        }
-      }
-    });
-    remoteServers.forEach((server) => {
-      const remoteId = `remote:${server.id}`;
-      if (!server.disabled && !selectedServers.has(remoteId)) {
-        selectedServers.add(remoteId);
-        // Also save to selection state
-        if (!savedState.remote.includes(remoteId)) {
-          savedState.remote.push(remoteId);
-        }
-      }
-    });
-
-    // Save updated selection state
-    configService.saveSelectionState(savedState);
-
     return {
       screen: "main",
       currentIndex: 0,
-      selectedServers,
+      currentProfileIndex: 0,
       toolCounts: new Map<string, number>(),
       serversNeedingAuth: new Set<string>(),
       localServers,
@@ -172,46 +127,16 @@ export function App({ onExit }: AppProps): React.ReactElement {
     };
   });
 
-  // Refresh servers from config and auto-select new enabled servers
+  // Refresh servers from config
   const refreshServers = useCallback(() => {
     const newLocalServers = configService.getLocalServers().map((server) => ({ ...server }));
     const newRemoteServers = configService.getRemoteServers().map((server) => ({ ...server }));
 
-    setState((prev) => {
-      const newSelected = new Set(prev.selectedServers);
-      const savedState = configService.getSelectionState();
-
-      // Auto-select new enabled local servers
-      newLocalServers.forEach((server) => {
-        if (!server.disabled && !newSelected.has(server.id)) {
-          newSelected.add(server.id);
-          if (!savedState.local.includes(server.id)) {
-            savedState.local.push(server.id);
-          }
-        }
-      });
-
-      // Auto-select new enabled remote servers
-      newRemoteServers.forEach((server) => {
-        const remoteId = `remote:${server.id}`;
-        if (!server.disabled && !newSelected.has(remoteId)) {
-          newSelected.add(remoteId);
-          if (!savedState.remote.includes(remoteId)) {
-            savedState.remote.push(remoteId);
-          }
-        }
-      });
-
-      // Save updated selection state
-      configService.saveSelectionState(savedState);
-
-      return {
-        ...prev,
-        localServers: newLocalServers,
-        remoteServers: newRemoteServers,
-        selectedServers: newSelected,
-      };
-    });
+    setState((prev) => ({
+      ...prev,
+      localServers: newLocalServers,
+      remoteServers: newRemoteServers,
+    }));
   }, []);
 
   // Show temporary message
@@ -495,16 +420,11 @@ export function App({ onExit }: AppProps): React.ReactElement {
           newIndex = Math.max(0, total - 1);
         }
 
-        // Remove from selection
-        const newSelected = new Set(prev.selectedServers);
-        newSelected.delete(serverToDeleteId);
-
         return {
           ...prev,
           localServers: newLocal,
           remoteServers: newRemote,
           currentIndex: newIndex,
-          selectedServers: newSelected,
           confirmDelete: undefined,
         };
       } else {
@@ -631,6 +551,30 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return;
       }
 
+      // Left arrow - switch to previous profile
+      if (key.leftArrow) {
+        const profiles = profileService.list();
+        if (profiles.length > 1) {
+          setState((prev) => {
+            const prevIdx = prev.currentProfileIndex > 0 ? prev.currentProfileIndex - 1 : profiles.length - 1;
+            return { ...prev, currentProfileIndex: prevIdx };
+          });
+        }
+        return;
+      }
+
+      // Right arrow - switch to next profile
+      if (key.rightArrow) {
+        const profiles = profileService.list();
+        if (profiles.length > 1) {
+          setState((prev) => {
+            const nextIdx = prev.currentProfileIndex < profiles.length - 1 ? prev.currentProfileIndex + 1 : 0;
+            return { ...prev, currentProfileIndex: nextIdx };
+          });
+        }
+        return;
+      }
+
       // Navigation - Up
       if (key.upArrow) {
         setState((prev) => {
@@ -653,41 +597,34 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return;
       }
 
-      // Space - Enable/Disable server
+      // Space - Toggle server membership in current profile
       if (input === " ") {
         const { server, type } = getCurrentServer();
-        if (server) {
-          const result = server.disabled
-            ? configService.enableServer(server.id)
-            : configService.disableServer(server.id);
+        if (!server) return;
 
-          if (result.success) {
-            // Refresh daemon if running (auto-sync)
-            refreshDaemonIfRunning("toggling server");
-            // Update state with refreshed servers and deselect if disabling
-            setState((prev) => {
-              const newLocal = configService.getLocalServers().map((s) => ({ ...s }));
-              const newRemote = configService.getRemoteServers().map((s) => ({ ...s }));
-              const newSelected = new Set(prev.selectedServers);
+        const profiles = profileService.list();
+        const currentProfile = profiles[state.currentProfileIndex];
+        if (!currentProfile) return;
 
-              // If disabling, remove from selection; if enabling, add to selection
-              if (!server.disabled) {
-                newSelected.delete(type === "remote" ? `remote:${server.id}` : server.id);
-              } else {
-                newSelected.add(type === "remote" ? `remote:${server.id}` : server.id);
-              }
+        const profileData = profileService.getProfile(currentProfile.id);
+        if (!profileData) return;
 
-              return {
-                ...prev,
-                localServers: newLocal,
-                remoteServers: newRemote,
-                selectedServers: newSelected,
-              };
-            });
-          } else {
-            showMessage(result.error || "Failed", "error");
+        const serverId = type === "remote" ? server.id : server.id;
+        const isIncludeAll = profileData.servers.length === 0 && profileData.remoteServers.length === 0;
+        const isMember = isIncludeAll ||
+          (type === "local" ? profileData.servers.includes(serverId) : profileData.remoteServers.includes(serverId));
+
+        if (isMember) {
+          if (isIncludeAll) {
+            profileService.makeExplicit(currentProfile.id);
           }
+          profileService.removeServer(currentProfile.id, serverId);
+          showMessage(`Removed '${server.name}' from profile '${currentProfile.name}'`, "success");
+        } else {
+          profileService.addServer(currentProfile.id, serverId);
+          showMessage(`Added '${server.name}' to profile '${currentProfile.name}'`, "success");
         }
+        refreshDaemonIfRunning("toggling profile membership");
         return;
       }
 
@@ -815,7 +752,9 @@ export function App({ onExit }: AppProps): React.ReactElement {
   }
 
   if (screen === "clients") {
-    return <ClientsScreen onBack={goBack} />;
+    const profiles = profileService.list();
+    const currentProfile = profiles[state.currentProfileIndex];
+    return <ClientsScreen onBack={goBack} currentProfileId={currentProfile?.id} />;
   }
 
   if (screen === "profiles") {
@@ -928,12 +867,22 @@ export function App({ onExit }: AppProps): React.ReactElement {
   const {
     localServers,
     remoteServers,
-    selectedServers,
     message,
     messageType,
   } = state;
   const hasServers = localServers.length > 0 || remoteServers.length > 0;
-  const activeProfile = profileService.getActiveProfileId();
+  const profiles = profileService.list();
+  const currentProfile = profiles[state.currentProfileIndex];
+  const profileData = currentProfile ? profileService.getProfile(currentProfile.id) : null;
+  const profileMemberIds = new Set<string>();
+  if (profileData) {
+    if (profileData.servers.length === 0 && profileData.remoteServers.length === 0) {
+      unifiedServers.forEach((u) => profileMemberIds.add(u.id));
+    } else {
+      profileData.servers.forEach((id) => profileMemberIds.add(id));
+      profileData.remoteServers.forEach((id) => profileMemberIds.add(`remote:${id}`));
+    }
+  }
   const port = configService.getPort();
   const toolFilters = configService.getToolFilters();
   const totalTokens = (() => {
@@ -960,7 +909,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
         <Header
           title="MCP Server Manager"
           version={VERSION}
-          profile={activeProfile}
+          profile={currentProfile?.name}
           port={port}
           totalTokens={totalTokens}
         />
@@ -1024,7 +973,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                     renderItem={(unified, idx) => {
                       const isCurrent = idx === state.currentIndex;
                       const { server, type, id } = unified;
-                      const isSelected = selectedServers.has(id);
+                      const isMember = profileMemberIds.has(id);
                       const isDisabled = server.disabled;
                       const filter = toolFilters[id];
                       const totalTools = filter?.allTools?.length ?? 0;
@@ -1034,8 +983,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                       const tokenLabel = tokenTotal !== null ? `${formatTokens(tokenTotal)} tokens` : "— tokens";
                       const needsAuth = type === "remote" && state.serversNeedingAuth.has(server.id);
 
-                      // Disabled servers always show empty brackets
-                      const showCheck = !isDisabled && isSelected;
+                      const showCheck = isMember;
                       const nameColor = isCurrent ? theme.colors.highlightText : isDisabled ? theme.colors.disabled : undefined;
                       const arrowColor = isCurrent
                         ? theme.colors.serverArrowSelected
@@ -1102,6 +1050,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
             <ShortcutsBar
               shortcuts={[
                 { key: "↑↓", label: "Navigate" },
+                { key: "←→", label: "Profile" },
                 { key: "Space", label: "Toggle" },
                 { key: "Enter", label: "Daemon" },
                 { key: "A", label: "Add" },

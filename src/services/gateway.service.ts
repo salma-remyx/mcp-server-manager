@@ -27,6 +27,7 @@ import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprot
 import { getConfigService } from "./config.service.js";
 import { getAuthService } from "./auth.service.js";
 import { getEnvironmentService } from "./environment.service.js";
+import { getProfileService } from "./profile.service.js";
 import { createTransportAuthProvider } from "./oauth-transport.provider.js";
 import path from "node:path";
 import { createLogger } from "../shared/logger.js";
@@ -67,6 +68,12 @@ interface SessionEntry {
   server: Server;
 }
 
+interface ProfileView {
+  profileId: string;
+  toolToServerMap: Map<string, string>;
+  aggregatedTools: Tool[];
+}
+
 interface GatewayState {
   running: boolean;
   port: number;
@@ -75,6 +82,7 @@ interface GatewayState {
   connectedServers: Map<string, ConnectedServer>;
   toolToServerMap: Map<string, string>; // toolName -> serverId
   aggregatedTools: Tool[];
+  profileViews: Map<string, ProfileView>;
   activeSelection: Set<string> | null;
 }
 
@@ -86,6 +94,7 @@ const createGatewayState = (): GatewayState => ({
   connectedServers: new Map(),
   toolToServerMap: new Map(),
   aggregatedTools: [],
+  profileViews: new Map(),
   activeSelection: null,
 });
 
@@ -256,7 +265,63 @@ function buildToolMapping(): Tool[] {
 function refreshAggregatedTools(): Tool[] {
   const aggregated = buildToolMapping();
   gatewayState.aggregatedTools = aggregated;
+  refreshProfileViews();
   return aggregated;
+}
+
+function buildProfileView(profileId: string): ProfileView | null {
+  const profileService = getProfileService();
+  const profile = profileService.getProfile(profileId);
+
+  if (!profile) return null;
+
+  // Build the set of server IDs this profile includes.
+  // Empty arrays = include all connected servers (backwards compat).
+  const includesAll = profile.servers.length === 0 && profile.remoteServers.length === 0;
+
+  const profileServerIds = includesAll
+    ? null // null = match everything
+    : new Set<string>([...profile.servers, ...profile.remoteServers.map((id) => `remote:${id}`)]);
+
+  const tools: Tool[] = [];
+  const toolMap = new Map<string, string>();
+
+  for (const [serverId, server] of gatewayState.connectedServers) {
+    if (profileServerIds && !profileServerIds.has(serverId)) continue;
+
+    for (const tool of server.tools) {
+      const prefixedTool: Tool = {
+        ...tool,
+        name: `${server.name}__${tool.name}`,
+        description: `[${server.name}] ${tool.description || ""}`,
+      };
+      tools.push(prefixedTool);
+      toolMap.set(prefixedTool.name, serverId);
+    }
+  }
+
+  logger.debug(
+    `Profile '${profileId}': ${tools.length} tool(s) from ${includesAll ? "all" : (profileServerIds?.size ?? 0)} server(s)`
+  );
+
+  return { profileId, toolToServerMap: toolMap, aggregatedTools: tools };
+}
+
+function refreshProfileViews(): void {
+  const profileService = getProfileService();
+  profileService.reload();
+  const profiles = profileService.list();
+
+  const newViews = new Map<string, ProfileView>();
+  for (const profile of profiles) {
+    const view = buildProfileView(profile.id);
+    if (view) {
+      newViews.set(profile.id, view);
+    }
+  }
+
+  gatewayState.profileViews = newViews;
+  logger.info(`Rebuilt ${newViews.size} profile view(s)`);
 }
 
 /**
@@ -264,9 +329,10 @@ function refreshAggregatedTools(): Tool[] {
  */
 async function handleToolCall(
   toolName: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  toolToServerMap: Map<string, string> = gatewayState.toolToServerMap
 ): Promise<CallToolResult> {
-  const serverId = gatewayState.toolToServerMap.get(toolName);
+  const serverId = toolToServerMap.get(toolName);
 
   if (!serverId) {
     return {
@@ -296,6 +362,36 @@ async function handleToolCall(
       isError: true,
     };
   }
+}
+
+function createSessionServer(profileId?: string): Server {
+  const sessionServer = new Server(
+    { name: "mcpsm-gateway", version: VERSION },
+    {
+      capabilities: {
+        tools: {},
+      },
+    }
+  );
+
+  sessionServer.setRequestHandler(ListToolsRequestSchema, () => {
+    if (profileId) {
+      const view = gatewayState.profileViews.get(profileId);
+      return { tools: view?.aggregatedTools ?? [] };
+    }
+    return { tools: gatewayState.aggregatedTools };
+  });
+
+  sessionServer.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const toolName = request.params.name;
+    const args = request.params.arguments || {};
+    const toolMap = profileId
+      ? (gatewayState.profileViews.get(profileId)?.toolToServerMap ?? new Map<string, string>())
+      : gatewayState.toolToServerMap;
+    return await handleToolCall(toolName, args, toolMap);
+  });
+
+  return sessionServer;
 }
 
 /**
@@ -330,6 +426,15 @@ export async function startGateway(
       // Use TUI selection state - respects user's checked/unchecked selections
       const selectionState = configService.getSelectionState();
       serverIdsToStart = new Set([...selectionState.local, ...selectionState.remote]);
+    }
+
+    // Also include all servers referenced by any profile so all profile views can be populated
+    const profileService = getProfileService();
+    for (const profileItem of profileService.list()) {
+      const profile = profileService.getProfile(profileItem.id);
+      if (!profile) continue;
+      for (const id of profile.servers) serverIdsToStart.add(id);
+      for (const id of profile.remoteServers) serverIdsToStart.add(`remote:${id}`);
     }
 
     // Filter servers to only those in the start set
@@ -373,31 +478,6 @@ export async function startGateway(
       `Aggregated ${aggregatedTools.length} tools from ${connectedServers.length} servers`
     );
 
-    // Factory: create a new MCP Server instance per session
-    // Each server gets its own transport but shares the gateway's tool state
-    function createSessionServer(): Server {
-      const sessionServer = new Server(
-        { name: "mcpsm-gateway", version: VERSION },
-        {
-          capabilities: {
-            tools: {},
-          },
-        }
-      );
-
-      sessionServer.setRequestHandler(ListToolsRequestSchema, () => ({
-        tools: gatewayState.aggregatedTools,
-      }));
-
-      sessionServer.setRequestHandler(CallToolRequestSchema, async (request) => {
-        const toolName = request.params.name;
-        const args = request.params.arguments || {};
-        return await handleToolCall(toolName, args);
-      });
-
-      return sessionServer;
-    }
-
     // Create HTTP server with StreamableHTTP transport
     const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
       // CORS headers
@@ -417,18 +497,40 @@ export async function startGateway(
       // Health check endpoint
       if (req.url === "/health" && req.method === "GET") {
         res.writeHead(200, { "Content-Type": "application/json" });
+        const profileDetails: Record<string, { tools: number; servers: number }> = {};
+        for (const [id, view] of gatewayState.profileViews) {
+          profileDetails[id] = {
+            tools: view.aggregatedTools.length,
+            servers:
+              view.toolToServerMap.size > 0 ? new Set(view.toolToServerMap.values()).size : 0,
+          };
+        }
         res.end(
           JSON.stringify({
             status: "ok",
             servers: gatewayState.connectedServers.size,
             tools: gatewayState.aggregatedTools.length,
+            profiles: profileDetails,
           })
         );
         return;
       }
 
       // MCP endpoint - handle all MCP requests
-      if (req.url === "/mcp" || req.url?.startsWith("/mcp?")) {
+      // Matches /mcp (global) and /mcp/{profileId} (profile-specific)
+      const parsedUrl = new URL(req.url || "/", `http://localhost:${gatewayState.port}`);
+      const mcpMatch = parsedUrl.pathname.match(/^\/mcp(?:\/([a-zA-Z0-9_-]+))?$/);
+
+      if (mcpMatch) {
+        const profileId = mcpMatch[1] || undefined;
+
+        // Validate profile exists when specified
+        if (profileId && !gatewayState.profileViews.has(profileId)) {
+          res.writeHead(404, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: `Profile not found: ${profileId}` }));
+          return;
+        }
+
         // Check for existing session
         const sessionId = req.headers["mcp-session-id"] as string | undefined;
         let transport = sessionId
@@ -438,6 +540,7 @@ export async function startGateway(
         if (!transport) {
           // Create new transport AND server for new sessions
           let currentSessionId: string | undefined;
+          const sessionServer = createSessionServer(profileId);
           const newTransport = new StreamableHTTPServerTransport({
             sessionIdGenerator: (): string => randomUUID(),
             enableJsonResponse: true,
@@ -451,7 +554,6 @@ export async function startGateway(
           });
 
           transport = newTransport;
-          const sessionServer = createSessionServer();
 
           // Clean up session when transport closes
           transport.onclose = (): void => {
@@ -555,6 +657,7 @@ export async function stopGateway(): Promise<{ success: boolean; error?: string 
       connectedServers: new Map(),
       toolToServerMap: new Map(),
       aggregatedTools: [],
+      profileViews: new Map(),
       activeSelection: null,
     };
 
@@ -603,6 +706,7 @@ export async function refreshGateway(
     // Reload data from disk
     configService.reload();
     authService.reload();
+    getProfileService().reload();
 
     const configuredPort = configService.getPort();
     if (configuredPort !== gatewayState.port && gatewayState.httpServer) {
@@ -645,6 +749,15 @@ export async function refreshGateway(
       gatewayState.activeSelection && gatewayState.activeSelection.size > 0
         ? new Set(gatewayState.activeSelection)
         : new Set([...selectionState.local, ...selectionState.remote]);
+
+    // Also include all servers referenced by any profile
+    const profileService = getProfileService();
+    for (const profileItem of profileService.list()) {
+      const profile = profileService.getProfile(profileItem.id);
+      if (!profile) continue;
+      for (const id of profile.servers) serverIdsToStart.add(id);
+      for (const id of profile.remoteServers) serverIdsToStart.add(`remote:${id}`);
+    }
 
     const localServers = configService
       .getEnabledLocalServers()
@@ -732,6 +845,7 @@ export async function refreshGatewayTools(
 
     const configService = getConfigService();
     configService.reload();
+    getProfileService().reload();
 
     const toolFilters = configService.getToolFilters();
     const servers = Array.from(gatewayState.connectedServers.values());
