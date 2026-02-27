@@ -522,7 +522,7 @@ export async function startGateway(
       const mcpMatch = parsedUrl.pathname.match(/^\/mcp(?:\/([a-zA-Z0-9_-]+))?$/);
 
       if (mcpMatch) {
-        const profileId = mcpMatch[1] || undefined;
+        const profileId = mcpMatch[1] || "default";
 
         // Validate profile exists when specified
         if (profileId && !gatewayState.profileViews.has(profileId)) {
