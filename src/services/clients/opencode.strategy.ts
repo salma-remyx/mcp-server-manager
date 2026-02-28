@@ -14,6 +14,8 @@ import type {
 import type { ClientMcpConfig, ClientServerConfig, Platform } from "../../types/index.js";
 
 export class OpenCodeStrategy extends JsonClientStrategy {
+  private static readonly OPENCODE_SCHEMA_URL = "https://opencode.ai/config.json";
+
   readonly metadata: ClientMetadata = {
     id: "opencode",
     displayName: "OpenCode",
@@ -24,7 +26,7 @@ export class OpenCodeStrategy extends JsonClientStrategy {
     supportsRealTimeReload: false,
     hasSecondaryConfigPath: false,
     configFormat: "json",
-    gatewayType: "stdio",
+    gatewayType: "url-only",
   };
 
   readonly paths: ClientPlatformPaths = {
@@ -52,7 +54,14 @@ export class OpenCodeStrategy extends JsonClientStrategy {
     config: ClientMcpConfig,
     servers: Record<string, ClientServerConfig>
   ): ClientMcpConfig {
-    return { ...config, mcp: servers };
+    return { ...config, $schema: OpenCodeStrategy.OPENCODE_SCHEMA_URL, mcp: servers };
+  }
+
+  buildGatewayConfig(port: number): ClientServerConfig {
+    return {
+      type: "remote",
+      url: `http://localhost:${port}/mcp`,
+    };
   }
 
   /**
