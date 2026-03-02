@@ -18,12 +18,22 @@ const mockAuthService = {
   reload: vi.fn(),
 };
 
+const mockProfileService = {
+  reload: vi.fn(),
+  list: vi.fn(() => []),
+  getServersForProfile: vi.fn(() => null),
+};
+
 vi.mock("../src/services/config.service.js", () => ({
   getConfigService: (): typeof mockConfigService => mockConfigService,
 }));
 
 vi.mock("../src/services/auth.service.js", () => ({
   getAuthService: (): typeof mockAuthService => mockAuthService,
+}));
+
+vi.mock("../src/services/profile.service.js", () => ({
+  getProfileService: (): typeof mockProfileService => mockProfileService,
 }));
 
 describe("GatewayService", () => {

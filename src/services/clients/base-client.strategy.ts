@@ -117,13 +117,18 @@ export abstract class BaseClientStrategy implements IClientStrategy {
 
   // === Gateway Management ===
 
-  abstract buildGatewayConfig(port: number): ClientServerConfig;
+  abstract buildGatewayConfig(port: number, profileId?: string): ClientServerConfig;
 
-  hasGateway(config: ClientMcpConfig | null): boolean {
+  protected getGatewayKey(profileId?: string): string {
+    return profileId ? `mcpsm-${profileId}` : "mcpsm";
+  }
+
+  hasGateway(config: ClientMcpConfig | null, profileId?: string): boolean {
     if (!config) return false;
 
     const servers = this.getServersFromConfig(config);
-    const gateway = servers?.mcpsm;
+    const key = this.getGatewayKey(profileId);
+    const gateway = servers?.[key];
 
     if (!gateway) return false;
 
@@ -136,23 +141,25 @@ export abstract class BaseClientStrategy implements IClientStrategy {
     );
   }
 
-  addGateway(config: ClientMcpConfig, port: number): ClientMcpConfig {
+  addGateway(config: ClientMcpConfig, port: number, profileId?: string): ClientMcpConfig {
     const servers = this.getServersFromConfig(config) || {};
-    const gatewayConfig = this.buildGatewayConfig(port);
-    return this.setServersInConfig(config, { ...servers, mcpsm: gatewayConfig });
+    const gatewayConfig = this.buildGatewayConfig(port, profileId);
+    const key = this.getGatewayKey(profileId);
+    return this.setServersInConfig(config, { ...servers, [key]: gatewayConfig });
   }
 
-  removeGateway(config: ClientMcpConfig): ClientMcpConfig {
+  removeGateway(config: ClientMcpConfig, profileId?: string): ClientMcpConfig {
     const servers = this.getServersFromConfig(config);
-    if (!servers?.mcpsm) return config;
+    const key = this.getGatewayKey(profileId);
+    if (!servers?.[key]) return config;
 
-    const { mcpsm: _, ...rest } = servers;
+    const { [key]: _, ...rest } = servers;
     return this.setServersInConfig(config, rest);
   }
 
   // === High-Level Operations ===
 
-  connect(port: number): OperationResult {
+  connect(port: number, profileId?: string): OperationResult {
     const platform = this.getPlatform();
 
     if (!this.isInstalled(platform)) {
@@ -161,7 +168,7 @@ export abstract class BaseClientStrategy implements IClientStrategy {
 
     try {
       let config = this.readConfig() || {};
-      config = this.addGateway(config, port);
+      config = this.addGateway(config, port, profileId);
 
       const success = this.writeConfig(config);
       return {
@@ -174,15 +181,15 @@ export abstract class BaseClientStrategy implements IClientStrategy {
     }
   }
 
-  disconnect(): OperationResult {
+  disconnect(profileId?: string): OperationResult {
     try {
       const config = this.readConfig();
 
-      if (!config || !this.hasGateway(config)) {
+      if (!config || !this.hasGateway(config, profileId)) {
         return { success: true }; // Already disconnected
       }
 
-      const updatedConfig = this.removeGateway(config);
+      const updatedConfig = this.removeGateway(config, profileId);
       const success = this.writeConfig(updatedConfig);
 
       return {
@@ -195,13 +202,13 @@ export abstract class BaseClientStrategy implements IClientStrategy {
     }
   }
 
-  getStatus(platform: Platform): ClientStatus {
+  getStatus(platform: Platform, profileId?: string): ClientStatus {
     if (!this.isInstalled(platform)) {
       return "not-installed";
     }
 
     const config = this.readConfig();
-    return this.hasGateway(config) ? "connected" : "disconnected";
+    return this.hasGateway(config, profileId) ? "connected" : "disconnected";
   }
 
   getServerCount(): number {

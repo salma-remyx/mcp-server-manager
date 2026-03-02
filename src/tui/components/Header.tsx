@@ -27,7 +27,7 @@ export function Header({
   const { theme } = useTheme();
 
   const subtitleParts: string[] = [];
-  if (profile) subtitleParts.push(`Profile: ${profile}`);
+  if (profile) subtitleParts.push(`Profile: ◀ ${profile} ▶`);
   if (port) subtitleParts.push(`Port: ${port}`);
   if (totalTokens !== undefined) {
     const tokensLabel =

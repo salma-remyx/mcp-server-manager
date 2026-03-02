@@ -8,7 +8,6 @@ import TextInput from "ink-text-input";
 import { ScreenLayout, ConfirmDialog } from "../components/index.js";
 import { createMenuSections } from "../utils/menu.js";
 import { getProfileService } from "../../services/profile.service.js";
-import { getDaemonService } from "../../services/daemon.service.js";
 import type { ProfileListItem } from "../../types/index.js";
 import { useTheme } from "../theme/index.js";
 
@@ -219,36 +218,6 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
       return;
     }
 
-    // Use profile - Enter
-    if (key.return && profiles.length > 0) {
-      const profile = profiles[currentIndex];
-      if (profile) {
-        const result = profileService.use(profile.id);
-        if (result.success) {
-          showMessage(`Switched to profile '${profile.name}'`, "success");
-
-          // Refresh daemon to load new profile's servers
-          const daemonService = getDaemonService();
-          const statusResult = daemonService.isDaemonRunning();
-          if (statusResult.running) {
-            daemonService.refreshDaemon().then((refreshResult) => {
-              if (refreshResult.success) {
-                showMessage("Daemon refreshed with new profile", "info");
-              }
-            }).catch(() => {
-              // Ignore errors
-            });
-          }
-
-          setState((prev) => ({
-            ...prev,
-            profiles: profileService.list(),
-          }));
-        }
-      }
-      return;
-    }
-
     // Add profile - A
     if (input.toLowerCase() === "a") {
       // Show confirmation dialog: Clone or start fresh?
@@ -269,11 +238,6 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
 
     // Delete profile - D
     if (input.toLowerCase() === "d" && profiles.length > 0) {
-      const profile = profiles[currentIndex];
-      if (profile && profile.isActive) {
-        showMessage("Cannot delete the active profile", "error");
-        return;
-      }
       setState((prev) => ({ ...prev, view: "confirmDelete" }));
       return;
     }
@@ -284,7 +248,6 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
   // Create profile view
   const profilesMenuSections = createMenuSections({
     actions: [
-      { key: "Enter", label: "Use" },
       { key: "A", label: "Add" },
       { key: "R", label: "Rename" },
       { key: "D", label: "Delete" },
@@ -428,7 +391,6 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
                   {profile.name}
                 </Text>
                 <Text dimColor>[{profile.id}]</Text>
-                {profile.isActive && <Text color={theme.colors.success}>(active)</Text>}
               </Box>
               <Box marginLeft={4}>
                 <Text dimColor>{serverInfo}</Text>
