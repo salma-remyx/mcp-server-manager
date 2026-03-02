@@ -64,10 +64,11 @@ export abstract class JsonClientStrategy extends BaseClientStrategy {
     }
   }
 
-  buildGatewayConfig(port: number): ClientServerConfig {
+  buildGatewayConfig(port: number, profileId?: string): ClientServerConfig {
+    const mcpPath = profileId ? `/mcp/${profileId}` : "/mcp";
     return {
       command: "npx",
-      args: ["-y", "supergateway", "--streamableHttp", `http://localhost:${port}/mcp`],
+      args: ["-y", "supergateway", "--streamableHttp", `http://localhost:${port}${mcpPath}`],
     };
   }
 }

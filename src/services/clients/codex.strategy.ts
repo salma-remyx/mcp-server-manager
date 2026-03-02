@@ -40,9 +40,10 @@ export class CodexStrategy extends TomlClientStrategy {
   };
 
   // Override: Codex uses URL-only gateway (no supergateway)
-  buildGatewayConfig(port: number): ClientServerConfig {
+  buildGatewayConfig(port: number, profileId?: string): ClientServerConfig {
+    const mcpPath = profileId ? `/mcp/${profileId}` : "/mcp";
     return {
-      url: `http://localhost:${port}/mcp`,
+      url: `http://localhost:${port}${mcpPath}`,
     };
   }
 

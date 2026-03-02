@@ -23,7 +23,9 @@ type ZedConfig = ClientMcpConfig & {
   context_servers?: Record<string, ZedContextServer>;
 };
 
-const GATEWAY_ID = "mcpsm";
+function getGatewayId(profileId?: string): string {
+  return profileId ? `mcpsm-${profileId}` : "mcpsm";
+}
 
 function stripJsonComments(input: string): string {
   let result = "";
@@ -231,17 +233,19 @@ export class ZedStrategy extends BaseClientStrategy {
     }
   }
 
-  buildGatewayConfig(port: number): ClientServerConfig {
+  buildGatewayConfig(port: number, profileId?: string): ClientServerConfig {
+    const mcpPath = profileId ? `/mcp/${profileId}` : "/mcp";
     return {
-      url: `http://localhost:${port}/mcp`,
+      url: `http://localhost:${port}${mcpPath}`,
     };
   }
 
-  hasGateway(config: ClientMcpConfig | null): boolean {
+  hasGateway(config: ClientMcpConfig | null, profileId?: string): boolean {
     if (!config) return false;
 
+    const gatewayId = getGatewayId(profileId);
     const contextServers = (config as ZedConfig).context_servers;
-    const gateway = contextServers?.[GATEWAY_ID];
+    const gateway = contextServers?.[gatewayId];
     if (!gateway) return false;
 
     return !!(
@@ -251,11 +255,12 @@ export class ZedStrategy extends BaseClientStrategy {
     );
   }
 
-  addGateway(config: ClientMcpConfig, port: number): ClientMcpConfig {
+  addGateway(config: ClientMcpConfig, port: number, profileId?: string): ClientMcpConfig {
     const zedConfig = config as ZedConfig;
     const contextServers = zedConfig.context_servers ?? {};
+    const gatewayId = getGatewayId(profileId);
     const gatewayConfig: ZedContextServer = {
-      ...(this.buildGatewayConfig(port) as ZedContextServer),
+      ...(this.buildGatewayConfig(port, profileId) as ZedContextServer),
       headers: {},
       settings: {},
     };
@@ -264,19 +269,20 @@ export class ZedStrategy extends BaseClientStrategy {
       ...zedConfig,
       context_servers: {
         ...contextServers,
-        [GATEWAY_ID]: gatewayConfig,
+        [gatewayId]: gatewayConfig,
       },
     };
   }
 
-  removeGateway(config: ClientMcpConfig): ClientMcpConfig {
+  removeGateway(config: ClientMcpConfig, profileId?: string): ClientMcpConfig {
     const zedConfig = config as ZedConfig;
+    const gatewayId = getGatewayId(profileId);
 
-    if (!zedConfig.context_servers?.[GATEWAY_ID]) {
+    if (!zedConfig.context_servers?.[gatewayId]) {
       return config;
     }
 
-    const { [GATEWAY_ID]: _, ...rest } = zedConfig.context_servers;
+    const { [gatewayId]: _, ...rest } = zedConfig.context_servers;
     return {
       ...zedConfig,
       context_servers: rest,

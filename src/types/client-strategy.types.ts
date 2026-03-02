@@ -118,39 +118,39 @@ export interface IClientStrategy {
   /**
    * Build the gateway server configuration for this client
    */
-  buildGatewayConfig(port: number): ClientServerConfig;
+  buildGatewayConfig(port: number, profileId?: string): ClientServerConfig;
 
   /**
    * Check if the gateway is present in the config
    */
-  hasGateway(config: ClientMcpConfig | null): boolean;
+  hasGateway(config: ClientMcpConfig | null, profileId?: string): boolean;
 
   /**
    * Add the gateway to the configuration
    */
-  addGateway(config: ClientMcpConfig, port: number): ClientMcpConfig;
+  addGateway(config: ClientMcpConfig, port: number, profileId?: string): ClientMcpConfig;
 
   /**
    * Remove the gateway from the configuration
    */
-  removeGateway(config: ClientMcpConfig): ClientMcpConfig;
+  removeGateway(config: ClientMcpConfig, profileId?: string): ClientMcpConfig;
 
   // === High-Level Operations ===
 
   /**
    * Connect the client to MCPSM
    */
-  connect(port: number): OperationResult;
+  connect(port: number, profileId?: string): OperationResult;
 
   /**
    * Disconnect the client from MCPSM
    */
-  disconnect(): OperationResult;
+  disconnect(profileId?: string): OperationResult;
 
   /**
    * Get the current connection status
    */
-  getStatus(platform: Platform): ClientStatus;
+  getStatus(platform: Platform, profileId?: string): ClientStatus;
 
   /**
    * Count servers in the client's config

@@ -37,10 +37,11 @@ export class ClaudeCodeStrategy extends JsonClientStrategy {
   };
 
   // Claude Code supports direct HTTP connections without supergateway.
-  buildGatewayConfig(port: number): ClientServerConfig {
+  buildGatewayConfig(port: number, profileId?: string): ClientServerConfig {
+    const mcpPath = profileId ? `/mcp/${profileId}` : "/mcp";
     return {
       type: "http",
-      url: `http://localhost:${port}/mcp`,
+      url: `http://localhost:${port}${mcpPath}`,
     };
   }
 }

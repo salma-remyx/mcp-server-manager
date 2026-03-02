@@ -256,6 +256,22 @@ export class ProfileService {
     return { success: true };
   }
 
+  /** Convert "include all" profile to explicit server lists */
+  makeExplicit(profileId: string): void {
+    const profile = this.profiles.profiles[profileId];
+    if (!profile) return;
+    if (profile.servers.length > 0 || profile.remoteServers.length > 0) return;
+    const configService = getConfigService();
+    profile.servers = configService.getLocalServers().map((s) => s.id);
+    profile.remoteServers = configService.getRemoteServers().map((s) => s.id);
+    this.save();
+  }
+
+  /** Reload profiles from disk */
+  reload(): void {
+    this.profiles = this.load();
+  }
+
   /** Check if profile exists */
   exists(id: string): boolean {
     return !!this.profiles.profiles[id];

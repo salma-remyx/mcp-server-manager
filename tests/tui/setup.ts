@@ -91,6 +91,8 @@ export const mockClientService = {
   readClientConfig: vi.fn(() => null),
   writeClientConfig: vi.fn(() => true),
   openClientConfig: vi.fn(() => ({ success: true })),
+  connectAllProfiles: vi.fn(() => ({ succeeded: ["default"], failed: [] })),
+  disconnectAllProfiles: vi.fn(() => ({ succeeded: ["default"], failed: [] })),
 };
 
 // Mock profile service
@@ -103,6 +105,17 @@ export const mockProfileService = {
   delete: vi.fn(() => ({ success: true })),
   use: vi.fn(() => ({ success: true })),
   getActiveProfileId: vi.fn(() => "default"),
+  getProfile: vi.fn((id: string) => {
+    if (id === "default") return { name: "Default", servers: [], remoteServers: [] };
+    if (id === "dev") return { name: "Development", servers: ["s1", "s2"], remoteServers: [] };
+    return null;
+  }),
+  addServer: vi.fn(() => ({ success: true })),
+  removeServer: vi.fn(() => ({ success: true })),
+  makeExplicit: vi.fn(),
+  rename: vi.fn(() => ({ success: true })),
+  clone: vi.fn(() => ({ success: true })),
+  reload: vi.fn(),
 };
 
 // Mock settings service

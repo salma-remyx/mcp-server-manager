@@ -23,6 +23,7 @@ function shortenPath(path: string): string {
 
 interface ClientsScreenProps {
   onBack: () => void;
+  currentProfileId?: string;
 }
 
 interface ClientsState {
@@ -33,12 +34,12 @@ interface ClientsState {
   messageType: "success" | "error" | "info";
 }
 
-export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElement {
+export function ClientsScreen({ onBack, currentProfileId }: ClientsScreenProps): React.ReactElement {
   const { theme } = useTheme();
   const clientService = getClientService();
 
   const [state, setState] = useState<ClientsState>({
-    clients: clientService.detectClients(),
+    clients: clientService.detectClients(currentProfileId),
     currentIndex: 0,
     connecting: false,
     message: null,
@@ -56,7 +57,7 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
     []
   );
 
-  // Handle connect/disconnect toggle
+  // Handle connect/disconnect toggle for the current profile
   const handleToggleConnection = useCallback(async () => {
     const { clients, currentIndex, connecting } = state;
     if (connecting || clients.length === 0) return;
@@ -66,33 +67,37 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
 
     setState((prev) => ({ ...prev, connecting: true }));
 
-    const result =
-      client.status === "connected"
-        ? clientService.disconnectClient(client.id)
-        : clientService.connectClient(client.id);
+    let message: string;
+    let messageType: "success" | "error";
+
+    if (client.status === "connected") {
+      const result = clientService.disconnectClient(client.id, currentProfileId);
+      message = result.success ? "Disconnected" : result.error || "Failed to disconnect";
+      messageType = result.success ? "success" : "error";
+    } else {
+      const result = clientService.connectClient(client.id, currentProfileId);
+      message = result.success ? "Connected" : result.error || "Failed to connect";
+      messageType = result.success ? "success" : "error";
+    }
 
     setState((prev) => ({
       ...prev,
       connecting: false,
-      clients: clientService.detectClients(),
-      message: result.success
-        ? client.status === "connected"
-          ? "Disconnected successfully"
-          : "Connected successfully"
-        : `Failed: ${result.error}`,
-      messageType: result.success ? "success" : "error",
+      clients: clientService.detectClients(currentProfileId),
+      message,
+      messageType,
     }));
-  }, [state, clientService]);
+  }, [state, clientService, currentProfileId]);
 
   // Handle refresh
   const handleRefresh = useCallback(() => {
     setState((prev) => ({
       ...prev,
-      clients: clientService.detectClients(),
+      clients: clientService.detectClients(currentProfileId),
       message: "Refreshed",
       messageType: "info",
     }));
-  }, [clientService]);
+  }, [clientService, currentProfileId]);
 
   // Handle keyboard input
   useInput((input, key) => {
@@ -169,7 +174,7 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
   // Show connecting spinner
   if (connecting) {
     return (
-      <ScreenLayout title="MCP Clients" menuSections={clientsMenuSections}>
+      <ScreenLayout title={currentProfileId ? `MCP Clients — ${currentProfileId}` : "MCP Clients"} menuSections={clientsMenuSections}>
         <Box paddingY={1} gap={1}>
           <Text color={theme.colors.primary}>
             <Spinner type="dots" />
@@ -182,7 +187,7 @@ export function ClientsScreen({ onBack }: ClientsScreenProps): React.ReactElemen
 
   return (
     <ScreenLayout
-      title="MCP Clients"
+      title={currentProfileId ? `MCP Clients — ${currentProfileId}` : "MCP Clients"}
       menuSections={clientsMenuSections}
       footer={
         message ? (
