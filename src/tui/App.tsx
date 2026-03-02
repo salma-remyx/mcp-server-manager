@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import Spinner from "ink-spinner";
-import { Header, ShortcutsBar, ConfirmDialog, ScrollableList, ScreenLayout, VersionBanner } from "./components/index.js";
+import { Header, ShortcutsBar, ConfirmDialog, ScrollableList, ScreenLayout, VersionBanner, DaemonStatus } from "./components/index.js";
 import { getConfigService } from "../services/config.service.js";
 import { getTestingService } from "../services/testing.service.js";
 import { getProfileService } from "../services/profile.service.js";
@@ -916,6 +916,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
           profile={currentProfile?.name}
           port={port}
           totalTokens={totalTokens}
+          trailing={<DaemonStatus compact polling />}
         />
       </Box>
 
