@@ -71,13 +71,23 @@ export function createTransportAuthProvider(
 
     if (isExpiring) {
       log.debug(`Refreshing OAuth token for ${server.name} before expiry`);
-      const refreshed = await authService.refreshToken(server, stored);
+      const refreshed = await authService.refreshTokenWithMutex(server, stored);
       if (refreshed) {
         return refreshed;
       }
 
-      // Failed to refresh; drop tokens so the caller can prompt for re-auth
-      authService.removeToken(server.id);
+      // If the access token hasn't fully expired yet, return existing tokens
+      if (stored.expiresAt && stored.expiresAt > Date.now()) {
+        log.warn(
+          `Token refresh failed for ${server.name}, but token not yet expired — using existing`
+        );
+        return stored;
+      }
+
+      // Fully expired — return undefined but preserve refresh token for future attempts
+      log.warn(
+        `Token refresh failed for ${server.name} and token is expired — NOT deleting refresh token`
+      );
       return undefined;
     }
 
@@ -135,7 +145,18 @@ export function createTransportAuthProvider(
     },
     async invalidateCredentials(scope: "all" | "client" | "tokens" | "verifier"): Promise<void> {
       if (scope === "all" || scope === "tokens") {
-        authService.removeToken(server.id);
+        // Preserve the refresh token so the next tokens() call can attempt a refresh
+        const stored = authService.getToken(server.id);
+        if (stored?.refreshToken) {
+          log.debug(`Invalidating access token for ${server.name} but preserving refresh token`);
+          authService.saveTokensForServer(server.id, {
+            ...stored,
+            accessToken: "",
+            expiresAt: 0,
+          });
+        } else {
+          authService.removeToken(server.id);
+        }
       }
       if (scope === "all" || scope === "client") {
         const stored = authService.getToken(server.id);
