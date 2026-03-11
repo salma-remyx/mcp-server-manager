@@ -28,8 +28,18 @@ export function registerAuthCommands(program: Command): void {
       const statuses: AuthStatus[] = [];
 
       for (const server of remoteServers) {
-        const hasToken = authService.hasValidToken(server.id);
-        const isExpired = authService.isTokenExpired(server.id);
+        let hasToken = authService.hasValidToken(server.id);
+        let isExpired = authService.isTokenExpired(server.id);
+
+        // Attempt refresh for expired-but-refreshable tokens before displaying status
+        if (isExpired && authService.isRefreshable(server.id)) {
+          const refreshed = await authService.ensureValidToken(server);
+          if (refreshed) {
+            hasToken = true;
+            isExpired = false;
+          }
+        }
+
         const token = authService.getToken(server.id);
 
         statuses.push({
@@ -117,13 +127,24 @@ export function registerAuthCommands(program: Command): void {
         process.exit(1);
       }
 
-      // Check if already authenticated
+      // Check if already authenticated (attempt refresh if expired)
       if (authService.hasValidToken(server.id)) {
         console.log(`${c.checkmark} Already authenticated with ${server.name}`);
         console.log(
           `${colors.gray}Use 'mcpsm auth logout ${server.id}' to remove the token.${colors.reset}`
         );
         return;
+      }
+
+      // Try refreshing before starting a full OAuth flow
+      if (authService.isRefreshable(server.id)) {
+        console.log(`${colors.gray}Token expired, attempting refresh...${colors.reset}`);
+        const refreshed = await authService.ensureValidToken(server);
+        if (refreshed) {
+          console.log(`${c.checkmark} Token refreshed successfully for ${server.name}`);
+          return;
+        }
+        console.log(`${colors.gray}Refresh failed, starting OAuth flow...${colors.reset}`);
       }
 
       console.log(`\n${colors.cyan}Starting OAuth flow for ${server.name}...${colors.reset}\n`);

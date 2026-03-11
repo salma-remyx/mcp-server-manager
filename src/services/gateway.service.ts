@@ -103,6 +103,84 @@ let gatewayState: GatewayState = createGatewayState();
 let refreshLock: Promise<void> = Promise.resolve();
 
 /**
+ * Start proactive OAuth token refresh for remote servers.
+ * When a token is refreshed, reconnects just that server.
+ */
+function startProactiveTokenRefresh(remoteServers: RemoteServer[]): void {
+  const authService = getAuthService();
+  const oauthServers = remoteServers.filter((s) => s.oauth?.enabled);
+
+  if (oauthServers.length === 0) return;
+
+  authService.startProactiveRefresh(oauthServers, (serverId: string) => {
+    // On successful refresh, reconnect the specific server
+    reconnectServer(serverId).catch((error) => {
+      logger.warn(`Failed to reconnect server ${serverId} after token refresh:`, error);
+    });
+  });
+}
+
+/**
+ * Reconnect a single server after token refresh.
+ * Serialized through refreshLock to avoid concurrent state mutations.
+ */
+async function reconnectServer(serverId: string): Promise<void> {
+  const runReconnect = async (): Promise<void> => {
+    if (!gatewayState.running) return;
+
+    const configService = getConfigService();
+    // serverId could be "remote:xxx" or just "xxx"
+    const rawId = serverId.startsWith("remote:") ? serverId.slice(7) : serverId;
+    const remoteServers = configService.getEnabledRemoteServers();
+    const server = remoteServers.find((s) => s.id === rawId);
+
+    if (!server) {
+      logger.debug(`Server ${serverId} not found for reconnection`);
+      return;
+    }
+
+    const connectedKey = `remote:${server.id}`;
+    const existing = gatewayState.connectedServers.get(connectedKey);
+
+    if (existing) {
+      logger.info(`Reconnecting ${server.name} after token refresh`);
+      await closeServerConnection(existing);
+      gatewayState.connectedServers.delete(connectedKey);
+    }
+
+    const connected = await connectRemoteServer(server);
+    if (connected) {
+      gatewayState.connectedServers.set(connected.id, connected);
+      refreshAggregatedTools();
+
+      // Notify active sessions about tool list changes
+      const notifyPromises = Array.from(gatewayState.activeSessions.values()).map(
+        async (session) => {
+          try {
+            await session.server.sendToolListChanged();
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            logger.warn(`Failed to notify session of tool changes: ${message}`);
+          }
+        }
+      );
+      await Promise.allSettled(notifyPromises);
+
+      logger.info(`Reconnected ${server.name} successfully after token refresh`);
+    } else {
+      logger.warn(`Failed to reconnect ${server.name} after token refresh`);
+    }
+  };
+
+  refreshLock = refreshLock.then(
+    () => runReconnect(),
+    () => runReconnect()
+  );
+
+  await refreshLock;
+}
+
+/**
  * Connect to a local STDIO-based MCP server
  */
 async function connectLocalServer(server: LocalServer): Promise<ConnectedServer | null> {
@@ -599,6 +677,9 @@ export async function startGateway(
       httpServer,
     };
 
+    // Start proactive OAuth token refresh for remote servers
+    startProactiveTokenRefresh(remoteServers);
+
     return { success: true };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -613,6 +694,9 @@ export async function startGateway(
  */
 export async function stopGateway(): Promise<{ success: boolean; error?: string }> {
   logger.info("Stopping gateway...");
+
+  // Stop proactive token refresh
+  getAuthService().stopProactiveRefresh();
 
   try {
     // Close all server connections with timeout to prevent hanging
@@ -798,6 +882,9 @@ export async function refreshGateway(
     }
 
     const aggregatedTools = refreshAggregatedTools();
+
+    // Restart proactive token refresh with updated server list
+    startProactiveTokenRefresh(remoteServers);
 
     // Notify ALL active session servers about tool list changes
     const notifyPromises = Array.from(gatewayState.activeSessions.values()).map(async (session) => {

@@ -57,6 +57,10 @@ const MCP_CLIENT_INFO = {
 /**
  * OAuth Authentication Service
  */
+/** Proactive refresh retry config */
+const PROACTIVE_REFRESH_MARGIN_MS = 10 * 60 * 1000; // 10 minutes before expiry
+const PROACTIVE_RETRY_DELAYS_MS = [30_000, 60_000, 120_000, 240_000, 480_000]; // exponential backoff
+
 export class AuthService {
   private configDir: string;
   private tokensPath: string;
@@ -65,6 +69,13 @@ export class AuthService {
   private pendingAuths: Map<string, PendingAuthorization>;
   private callbackServer: HttpServer | null = null;
   private callbackPort: number | null = null;
+
+  /** Per-server refresh mutex to prevent concurrent refresh requests */
+  private refreshMutexes: Map<string, Promise<StoredOAuthTokens | null>> = new Map();
+  /** Proactive refresh timers keyed by server ID */
+  private refreshTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  /** Retry counts for proactive refresh */
+  private refreshRetryCounts: Map<string, number> = new Map();
 
   constructor(configDir?: string) {
     this.configDir =
@@ -781,6 +792,8 @@ export class AuthService {
   saveTokensForServer(serverId: string, tokens: StoredOAuthTokens): void {
     this.tokens.set(serverId, tokens);
     this.saveTokens();
+    // Note: proactive refresh rescheduling requires a RemoteServer object,
+    // so it's handled by the caller or by scheduleRefreshForServer() directly.
   }
 
   /** Get valid access token for a server (refreshes if needed) */
@@ -874,6 +887,182 @@ export class AuthService {
       log.debug("Error refreshing token:", error);
       return null;
     }
+  }
+
+  /**
+   * Refresh token with per-server mutex to prevent concurrent refresh requests.
+   * If a refresh is already in-flight for this server, returns the same promise.
+   */
+  async refreshTokenWithMutex(
+    server: RemoteServer,
+    stored: StoredOAuthTokens
+  ): Promise<StoredOAuthTokens | null> {
+    const existing = this.refreshMutexes.get(server.id);
+    if (existing) {
+      log.debug(`Refresh already in-flight for ${server.name}, waiting...`);
+      return existing;
+    }
+
+    const refreshPromise = this.refreshToken(server, stored).finally(() => {
+      this.refreshMutexes.delete(server.id);
+    });
+
+    this.refreshMutexes.set(server.id, refreshPromise);
+    return refreshPromise;
+  }
+
+  /**
+   * Ensure a server has a valid token, attempting refresh if expired but refreshable.
+   * Returns true if the server has a valid (or freshly refreshed) token.
+   */
+  async ensureValidToken(server: RemoteServer): Promise<boolean> {
+    const stored = this.tokens.get(server.id);
+    if (!stored) {
+      return false;
+    }
+
+    // Token is still valid
+    if (!stored.expiresAt || stored.expiresAt > Date.now()) {
+      // Also check for empty access token (invalidated by SDK)
+      if (stored.accessToken && stored.accessToken.length > 0) {
+        return true;
+      }
+    }
+
+    // Token expired or invalidated — try refresh
+    if (stored.refreshToken) {
+      log.debug(`Token expired for ${server.name}, attempting refresh...`);
+      const refreshed = await this.refreshTokenWithMutex(server, stored);
+      return refreshed !== null;
+    }
+
+    return false;
+  }
+
+  // === Proactive Refresh Scheduling ===
+
+  /**
+   * Start proactive refresh timers for all servers with refresh tokens.
+   * @param servers List of remote servers to monitor
+   * @param onRefreshed Callback when a server's token is successfully refreshed
+   */
+  startProactiveRefresh(servers: RemoteServer[], onRefreshed?: (serverId: string) => void): void {
+    this.stopProactiveRefresh();
+    log.debug(`Starting proactive refresh for ${servers.length} server(s)`);
+
+    for (const server of servers) {
+      this.scheduleRefreshForServer(server, onRefreshed);
+    }
+  }
+
+  /** Stop all proactive refresh timers */
+  stopProactiveRefresh(): void {
+    for (const [serverId, timer] of this.refreshTimers) {
+      clearTimeout(timer);
+      log.debug(`Stopped proactive refresh timer for ${serverId}`);
+    }
+    this.refreshTimers.clear();
+    this.refreshRetryCounts.clear();
+  }
+
+  /**
+   * Schedule a proactive refresh for a single server.
+   * Called automatically when tokens are saved.
+   */
+  scheduleRefreshForServer(server: RemoteServer, onRefreshed?: (serverId: string) => void): void {
+    // Clear existing timer for this server
+    const existingTimer = this.refreshTimers.get(server.id);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+    this.refreshRetryCounts.delete(server.id);
+
+    const stored = this.tokens.get(server.id);
+    if (!stored?.refreshToken || !stored.expiresAt) {
+      return;
+    }
+
+    // Schedule refresh 10 minutes before expiry
+    const refreshAt = stored.expiresAt - PROACTIVE_REFRESH_MARGIN_MS;
+    const delay = Math.max(refreshAt - Date.now(), 1000); // at least 1 second
+
+    log.debug(`Scheduling proactive refresh for ${server.name} in ${Math.round(delay / 1000)}s`);
+
+    const timer = setTimeout(() => {
+      this.executeProactiveRefresh(server, onRefreshed);
+    }, delay);
+
+    // Don't let the timer keep the process alive
+    if (timer.unref) {
+      timer.unref();
+    }
+
+    this.refreshTimers.set(server.id, timer);
+  }
+
+  /** Execute a proactive refresh with exponential backoff on failure */
+  private async executeProactiveRefresh(
+    server: RemoteServer,
+    onRefreshed?: (serverId: string) => void
+  ): Promise<void> {
+    const stored = this.tokens.get(server.id);
+    if (!stored?.refreshToken) {
+      log.debug(`No refresh token for ${server.name}, skipping proactive refresh`);
+      return;
+    }
+
+    log.debug(`Proactive refresh executing for ${server.name}`);
+
+    try {
+      const refreshed = await this.refreshTokenWithMutex(server, stored);
+
+      if (refreshed) {
+        log.info(`Proactive refresh succeeded for ${server.name}`);
+        this.refreshRetryCounts.delete(server.id);
+        // Schedule the next refresh based on new expiry
+        this.scheduleRefreshForServer(server, onRefreshed);
+        onRefreshed?.(server.id);
+      } else {
+        this.handleProactiveRefreshFailure(server, onRefreshed);
+      }
+    } catch (error) {
+      log.warn(`Proactive refresh error for ${server.name}:`, error);
+      this.handleProactiveRefreshFailure(server, onRefreshed);
+    }
+  }
+
+  /** Handle proactive refresh failure with exponential backoff */
+  private handleProactiveRefreshFailure(
+    server: RemoteServer,
+    onRefreshed?: (serverId: string) => void
+  ): void {
+    const retryCount = this.refreshRetryCounts.get(server.id) || 0;
+
+    if (retryCount >= PROACTIVE_RETRY_DELAYS_MS.length) {
+      log.warn(
+        `Proactive refresh for ${server.name} exhausted all ${PROACTIVE_RETRY_DELAYS_MS.length} retries`
+      );
+      this.refreshTimers.delete(server.id);
+      this.refreshRetryCounts.delete(server.id);
+      return;
+    }
+
+    const delay = PROACTIVE_RETRY_DELAYS_MS[retryCount];
+    log.warn(
+      `Proactive refresh failed for ${server.name}, retry ${retryCount + 1}/${PROACTIVE_RETRY_DELAYS_MS.length} in ${delay / 1000}s`
+    );
+
+    this.refreshRetryCounts.set(server.id, retryCount + 1);
+
+    const timer = setTimeout(() => {
+      this.executeProactiveRefresh(server, onRefreshed);
+    }, delay);
+
+    if (timer.unref) {
+      timer.unref();
+    }
+
+    this.refreshTimers.set(server.id, timer);
   }
 
   /** Check if a server has valid OAuth tokens */

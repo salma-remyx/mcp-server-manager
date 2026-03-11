@@ -68,6 +68,26 @@ export function AuthScreen({
     // Also get all server IDs that have stored OAuth tokens
     const storedTokenServerIds = authService.getAllStoredTokenServerIds();
 
+    // Collect all refresh promises to await before rendering
+    const refreshPromises: Promise<void>[] = [];
+
+    for (const server of allRemoteServers) {
+      const isExpired = authService.isTokenExpired(server.id);
+      const isRefreshable = authService.isRefreshable(server.id);
+
+      // Attempt refresh for expired-but-refreshable tokens
+      if (isExpired && isRefreshable) {
+        refreshPromises.push(
+          authService.ensureValidToken(server).then(() => {})
+        );
+      }
+    }
+
+    // Await all refresh attempts before building UI state
+    if (refreshPromises.length > 0) {
+      await Promise.allSettled(refreshPromises);
+    }
+
     for (const server of allRemoteServers) {
       const token = authService.getToken(server.id);
       const isExpired = authService.isTokenExpired(server.id);
@@ -75,16 +95,6 @@ export function AuthScreen({
       const hasStoredToken = storedTokenServerIds.includes(server.id);
       const isOAuthEnabled = server.oauth?.enabled || false;
       const isBearerOnly = !isOAuthEnabled;
-
-      // Trigger silent refresh in the background if refreshable
-      if (isRefreshable && token) {
-        authService.refreshToken(server, token).then(refreshed => {
-          if (refreshed) {
-            // Re-load servers to update the UI with the new token status
-            void loadServers();
-          }
-        });
-      }
 
       const hasToken = !!token;
       const hasRefresh = !!token?.refreshToken || !!server.oauth?.clientSecret;
