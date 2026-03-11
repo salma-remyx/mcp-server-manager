@@ -1,6 +1,6 @@
 ---
 name: release-mcpsm
-description: Create a new release of mcp-server-manager with version bump, tag, and GitHub release notes
+description: Create a new release of mcp-server-manager with GitHub release (CI handles version bump and npm publish)
 disable-model-invocation: true
 argument-hint: [major|minor|patch]
 user-invocable: true
@@ -11,10 +11,17 @@ user-invocable: true
 Create a new release following semantic versioning. This workflow will:
 
 1. Verify repository state (on main, clean working directory)
-2. Bump version in package.json
+2. Calculate the new version
 3. Generate release notes from merged PRs
-4. Commit, tag, and push to GitHub
-5. Create GitHub release
+4. Create GitHub release (which triggers CI to bump package.json and publish to npm)
+
+**Important**: The CI workflow (`.github/workflows/publish.yml`) automatically handles:
+
+- Updating `package.json` version
+- Committing the version bump to main
+- Publishing to npm
+
+You only need to create the GitHub release — everything else is automated.
 
 ## Prerequisites Check
 
@@ -92,7 +99,7 @@ Create release notes in this format:
 - <PR title> by @MateusTorquato in https://github.com/MateusTorquato/mcp-server-manager/pull/<number>
 - <PR title> by @MateusTorquato in https://github.com/MateusTorquato/mcp-server-manager/pull/<number>
 
-**Full Changelog**: https://github.com/MateusTorquato/mcp-server-manager/compare/<old-tag>...<new-tag>
+**Full Changelog**: https://github.com/MateusTorquato/mcp-server-manager/compare/<old-tag>...v<new-version>
 ```
 
 If no PRs merged since last tag:
@@ -102,7 +109,7 @@ If no PRs merged since last tag:
 
 - Minor improvements and bug fixes
 
-**Full Changelog**: https://github.com/MateusTorquato/mcp-server-manager/compare/<old-tag>...<new-tag>
+**Full Changelog**: https://github.com/MateusTorquato/mcp-server-manager/compare/<old-tag>...v<new-version>
 ```
 
 ### Step 5: Show Preview and Confirm
@@ -121,30 +128,7 @@ Create this release? (y/n)
 
 Wait for user confirmation before proceeding.
 
-### Step 6: Update package.json
-
-Use Node.js to update the version field:
-
-```bash
-node -e "const pkg = require('./package.json'); pkg.version = '<new-version>'; require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n')"
-```
-
-### Step 7: Commit and Push
-
-```bash
-git add package.json
-git commit -m "chore: bump version to <new-version>"
-git push origin main
-```
-
-### Step 8: Create and Push Tag
-
-```bash
-git tag v<new-version>
-git push origin v<new-version>
-```
-
-### Step 9: Create GitHub Release
+### Step 6: Create GitHub Release
 
 Save release notes to temporary file and create release:
 
@@ -154,21 +138,27 @@ cat > .release-notes.tmp << 'EOF'
 <generated release notes>
 EOF
 
-# Create GitHub release
+# Create GitHub release (this triggers CI to bump version and publish to npm)
 gh release create v<new-version> --title "v<new-version>" --notes-file .release-notes.tmp
 
 # Clean up temp file
 rm .release-notes.tmp
 ```
 
-### Step 10: Success Message
+### Step 7: Success Message
 
 Display:
 
 ```
-✓ Release v<new-version> created successfully!
+Release v<new-version> created successfully!
 
-View at: https://github.com/MateusTorquato/mcp-server-manager/releases/tag/v<new-version>
+CI will now automatically:
+  1. Bump package.json to <new-version>
+  2. Commit the version bump to main
+  3. Publish to npm
+
+View release: https://github.com/MateusTorquato/mcp-server-manager/releases/tag/v<new-version>
+View CI: https://github.com/MateusTorquato/mcp-server-manager/actions
 ```
 
 ## Error Handling
@@ -184,7 +174,6 @@ Common errors:
 
 - **Not on main branch**: Checkout main first
 - **Dirty working directory**: Commit or stash changes
-- **Git push fails**: Check permissions and network
 - **gh command not found**: Install GitHub CLI
 - **gh auth required**: Run `gh auth login`
 
@@ -192,5 +181,5 @@ Common errors:
 
 - This skill uses `disable-model-invocation: true` to prevent accidental releases
 - Only run this when ready to publish a new version
-- The version bump is permanent once pushed - be careful!
-- Release notes are generated from PR titles - ensure PR titles are descriptive
+- The GitHub release creation triggers CI — do NOT manually bump package.json or push tags
+- Release notes are generated from PR titles — ensure PR titles are descriptive
