@@ -29,12 +29,9 @@ export function registerProfileCommands(program: Command): void {
 
       for (const p of profiles) {
         const active = p.isActive ? ` ${colors.green}(active)${colors.reset}` : "";
-        const servers = p.includesAll
-          ? `${colors.gray}all servers${colors.reset}`
-          : `${p.serverCount} server(s)`;
 
         console.log(`  ${colors.cyan}${p.id}${colors.reset} - ${p.name}${active}`);
-        console.log(`    ${servers}`);
+        console.log(`    ${p.serverCount} server(s)`);
       }
 
       console.log(

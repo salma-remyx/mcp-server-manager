@@ -124,8 +124,21 @@ describe("ProfileService", () => {
       expect(profileService.getProfile("test")).toBeUndefined();
     });
 
+    it("should not allow deleting the last profile", () => {
+      profileService = new ProfileService();
+
+      // Only one profile exists (default), so it should fail
+      const activeProfileId = profileService.getActiveProfileId();
+      const result = profileService.delete(activeProfileId);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Cannot delete the last profile");
+    });
+
     it("should not allow deleting active profile", () => {
       profileService = new ProfileService();
+
+      // Create a second profile so the "last profile" guard doesn't trigger
+      profileService.create("other", "Other");
 
       // Try to delete the currently active profile (default is active by default)
       const activeProfileId = profileService.getActiveProfileId();
@@ -136,6 +149,9 @@ describe("ProfileService", () => {
 
     it("should fail when profile not found", () => {
       profileService = new ProfileService();
+
+      // Create a second profile so the "last profile" guard doesn't trigger
+      profileService.create("other", "Other");
 
       const result = profileService.delete("nonexistent");
       expect(result.success).toBe(false);
@@ -251,12 +267,34 @@ describe("ProfileService", () => {
   });
 
   describe("getServersForActiveProfile", () => {
-    it("should return all servers when profile has empty lists", () => {
+    it("should return all servers when existing profile is migrated from include-all", () => {
+      // Simulate existing user with profiles.json that has empty arrays (old include-all)
+      fs.writeFileSync(
+        path.join(testConfigDir, "profiles.json"),
+        JSON.stringify({
+          activeProfile: "default",
+          profiles: {
+            default: { name: "Default", servers: [], remoteServers: [] },
+          },
+        })
+      );
+
+      resetProfileService();
       profileService = new ProfileService();
 
+      // Migration should have converted empty arrays to explicit server lists
       const { servers, remoteServers } = profileService.getServersForActiveProfile();
       expect(servers).toHaveLength(2);
       expect(remoteServers).toHaveLength(1);
+    });
+
+    it("should return empty for fresh install with no profiles file", () => {
+      // No profiles.json — fresh install, default profile starts truly empty
+      profileService = new ProfileService();
+
+      const { servers, remoteServers } = profileService.getServersForActiveProfile();
+      expect(servers).toHaveLength(0);
+      expect(remoteServers).toHaveLength(0);
     });
 
     it("should return filtered servers when profile has specific servers", () => {

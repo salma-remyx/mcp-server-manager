@@ -44,12 +44,40 @@ export class ProfileService {
       if (fs.existsSync(this.profilesPath)) {
         const data = fs.readFileSync(this.profilesPath, "utf8");
         const parsed = JSON.parse(data) as Partial<ProfilesConfig>;
-        return { ...DEFAULT_PROFILES, ...parsed };
+        const config = { ...DEFAULT_PROFILES, ...parsed };
+        const migrated = this.migrateIncludeAll(config);
+        if (migrated) {
+          fs.writeFileSync(this.profilesPath, JSON.stringify(config, null, 2));
+        }
+        return config;
       }
     } catch (error) {
       log.debug("Failed to load profiles, using defaults:", error);
     }
     return { ...DEFAULT_PROFILES };
+  }
+
+  /**
+   * Migrate profiles that used the old "empty = include all" convention
+   * to explicit server lists. Returns true if any migration occurred.
+   */
+  private migrateIncludeAll(config: ProfilesConfig): boolean {
+    const configService = getConfigService();
+    const allLocal = configService.getLocalServers().map((s) => s.id);
+    const allRemote = configService.getRemoteServers().map((s) => s.id);
+
+    // Skip migration if there are no servers (fresh install)
+    if (allLocal.length === 0 && allRemote.length === 0) return false;
+
+    let migrated = false;
+    for (const profile of Object.values(config.profiles)) {
+      if (profile.servers.length === 0 && profile.remoteServers.length === 0) {
+        profile.servers = [...allLocal];
+        profile.remoteServers = [...allRemote];
+        migrated = true;
+      }
+    }
+    return migrated;
   }
 
   /** Save profiles to file */
@@ -79,7 +107,6 @@ export class ProfileService {
       name: profile.name,
       serverCount: profile.servers.length + profile.remoteServers.length,
       isActive: id === this.profiles.activeProfile,
-      includesAll: profile.servers.length === 0 && profile.remoteServers.length === 0,
     }));
   }
 
@@ -124,6 +151,11 @@ export class ProfileService {
 
   /** Delete a profile */
   delete(id: string): ProfileResult {
+    const profileCount = Object.keys(this.profiles.profiles).length;
+    if (profileCount <= 1) {
+      return { success: false, error: "Cannot delete the last profile" };
+    }
+
     if (id === this.profiles.activeProfile) {
       return { success: false, error: "Cannot delete active profile" };
     }
@@ -203,14 +235,6 @@ export class ProfileService {
       };
     }
 
-    // Empty arrays mean "include all"
-    if (profile.servers.length === 0 && profile.remoteServers.length === 0) {
-      return {
-        servers: configService.getLocalServers(),
-        remoteServers: configService.getRemoteServers(),
-      };
-    }
-
     return {
       servers: configService.getLocalServers().filter((s) => profile.servers.includes(s.id)),
       remoteServers: configService
@@ -227,14 +251,6 @@ export class ProfileService {
     }
 
     const configService = getConfigService();
-
-    // Empty arrays mean "include all"
-    if (profile.servers.length === 0 && profile.remoteServers.length === 0) {
-      return {
-        servers: configService.getLocalServers(),
-        remoteServers: configService.getRemoteServers(),
-      };
-    }
 
     return {
       servers: configService.getLocalServers().filter((s) => profile.servers.includes(s.id)),
@@ -254,17 +270,6 @@ export class ProfileService {
     profile.name = newName;
     this.save();
     return { success: true };
-  }
-
-  /** Convert "include all" profile to explicit server lists */
-  makeExplicit(profileId: string): void {
-    const profile = this.profiles.profiles[profileId];
-    if (!profile) return;
-    if (profile.servers.length > 0 || profile.remoteServers.length > 0) return;
-    const configService = getConfigService();
-    profile.servers = configService.getLocalServers().map((s) => s.id);
-    profile.remoteServers = configService.getRemoteServers().map((s) => s.id);
-    this.save();
   }
 
   /** Reload profiles from disk */

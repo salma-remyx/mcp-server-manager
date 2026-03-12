@@ -46,7 +46,6 @@ describe("ImportExportService", () => {
       name: "Existing",
       command: "old",
       args: [],
-      disabled: false,
     });
 
     const conflicts = service.detectConflicts([

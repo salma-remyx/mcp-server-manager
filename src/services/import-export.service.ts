@@ -165,7 +165,6 @@ export class ImportExportService {
           command: server.command,
           args: server.args,
           env: server.env,
-          disabled: server.disabled,
         });
       }
     }
@@ -179,7 +178,6 @@ export class ImportExportService {
           url: server.url,
           type: server.type,
           bearerToken: server.bearerToken,
-          disabled: server.disabled,
         });
       }
     }
@@ -320,16 +318,6 @@ export class ImportExportService {
           isDifferent: true,
         });
       }
-
-      // Compare disabled status
-      if ((existingLocal.disabled || false) !== (incoming.disabled || false)) {
-        differences.push({
-          field: "disabled",
-          existing: existingLocal.disabled || false,
-          incoming: incoming.disabled || false,
-          isDifferent: true,
-        });
-      }
     } else {
       const existingRemote = existing as RemoteServer;
 
@@ -369,16 +357,6 @@ export class ImportExportService {
           field: "name",
           existing: existingRemote.name,
           incoming: incoming.name,
-          isDifferent: true,
-        });
-      }
-
-      // Compare disabled status
-      if ((existingRemote.disabled || false) !== (incoming.disabled || false)) {
-        differences.push({
-          field: "disabled",
-          existing: existingRemote.disabled || false,
-          incoming: incoming.disabled || false,
           isDifferent: true,
         });
       }
@@ -449,7 +427,6 @@ export class ImportExportService {
         command: incoming.command || existingLocal.command,
         args: incoming.args !== undefined ? incoming.args : existingLocal.args,
         env: Object.keys(mergedEnv).length > 0 ? mergedEnv : undefined,
-        disabled: existingLocal.disabled,
       } as LocalServer;
     } else {
       const existingRemote = existing as RemoteServer;
@@ -460,7 +437,6 @@ export class ImportExportService {
         url: incoming.url || existingRemote.url,
         type: incoming.type || existingRemote.type,
         bearerToken: incoming.bearerToken || existingRemote.bearerToken,
-        disabled: existingRemote.disabled,
       } as RemoteServer;
     }
   }
@@ -492,7 +468,6 @@ export class ImportExportService {
               url: server.url,
               type: (server.type || "http") as TransportType,
               bearerToken: server.bearerToken,
-              disabled: server.disabled,
             });
             results.updated++;
           } else if (decision === "merge") {
@@ -511,7 +486,6 @@ export class ImportExportService {
             url: server.url,
             type: (server.type || "http") as TransportType,
             bearerToken: server.bearerToken,
-            disabled: server.disabled,
           });
           results.added++;
         }
@@ -531,7 +505,6 @@ export class ImportExportService {
               command: server.command,
               args: server.args || [],
               env: server.env,
-              disabled: server.disabled,
             });
             results.updated++;
           } else if (decision === "merge") {
@@ -550,7 +523,6 @@ export class ImportExportService {
             command: server.command,
             args: server.args || [],
             env: server.env,
-            disabled: server.disabled,
           });
           results.added++;
         }
@@ -584,7 +556,6 @@ export class ImportExportService {
               url: server.url,
               type: (server.type || "http") as TransportType,
               bearerToken: server.bearerToken,
-              disabled: server.disabled,
             });
             results.updated++;
           } else {
@@ -597,7 +568,6 @@ export class ImportExportService {
             url: server.url,
             type: (server.type || "http") as TransportType,
             bearerToken: server.bearerToken,
-            disabled: server.disabled,
           });
           results.added++;
         }
@@ -617,7 +587,6 @@ export class ImportExportService {
               command: server.command,
               args: server.args || [],
               env: server.env,
-              disabled: server.disabled,
             });
             results.updated++;
           } else {
@@ -630,7 +599,6 @@ export class ImportExportService {
             command: server.command,
             args: server.args || [],
             env: server.env,
-            disabled: server.disabled,
           });
           results.added++;
         }
@@ -646,7 +614,7 @@ export class ImportExportService {
     const mcpServers: ClaudeFormat["mcpServers"] = {};
 
     // Export local servers
-    for (const server of configService.getEnabledLocalServers()) {
+    for (const server of configService.getLocalServers()) {
       mcpServers[server.id] = {
         command: server.command,
         args: server.args || [],
@@ -657,7 +625,7 @@ export class ImportExportService {
     }
 
     // Export remote servers as mcp-remote commands
-    for (const server of configService.getEnabledRemoteServers()) {
+    for (const server of configService.getRemoteServers()) {
       mcpServers[server.id] = {
         command: "npx",
         args: ["-y", "mcp-remote", server.url],
@@ -683,7 +651,6 @@ export class ImportExportService {
         command: s.command,
         args: s.args,
         env: s.env,
-        disabled: s.disabled,
       })),
       remoteServers: remoteServers.map((s) => ({
         id: s.id,
@@ -691,7 +658,6 @@ export class ImportExportService {
         type: s.type,
         url: s.url,
         bearerToken: s.bearerToken,
-        disabled: s.disabled,
       })),
       port: configService.getPort(),
     };

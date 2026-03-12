@@ -127,7 +127,7 @@ describe("App Component", () => {
     it("should show profile membership checkboxes", () => {
       const { lastFrame } = render(<App />);
 
-      // Default profile has "include all" semantics (empty arrays), so all servers show checked
+      // Default profile has explicit server lists, so matching servers show checked
       expect(lastFrame()).toContain("[✓]");
     });
   });
@@ -427,7 +427,7 @@ describe("Profile Switching", () => {
     mockConfigService.getRemoteServers.mockReturnValue(sampleRemoteServers);
     // "dev" profile only includes server1 and remote1
     mockProfileService.getProfile.mockImplementation((id: string) => {
-      if (id === "default") return { name: "Default", servers: [], remoteServers: [] };
+      if (id === "default") return { name: "Default", servers: ["server1", "server2", "server3"], remoteServers: ["remote1", "remote2"] };
       if (id === "dev") return { name: "Development", servers: ["server1"], remoteServers: ["remote1"] };
       return null;
     });
@@ -441,7 +441,7 @@ describe("Profile Switching", () => {
     });
   });
 
-  it("should show all tokens when default profile (include all) is active", () => {
+  it("should show all tokens when default profile has all servers", () => {
     const { lastFrame } = render(<App />);
     // Default profile includes all servers: 1000+2000+3000+500+700 = 7,200
     expect(lastFrame()).toContain("7,200 tokens");
@@ -469,27 +469,15 @@ describe("Profile Switching", () => {
     expect(lastFrame()).toContain("Development");
   });
 
-  it("should show all checkmarks for include-all profile", () => {
+  it("should show checkmarks based on profile membership (not enabled/disabled)", () => {
     const { lastFrame } = render(<App />);
 
-    // Default profile includes all — every server should be checked
-    const frame = lastFrame();
-    const checkCount = (frame.match(/\[✓\]/g) || []).length;
-    expect(checkCount).toBe(sampleLocalServers.length + sampleRemoteServers.length);
-  });
-
-  it("should show partial checkmarks for explicit profile", async () => {
-    const { lastFrame, stdin } = render(<App />);
-
-    stdin.write(KEYS.RIGHT);
-    await waitForStateUpdate();
-
-    // Dev profile has server1 + remote1 checked, others unchecked
+    // Checkmarks reflect profile membership: all 5 servers are in default profile
     const frame = lastFrame();
     const checkedCount = (frame.match(/\[✓\]/g) || []).length;
     const uncheckedCount = (frame.match(/\[ \]/g) || []).length;
-    expect(checkedCount).toBe(2); // server1 + remote1
-    expect(uncheckedCount).toBe(3); // server2, server3, remote2
+    expect(checkedCount).toBe(5); // all servers are members of the active profile
+    expect(uncheckedCount).toBe(0);
   });
 
   it("should cycle profiles with left arrow (wraps around)", async () => {
@@ -516,19 +504,18 @@ describe("Profile Switching", () => {
     expect(lastFrame()).toContain("7,200 tokens");
   });
 
-  it("should toggle profile membership with Space", async () => {
+  it("should toggle profile membership with Space key", async () => {
     const { stdin } = render(<App />);
 
-    // Press space on first server (server1) while on default profile
-    stdin.write(KEYS.SPACE);
+    // Press Space on first server (server1) while on default profile
+    stdin.write(" ");
     await waitForStateUpdate();
 
-    // Default profile is include-all, so Space should call makeExplicit then removeServer
-    expect(mockProfileService.makeExplicit).toHaveBeenCalledWith("default");
+    // Default profile has explicit server lists, so Space should call removeServer directly
     expect(mockProfileService.removeServer).toHaveBeenCalledWith("default", "server1");
   });
 
-  it("should add server to explicit profile with Space", async () => {
+  it("should add server to explicit profile with Space key", async () => {
     const { stdin } = render(<App />);
 
     // Switch to dev profile
@@ -539,7 +526,7 @@ describe("Profile Switching", () => {
     stdin.write(KEYS.DOWN);
     await waitForStateUpdate();
 
-    stdin.write(KEYS.SPACE);
+    stdin.write(" ");
     await waitForStateUpdate();
 
     expect(mockProfileService.addServer).toHaveBeenCalledWith("dev", "server2");
@@ -572,7 +559,7 @@ describe("App State Management", () => {
 
     const { lastFrame } = render(<App />);
 
-    // Default profile has empty servers (include all), so all should be checked
+    // Default profile has explicit server lists including all sample servers
     expect(lastFrame()).toContain("[✓]");
   });
 
