@@ -23,6 +23,7 @@ MCP Server Manager uses a **gateway pattern** where a single `mcpsm` gateway ser
 mcpsm clients connect claude
 mcpsm clients connect cursor
 mcpsm clients connect windsurf
+mcpsm clients connect kiro
 ```
 
 ### Disconnect a Client
@@ -99,6 +100,7 @@ Some clients support **real-time config loading** - they pick up changes instant
 | ------------------ | --------- | --------------------------------- |
 | Cursor             | ✓ Yes     | Changes appear immediately        |
 | Windsurf           | ✓ Yes     | Changes appear immediately        |
+| Kiro               | ✓ Yes     | Changes appear immediately        |
 | VS Code            | ✓ Yes     | Changes appear immediately        |
 | Zed                | ✓ Yes     | Changes appear immediately        |
 | Claude Desktop     | No        | Requires restart after connection |
@@ -113,6 +115,7 @@ mcpsm writes to special config paths for clients that support real-time loading:
 ```
 Cursor:   ~/.cursor/mcp.json
 Windsurf: ~/.codeium/windsurf/mcp_config.json
+Kiro:     ~/.kiro/settings/mcp.json
 VS Code:  ~/Library/Application Support/Code/User/mcp.json
 Zed:      Uses its primary settings.json path (no separate real-time path)
 ```
@@ -135,6 +138,7 @@ mcpsm add github --type http --url "https://api.github.com/mcp"
 mcpsm clients connect claude
 mcpsm clients connect cursor
 mcpsm clients connect windsurf
+mcpsm clients connect kiro
 ```
 
 ### Step 3: Use in Clients
@@ -144,6 +148,7 @@ All servers are now available in each connected client:
 - **Claude Desktop**: Restart and check MCP servers
 - **Cursor**: Changes appear immediately
 - **Windsurf**: Changes appear immediately
+- **Kiro**: Changes appear immediately
 - **Zed**: Changes appear immediately
 
 ### Step 4: Change Port (Optional)
@@ -187,6 +192,7 @@ When you connect or disconnect a client, all other servers in the config remain 
 Claude Desktop:    ~/Library/Application Support/Claude/claude_desktop_config.json
 Cursor:           ~/Library/Application Support/Cursor/User/globalStorage/cursor.mcp/config.json
 Windsurf:         ~/Library/Application Support/Windsurf/User/globalStorage/windsurf.mcp/config.json
+Kiro:             ~/.kiro/settings/mcp.json
 VS Code:          ~/Library/Application Support/Code/User/mcp.json
 Zed:              ~/.config/zed/settings.json
 Google Antigravity: ~/.antigravity/mcp_config.json
@@ -198,6 +204,7 @@ Google Antigravity: ~/.antigravity/mcp_config.json
 Claude Desktop:    %APPDATA%\Claude\claude_desktop_config.json
 Cursor:           %APPDATA%\Cursor\User\globalStorage\cursor.mcp\config.json
 Windsurf:         %APPDATA%\Windsurf\User\globalStorage\windsurf.mcp\config.json
+Kiro:             %USERPROFILE%\.kiro\settings\mcp.json
 VS Code:          %APPDATA%\Code\User\mcp.json
 Zed:              %APPDATA%\Zed\settings.json
 Google Antigravity: %USERPROFILE%\.antigravity\mcp_config.json
@@ -209,6 +216,7 @@ Google Antigravity: %USERPROFILE%\.antigravity\mcp_config.json
 Claude Desktop:    ~/.config/Claude/claude_desktop_config.json
 Cursor:           ~/.config/Cursor/User/globalStorage/cursor.mcp/config.json
 Windsurf:         ~/.config/Windsurf/User/globalStorage/windsurf.mcp/config.json
+Kiro:             ~/.kiro/settings/mcp.json
 VS Code:          ~/.config/Code/User/mcp.json
 Zed:              ~/.config/zed/settings.json
 Google Antigravity: ~/.antigravity/mcp_config.json

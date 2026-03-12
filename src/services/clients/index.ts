@@ -10,6 +10,7 @@ import type { IClientStrategy } from "../../types/client-strategy.types.js";
 import { ClaudeStrategy } from "./claude.strategy.js";
 import { CursorStrategy } from "./cursor.strategy.js";
 import { WindsurfStrategy } from "./windsurf.strategy.js";
+import { KiroStrategy } from "./kiro.strategy.js";
 import { VSCodeStrategy } from "./vscode.strategy.js";
 import { ClaudeCodeStrategy } from "./claude-code.strategy.js";
 import { CodexStrategy } from "./codex.strategy.js";
@@ -25,6 +26,7 @@ const strategyFactories: Record<ClientId, () => IClientStrategy> = {
   claude: () => new ClaudeStrategy(),
   cursor: () => new CursorStrategy(),
   windsurf: () => new WindsurfStrategy(),
+  kiro: () => new KiroStrategy(),
   vscode: () => new VSCodeStrategy(),
   "claude-code": () => new ClaudeCodeStrategy(),
   codex: () => new CodexStrategy(),

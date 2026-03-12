@@ -7,6 +7,7 @@ export type ClientId =
   | "claude"
   | "cursor"
   | "windsurf"
+  | "kiro"
   | "vscode"
   | "claude-code"
   | "codex"

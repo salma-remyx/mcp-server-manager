@@ -22,7 +22,7 @@ mcpsm import ./backup.json
 mcpsm import --from <client>
 ```
 
-Supported clients: `claude`, `cursor`, `windsurf`, `zed`, `antigravity`
+Supported clients: `claude`, `cursor`, `windsurf`, `kiro`, `zed`, `antigravity`
 
 ### Conflict Handling
 
@@ -52,6 +52,9 @@ mcpsm import --from claude
 
 # Import from Cursor
 mcpsm import --from cursor
+
+# Import from Kiro
+mcpsm import --from kiro
 
 # Import from Zed
 mcpsm import --from zed
