@@ -96,10 +96,10 @@ Create release notes in this format:
 ```markdown
 ## What's Changed
 
-- <PR title> by @MateusTorquato in https://github.com/MateusTorquato/mcp-server-manager/pull/<number>
-- <PR title> by @MateusTorquato in https://github.com/MateusTorquato/mcp-server-manager/pull/<number>
+- <PR title> by @sardine-ai in https://github.com/sardine-ai/mcp-server-manager/pull/<number>
+- <PR title> by @sardine-ai in https://github.com/sardine-ai/mcp-server-manager/pull/<number>
 
-**Full Changelog**: https://github.com/MateusTorquato/mcp-server-manager/compare/<old-tag>...v<new-version>
+**Full Changelog**: https://github.com/sardine-ai/mcp-server-manager/compare/<old-tag>...v<new-version>
 ```
 
 If no PRs merged since last tag:
@@ -109,7 +109,7 @@ If no PRs merged since last tag:
 
 - Minor improvements and bug fixes
 
-**Full Changelog**: https://github.com/MateusTorquato/mcp-server-manager/compare/<old-tag>...v<new-version>
+**Full Changelog**: https://github.com/sardine-ai/mcp-server-manager/compare/<old-tag>...v<new-version>
 ```
 
 ### Step 5: Show Preview and Confirm
@@ -157,8 +157,8 @@ CI will now automatically:
   2. Commit the version bump to main
   3. Publish to npm
 
-View release: https://github.com/MateusTorquato/mcp-server-manager/releases/tag/v<new-version>
-View CI: https://github.com/MateusTorquato/mcp-server-manager/actions
+View release: https://github.com/sardine-ai/mcp-server-manager/releases/tag/v<new-version>
+View CI: https://github.com/sardine-ai/mcp-server-manager/actions
 ```
 
 ## Error Handling
