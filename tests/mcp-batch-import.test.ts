@@ -121,21 +121,6 @@ describe("Batch MCP Import (CLI/TUI Parity)", () => {
       expect(config.servers.length + config.remoteServers.length).toBe(24);
     });
 
-    it("should keep servers enabled by default when disabled is not preserved", () => {
-      const result = importExportService.importFromFile(importFile);
-      importExportService.mergeServersWithDecisions(result.servers || [], new Map());
-
-      const config = configService.getConfig();
-      const allServers = [
-        ...config.servers.map((s) => ({ ...s, type: "local" as const })),
-        ...config.remoteServers.map((s) => ({ ...s, type: "remote" as const })),
-      ];
-
-      allServers.forEach((server) => {
-        expect(server.disabled).toBe(true);
-      });
-    });
-
     it("should handle specific known servers from the import file", () => {
       const result = importExportService.importFromFile(importFile);
       importExportService.mergeServersWithDecisions(result.servers || [], new Map());
@@ -144,17 +129,14 @@ describe("Batch MCP Import (CLI/TUI Parity)", () => {
       const deepwiki = configService.findRemoteServer("deepwiki");
       expect(deepwiki).toBeDefined();
       expect(deepwiki?.url).toBe("https://mcp.deepwiki.com/mcp");
-      expect(deepwiki?.disabled).toBe(true);
 
       const postmanFull = configService.findRemoteServer("postman-full");
       expect(postmanFull).toBeDefined();
       expect(postmanFull?.bearerToken).toBeDefined();
-      expect(postmanFull?.disabled).toBe(true);
 
       const filesystem = configService.findLocalServer("filesystem");
       expect(filesystem).toBeDefined();
       expect(filesystem?.command).toBe("npx");
-      expect(filesystem?.disabled).toBe(true);
     });
 
     it("should preserve authentication tokens during import", () => {
@@ -217,18 +199,17 @@ describe("Batch MCP Import (CLI/TUI Parity)", () => {
   });
 
   describe("TUI Rendering - Server List Checkbox", () => {
-    it("should render servers with enabled checkbox [✓] in TUI", () => {
+    it("should render servers with correct properties in TUI", () => {
       const result = importExportService.importFromFile(importFile);
       importExportService.mergeServersWithDecisions(result.servers || [], new Map());
 
       const config = configService.getConfig();
       const allServers = [...config.servers, ...config.remoteServers];
 
-      // For TUI rendering: enabled servers should have disabled=false
+      // All servers should have id and name
       allServers.forEach((server) => {
-        // This is what the ServerList component checks
-        const shouldShowCheckmark = !server.disabled;
-        expect(shouldShowCheckmark).toBe(false);
+        expect(server.id).toBeDefined();
+        expect(server.name).toBeDefined();
       });
     });
 
@@ -246,26 +227,19 @@ describe("Batch MCP Import (CLI/TUI Parity)", () => {
         ...(Array.isArray(exported.remoteServers) ? exported.remoteServers : []),
       ];
 
-      // Verify all servers are in exported format and enabled
+      // Verify all servers are in exported format
       allServers.forEach((server: any) => {
         expect(server).toHaveProperty("id");
         expect(server).toHaveProperty("name");
-        expect(server).toHaveProperty("disabled");
       });
     });
 
-    it("should not show any disabled servers in the batch import", () => {
+    it("should import all servers from the batch import", () => {
       const result = importExportService.importFromFile(importFile);
       importExportService.mergeServersWithDecisions(result.servers || [], new Map());
 
       const config = configService.getConfig();
-      const disabledServers = [
-        ...config.servers.filter((s) => s.disabled === true),
-        ...config.remoteServers.filter((s) => s.disabled === true),
-      ];
-
-      // All imported servers are disabled in the fixture
-      expect(disabledServers.length).toBe(config.servers.length + config.remoteServers.length);
+      expect(config.servers.length + config.remoteServers.length).toBe(24);
     });
   });
 
@@ -308,7 +282,7 @@ describe("Batch MCP Import (CLI/TUI Parity)", () => {
       expect(totalCount1).toBe(24);
     });
 
-    it("should have enabled state consistent between CLI list and TUI", () => {
+    it("should have consistent server lists between CLI and TUI", () => {
       const result = importExportService.importFromFile(importFile);
       importExportService.mergeServersWithDecisions(result.servers || [], new Map());
 
@@ -319,22 +293,9 @@ describe("Batch MCP Import (CLI/TUI Parity)", () => {
       // TUI would see them via getConfig()
       const config = configService.getConfig();
 
-      // All should have same enabled state
-      localViaService.forEach((s) => {
-        expect(s.disabled).toBe(true);
-      });
-
-      remoteViaService.forEach((s) => {
-        expect(s.disabled).toBe(true);
-      });
-
-      config.servers.forEach((s) => {
-        expect(s.disabled).toBe(true);
-      });
-
-      config.remoteServers.forEach((s) => {
-        expect(s.disabled).toBe(true);
-      });
+      // Both views should show the same servers
+      expect(localViaService.length).toBe(config.servers.length);
+      expect(remoteViaService.length).toBe(config.remoteServers.length);
     });
   });
 });

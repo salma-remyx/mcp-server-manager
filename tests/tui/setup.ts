@@ -33,8 +33,6 @@ export const mockConfigService = {
   removeRemoteServer: vi.fn(() => ({ success: true })),
   updateLocalServer: vi.fn(() => ({ success: true })),
   updateRemoteServer: vi.fn(() => ({ success: true })),
-  enableServer: vi.fn(() => ({ success: true })),
-  disableServer: vi.fn(() => ({ success: true })),
   toggleTool: vi.fn(),
   enableAllTools: vi.fn(),
   disableAllTools: vi.fn(),
@@ -98,21 +96,25 @@ export const mockClientService = {
 // Mock profile service
 export const mockProfileService = {
   list: vi.fn(() => [
-    { id: "default", name: "Default", isActive: true, includesAll: true, serverCount: 0 },
-    { id: "dev", name: "Development", isActive: false, includesAll: false, serverCount: 2 },
+    { id: "default", name: "Default", isActive: true, serverCount: 0 },
+    { id: "dev", name: "Development", isActive: false, serverCount: 2 },
   ]),
   create: vi.fn(() => ({ success: true })),
   delete: vi.fn(() => ({ success: true })),
   use: vi.fn(() => ({ success: true })),
   getActiveProfileId: vi.fn(() => "default"),
   getProfile: vi.fn((id: string) => {
-    if (id === "default") return { name: "Default", servers: [], remoteServers: [] };
+    if (id === "default")
+      return {
+        name: "Default",
+        servers: ["server1", "server2", "server3"],
+        remoteServers: ["remote1", "remote2"],
+      };
     if (id === "dev") return { name: "Development", servers: ["s1", "s2"], remoteServers: [] };
     return null;
   }),
   addServer: vi.fn(() => ({ success: true })),
   removeServer: vi.fn(() => ({ success: true })),
-  makeExplicit: vi.fn(),
   rename: vi.fn(() => ({ success: true })),
   clone: vi.fn(() => ({ success: true })),
   reload: vi.fn(),
@@ -270,9 +272,9 @@ export function setupMocks(): void {
 
 // Sample test data
 export const sampleLocalServers = [
-  { id: "server1", name: "Server One", command: "node", args: ["server.js"], disabled: false },
-  { id: "server2", name: "Server Two", command: "python", args: ["-m", "server"], disabled: true },
-  { id: "server3", name: "Server Three", command: "npx", args: ["mcp-server"], disabled: false },
+  { id: "server1", name: "Server One", command: "node", args: ["server.js"] },
+  { id: "server2", name: "Server Two", command: "python", args: ["-m", "server"] },
+  { id: "server3", name: "Server Three", command: "npx", args: ["mcp-server"] },
 ];
 
 export const sampleRemoteServers = [
@@ -281,14 +283,12 @@ export const sampleRemoteServers = [
     name: "Remote One",
     url: "http://localhost:3000",
     type: "sse" as const,
-    disabled: false,
   },
   {
     id: "remote2",
     name: "Remote Two",
     url: "https://api.example.com/mcp",
     type: "http" as const,
-    disabled: false,
   },
 ];
 

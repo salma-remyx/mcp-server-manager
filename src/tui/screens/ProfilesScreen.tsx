@@ -381,7 +381,7 @@ export function ProfilesScreen({ onBack }: ProfilesScreenProps): React.ReactElem
       ) : (
         profiles.map((profile, idx) => {
           const isCurrent = idx === currentIndex;
-          const serverInfo = profile.includesAll ? "all servers" : `${profile.serverCount} server(s)`;
+          const serverInfo = `${profile.serverCount} server(s)`;
 
           return (
             <Box key={profile.id} flexDirection="column" marginBottom={1}>

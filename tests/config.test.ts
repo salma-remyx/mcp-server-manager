@@ -232,24 +232,5 @@ describe("ConfigService", () => {
       expect(result.success).toBe(true);
       expect(configService.findLocalServer("to-delete")).toBeUndefined();
     });
-
-    it("should enable and disable servers", () => {
-      configService.addLocalServer({
-        id: "toggle-test",
-        name: "Toggle Test",
-        command: "node",
-        args: [],
-      });
-
-      let result = configService.disableServer("toggle-test");
-      expect(result.success).toBe(true);
-      let server = configService.findLocalServer("toggle-test");
-      expect(server?.disabled).toBe(true);
-
-      result = configService.enableServer("toggle-test");
-      expect(result.success).toBe(true);
-      server = configService.findLocalServer("toggle-test");
-      expect(server?.disabled).toBe(false);
-    });
   });
 });

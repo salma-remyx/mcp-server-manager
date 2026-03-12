@@ -131,7 +131,7 @@ async function reconnectServer(serverId: string): Promise<void> {
     const configService = getConfigService();
     // serverId could be "remote:xxx" or just "xxx"
     const rawId = serverId.startsWith("remote:") ? serverId.slice(7) : serverId;
-    const remoteServers = configService.getEnabledRemoteServers();
+    const remoteServers = configService.getRemoteServers();
     const server = remoteServers.find((s) => s.id === rawId);
 
     if (!server) {
@@ -353,19 +353,16 @@ function buildProfileView(profileId: string): ProfileView | null {
 
   if (!profile) return null;
 
-  // Build the set of server IDs this profile includes.
-  // Empty arrays = include all connected servers (backwards compat).
-  const includesAll = profile.servers.length === 0 && profile.remoteServers.length === 0;
-
-  const profileServerIds = includesAll
-    ? null // null = match everything
-    : new Set<string>([...profile.servers, ...profile.remoteServers.map((id) => `remote:${id}`)]);
+  const profileServerIds = new Set<string>([
+    ...profile.servers,
+    ...profile.remoteServers.map((id) => `remote:${id}`),
+  ]);
 
   const tools: Tool[] = [];
   const toolMap = new Map<string, string>();
 
   for (const [serverId, server] of gatewayState.connectedServers) {
-    if (profileServerIds && !profileServerIds.has(serverId)) continue;
+    if (!profileServerIds.has(serverId)) continue;
 
     for (const tool of server.tools) {
       const prefixedTool: Tool = {
@@ -379,7 +376,7 @@ function buildProfileView(profileId: string): ProfileView | null {
   }
 
   logger.debug(
-    `Profile '${profileId}': ${tools.length} tool(s) from ${includesAll ? "all" : (profileServerIds?.size ?? 0)} server(s)`
+    `Profile '${profileId}': ${tools.length} tool(s) from ${profileServerIds.size} server(s)`
   );
 
   return { profileId, toolToServerMap: toolMap, aggregatedTools: tools };
@@ -489,8 +486,8 @@ export async function startGateway(
 
   try {
     // Get enabled servers
-    let localServers = configService.getEnabledLocalServers();
-    let remoteServers = configService.getEnabledRemoteServers();
+    let localServers = configService.getLocalServers();
+    let remoteServers = configService.getRemoteServers();
 
     // Determine which servers to actually start
     // Priority: explicit selectedServerIds > TUI selection state
@@ -843,11 +840,9 @@ export async function refreshGateway(
       for (const id of profile.remoteServers) serverIdsToStart.add(`remote:${id}`);
     }
 
-    const localServers = configService
-      .getEnabledLocalServers()
-      .filter((s) => serverIdsToStart.has(s.id));
+    const localServers = configService.getLocalServers().filter((s) => serverIdsToStart.has(s.id));
     const remoteServers = configService
-      .getEnabledRemoteServers()
+      .getRemoteServers()
       .filter((s) => serverIdsToStart.has(`remote:${s.id}`));
 
     if (localServers.length === 0 && remoteServers.length === 0) {

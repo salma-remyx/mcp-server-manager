@@ -10,8 +10,8 @@ import type { LocalServer, RemoteServer } from "../../../src/types/index.js";
 
 describe("ServerList Component", () => {
   const mockLocalServers: LocalServer[] = [
-    { id: "server1", name: "Server One", command: "node", args: [], disabled: false },
-    { id: "server2", name: "Server Two", command: "python", args: [], disabled: true },
+    { id: "server1", name: "Server One", command: "node", args: [] },
+    { id: "server2", name: "Server Two", command: "python", args: [] },
   ];
 
   const mockRemoteServers: RemoteServer[] = [
@@ -20,7 +20,6 @@ describe("ServerList Component", () => {
       name: "Remote One",
       url: "http://example.com",
       type: "sse" as const,
-      disabled: false,
     },
   ];
 
@@ -161,22 +160,6 @@ describe("ServerList Component", () => {
       const frame = lastFrame()!;
       const checkedCount = (frame.match(/\[✓\]/g) || []).length;
       expect(checkedCount).toBe(2);
-    });
-  });
-
-  describe("Disabled Status", () => {
-    it("should show tool count even for disabled servers", () => {
-      const { lastFrame } = render(
-        <ServerList
-          title="Local Servers"
-          servers={mockLocalServers}
-          selectedIndex={0}
-          isActiveSection={true}
-          selectedServers={new Set()}
-        />
-      );
-
-      expect(lastFrame()).toContain("0 tools");
     });
   });
 

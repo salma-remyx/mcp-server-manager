@@ -8,9 +8,9 @@ import type { ToolFilters } from "./config.types.js";
 export interface Profile {
   /** Profile display name */
   name: string;
-  /** Local server IDs in this profile (empty = all) */
+  /** Local server IDs in this profile */
   servers: string[];
-  /** Remote server IDs in this profile (empty = all) */
+  /** Remote server IDs in this profile */
   remoteServers: string[];
   /** Per-profile tool filters (optional, for independent tool management) */
   toolFilters?: ToolFilters;
@@ -34,8 +34,6 @@ export interface ProfileListItem {
   serverCount: number;
   /** Whether this is the active profile */
   isActive: boolean;
-  /** Whether profile includes all servers */
-  includesAll: boolean;
 }
 
 /** Profile operation result */

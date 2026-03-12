@@ -557,6 +557,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
         if (profiles.length > 1) {
           setState((prev) => {
             const prevIdx = prev.currentProfileIndex > 0 ? prev.currentProfileIndex - 1 : profiles.length - 1;
+            profileService.use(profiles[prevIdx].id);
+            refreshDaemonIfRunning("switching profile");
             return { ...prev, currentProfileIndex: prevIdx };
           });
         }
@@ -569,6 +571,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
         if (profiles.length > 1) {
           setState((prev) => {
             const nextIdx = prev.currentProfileIndex < profiles.length - 1 ? prev.currentProfileIndex + 1 : 0;
+            profileService.use(profiles[nextIdx].id);
+            refreshDaemonIfRunning("switching profile");
             return { ...prev, currentProfileIndex: nextIdx };
           });
         }
@@ -609,20 +613,15 @@ export function App({ onExit }: AppProps): React.ReactElement {
         const profileData = profileService.getProfile(currentProfile.id);
         if (!profileData) return;
 
-        const serverId = type === "remote" ? server.id : server.id;
-        const isIncludeAll = profileData.servers.length === 0 && profileData.remoteServers.length === 0;
-        const isMember = isIncludeAll ||
-          (type === "local" ? profileData.servers.includes(serverId) : profileData.remoteServers.includes(serverId));
+        const serverId = server.id;
+        const isMember = type === "local"
+          ? profileData.servers.includes(serverId)
+          : profileData.remoteServers.includes(serverId);
 
         if (isMember) {
-          if (isIncludeAll) {
-            profileService.makeExplicit(currentProfile.id);
-          }
           profileService.removeServer(currentProfile.id, serverId);
-          showMessage(`Removed '${server.name}' from profile '${currentProfile.name}'`, "success");
         } else {
           profileService.addServer(currentProfile.id, serverId);
-          showMessage(`Added '${server.name}' to profile '${currentProfile.name}'`, "success");
         }
         refreshDaemonIfRunning("toggling profile membership");
         return;
@@ -742,7 +741,18 @@ export function App({ onExit }: AppProps): React.ReactElement {
   }
 
   if (screen === "add-server") {
-    return <AddServerScreen onBack={goBack} />;
+    const profiles = profileService.list();
+    const activeProfile = profiles[state.currentProfileIndex];
+    return (
+      <AddServerScreen
+        onBack={goBack}
+        onServerAdded={(serverId) => {
+          if (activeProfile) {
+            profileService.addServer(activeProfile.id, serverId);
+          }
+        }}
+      />
+    );
   }
 
   if (screen === "tools") {
@@ -876,12 +886,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
   const profileData = currentProfile ? profileService.getProfile(currentProfile.id) : null;
   const profileMemberIds = new Set<string>();
   if (profileData) {
-    if (profileData.servers.length === 0 && profileData.remoteServers.length === 0) {
-      unifiedServers.forEach((u) => profileMemberIds.add(u.id));
-    } else {
-      profileData.servers.forEach((id) => profileMemberIds.add(id));
-      profileData.remoteServers.forEach((id) => profileMemberIds.add(`remote:${id}`));
-    }
+    profileData.servers.forEach((id) => profileMemberIds.add(id));
+    profileData.remoteServers.forEach((id) => profileMemberIds.add(`remote:${id}`));
   }
   const port = configService.getPort();
   const toolFilters = configService.getToolFilters();
@@ -979,7 +985,6 @@ export function App({ onExit }: AppProps): React.ReactElement {
                       const isCurrent = idx === state.currentIndex;
                       const { server, type, id } = unified;
                       const isMember = profileMemberIds.has(id);
-                      const isDisabled = server.disabled;
                       const filter = toolFilters[id];
                       const totalTools = filter?.allTools?.length ?? 0;
                       const disabledCount = filter?.disabledTools?.length ?? 0;
@@ -989,44 +994,52 @@ export function App({ onExit }: AppProps): React.ReactElement {
                       const needsAuth = type === "remote" && state.serversNeedingAuth.has(server.id);
 
                       const showCheck = isMember;
-                      const nameColor = isCurrent ? theme.colors.highlightText : isDisabled ? theme.colors.disabled : undefined;
+                      const nameColor = isCurrent ? theme.colors.highlightText : !isMember ? theme.colors.disabled : undefined;
                       const arrowColor = isCurrent
                         ? theme.colors.serverArrowSelected
                         : type === "local"
                           ? theme.colors.serverArrowLocal
                           : theme.colors.serverArrowRemote;
 
+                      const dimRow = !isMember;
+
                       return (
                         <Box key={id} gap={1} paddingX={1}>
                           <Text color={arrowColor}>{isCurrent ? "→" : " "}</Text>
-                          <Text color={isDisabled ? theme.colors.warning : showCheck ? theme.colors.serverCheckEnabled : theme.colors.serverCheckDisabled}>
+                          <Text color={!isMember ? theme.colors.serverCheckDisabled : theme.colors.serverCheckEnabled}>
                             {showCheck ? "[✓]" : "[ ]"}
                           </Text>
                           <Text color={nameColor} bold={isCurrent}>
                             {server.name || server.id}
                           </Text>
-                          <>
-                            <Text color={needsAuth ? theme.colors.serverNeedsAuth : isDisabled ? theme.colors.disabled : theme.colors.serverStatus}>
-                              {needsAuth ? "!" : "✓"}
-                            </Text>
-                            <Text color={isDisabled ? theme.colors.disabled : theme.colors.accent}>
+                          {dimRow ? (
+                            <Text dimColor>
                               {enabledTools}/{totalTools} tools
                             </Text>
-                            <Text dimColor>·</Text>
-                            <Text color={isDisabled ? theme.colors.disabled : theme.colors.accent}>{tokenLabel}</Text>
-                            {filter?.error && (
-                              <>
-                                <Text dimColor>·</Text>
-                                <Text color={theme.colors.serverStatusError}>{filter.error}</Text>
-                              </>
-                            )}
-                            {needsAuth && (
-                              <>
-                                <Text dimColor>·</Text>
-                                <Text color={theme.colors.serverNeedsAuth}>needs auth</Text>
-                              </>
-                            )}
-                          </>
+                          ) : (
+                            <>
+                              <Text color={needsAuth ? theme.colors.serverNeedsAuth : theme.colors.serverStatus}>
+                                {needsAuth ? "!" : "✓"}
+                              </Text>
+                              <Text color={theme.colors.accent}>
+                                {enabledTools}/{totalTools} tools
+                              </Text>
+                              <Text dimColor>·</Text>
+                              <Text color={theme.colors.accent}>{tokenLabel}</Text>
+                              {filter?.error && (
+                                <>
+                                  <Text dimColor>·</Text>
+                                  <Text color={theme.colors.serverStatusError}>{filter.error}</Text>
+                                </>
+                              )}
+                              {needsAuth && (
+                                <>
+                                  <Text dimColor>·</Text>
+                                  <Text color={theme.colors.serverNeedsAuth}>needs auth</Text>
+                                </>
+                              )}
+                            </>
+                          )}
                         </Box>
                       );
                     }}

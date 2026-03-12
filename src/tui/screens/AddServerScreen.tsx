@@ -40,6 +40,7 @@ type Step =
 
 interface AddServerScreenProps {
   onBack: () => void;
+  onServerAdded?: (serverId: string) => void;
 }
 
 const SERVER_TYPE_OPTIONS = [
@@ -48,7 +49,7 @@ const SERVER_TYPE_OPTIONS = [
   { label: "Remote (SSE) - Real-time streaming", value: "sse" },
 ];
 
-export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactElement {
+export function AddServerScreen({ onBack, onServerAdded }: AddServerScreenProps): React.ReactElement {
   const { theme } = useTheme();
   useApp(); // keep the Ink app alive
 
@@ -144,6 +145,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         return;
       }
 
+      onServerAdded?.(prepared.data.id);
+
       setStep("testing");
       setTestResult(null);
       setIsTesting(true);
@@ -162,7 +165,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         refreshDaemonIfRunning();
       }
     },
-    [configService, refreshDaemonIfRunning, testingService]
+    [configService, onServerAdded, refreshDaemonIfRunning, testingService]
   );
 
   const finalizeRemoteServer = useCallback(
@@ -179,6 +182,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         setError(result.error || "Failed to add server");
         return;
       }
+
+      onServerAdded?.(prepared.data.id);
 
       setStep("testing");
       setTestResult(null);
@@ -228,7 +233,7 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
         refreshDaemonIfRunning();
       }
     },
-    [configService, refreshDaemonIfRunning, testingService]
+    [configService, onServerAdded, refreshDaemonIfRunning, testingService]
   );
 
   const handleNameSubmit = useCallback(

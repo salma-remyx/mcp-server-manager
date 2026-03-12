@@ -110,24 +110,6 @@ describe("CLI Smoke Tests", () => {
       }).not.toThrow();
     });
 
-    it("mcpsm enable --help should not crash", () => {
-      expect(() => {
-        execSync("node bin/cli.js enable --help", {
-          encoding: "utf8",
-          cwd: process.cwd(),
-        });
-      }).not.toThrow();
-    });
-
-    it("mcpsm disable --help should not crash", () => {
-      expect(() => {
-        execSync("node bin/cli.js disable --help", {
-          encoding: "utf8",
-          cwd: process.cwd(),
-        });
-      }).not.toThrow();
-    });
-
     it("mcpsm clients --help should not crash", () => {
       expect(() => {
         execSync("node bin/cli.js clients --help", {
