@@ -40,7 +40,6 @@ export class KiroStrategy extends JsonClientStrategy {
     const mcpPath = profileId ? `/mcp/${profileId}` : "/mcp";
     return {
       url: `http://localhost:${port}${mcpPath}`,
-      disabled: false,
     };
   }
 }

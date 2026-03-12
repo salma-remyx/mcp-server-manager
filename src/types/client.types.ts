@@ -58,10 +58,6 @@ export interface ClientServerConfig {
   type?: string;
   url?: string;
   env?: Record<string, string>;
-  headers?: Record<string, string>;
-  disabled?: boolean;
-  autoApprove?: string[];
-  disabledTools?: string[];
 }
 
 /** Client MCP configuration */

@@ -17,7 +17,6 @@ describe("KiroStrategy", () => {
     const gateway = strategy.buildGatewayConfig(8850, "dev");
 
     expect(gateway.url).toBe("http://localhost:8850/mcp/dev");
-    expect(gateway.disabled).toBe(false);
     expect(gateway.command).toBeUndefined();
   });
 });
