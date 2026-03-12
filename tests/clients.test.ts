@@ -223,6 +223,7 @@ describe("ClientService", () => {
       expect(clients).toContain("claude");
       expect(clients).toContain("cursor");
       expect(clients).toContain("windsurf");
+      expect(clients).toContain("kiro");
     });
   });
 
@@ -232,6 +233,7 @@ describe("ClientService", () => {
 
       expect(clientService.clientExists("claude")).toBe(true);
       expect(clientService.clientExists("cursor")).toBe(true);
+      expect(clientService.clientExists("kiro")).toBe(true);
     });
 
     it("should return false for unknown client", () => {

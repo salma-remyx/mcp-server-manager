@@ -9,6 +9,7 @@ Commands for managing MCP client connections using the gateway pattern.
 | Claude Desktop     | `claude`      | macOS, Windows        | No                |
 | Cursor             | `cursor`      | macOS, Windows, Linux | Yes               |
 | Windsurf           | `windsurf`    | macOS, Windows, Linux | Yes               |
+| Kiro               | `kiro`        | macOS, Windows, Linux | Yes               |
 | VS Code            | `vscode`      | macOS, Windows, Linux | Yes               |
 | Zed                | `zed`         | macOS, Windows, Linux | Yes               |
 | Claude Code        | `claude-code` | CLI                   | No                |

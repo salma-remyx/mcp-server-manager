@@ -18,7 +18,7 @@ export function registerImportExportCommands(program: Command): void {
   program
     .command("import [file]")
     .description("Import servers from file or client")
-    .option("--from <client>", "Import from a client (claude, cursor, windsurf, zed)")
+    .option("--from <client>", "Import from a client (claude, cursor, windsurf, kiro, zed)")
     .option("--overwrite", "Overwrite conflicting servers (non-interactive mode)")
     .option("--skip", "Skip conflicting servers (non-interactive mode)")
     .option("--merge", "Intelligently merge conflicting servers (non-interactive mode)")
@@ -70,6 +70,7 @@ async function handleImport(
     console.log(`  mcpsm import --from claude         Import from Claude Desktop`);
     console.log(`  mcpsm import --from cursor         Import from Cursor`);
     console.log(`  mcpsm import --from windsurf       Import from Windsurf`);
+    console.log(`  mcpsm import --from kiro           Import from Kiro`);
     console.log(`  mcpsm import --from zed            Import from Zed`);
     console.log(`\nConflict Resolution Options:`);
     console.log(`  --overwrite                        Overwrite conflicting servers`);
