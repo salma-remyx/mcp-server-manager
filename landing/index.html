@@ -7,7 +7,7 @@
     <meta name="description" content="The all-in-one CLI tool to manage your MCP servers across Claude, Cursor, Windsurf, and more.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Outfit:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-deep: #08090e;
@@ -35,7 +35,7 @@
         html { scroll-behavior: smooth; }
 
         body {
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             background: var(--bg-deep);
             color: var(--text-primary);
             line-height: 1.6;
@@ -43,15 +43,27 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Noise texture overlay */
+        /* Dot grid background */
         body::before {
             content: '';
             position: fixed;
             inset: 0;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+            background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 32px 32px;
             pointer-events: none;
-            z-index: 9999;
-            opacity: 0.4;
+            z-index: 0;
+        }
+
+        /* Scroll progress bar */
+        .scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 2px;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent), var(--teal));
+            z-index: 200;
+            transition: width 0.1s linear;
         }
 
         /* Ambient glow */
@@ -104,6 +116,21 @@
             opacity: 1;
             transform: translateY(0);
         }
+
+        /* Staggered children reveal */
+        .reveal.visible .cmd-card,
+        .reveal.visible .way-card,
+        .reveal.visible .sc {
+            animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .reveal.visible .cmd-card:nth-child(1),
+        .reveal.visible .way-card:nth-child(1) { animation-delay: 0.05s; }
+        .reveal.visible .cmd-card:nth-child(2),
+        .reveal.visible .way-card:nth-child(2) { animation-delay: 0.1s; }
+        .reveal.visible .cmd-card:nth-child(3) { animation-delay: 0.15s; }
+        .reveal.visible .cmd-card:nth-child(4) { animation-delay: 0.2s; }
+        .reveal.visible .cmd-card:nth-child(5) { animation-delay: 0.25s; }
+        .reveal.visible .cmd-card:nth-child(6) { animation-delay: 0.3s; }
 
         /* ── Header ── */
         header {
@@ -188,7 +215,7 @@
             text-decoration: none;
             transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             font-size: 0.9rem;
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             border: none;
             cursor: pointer;
         }
@@ -197,10 +224,21 @@
             background: var(--accent);
             color: var(--bg-deep);
             box-shadow: 0 0 20px rgba(229, 165, 37, 0.2);
+            position: relative;
+            overflow: hidden;
         }
+        .btn-accent::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+            transform: translateX(-100%);
+            transition: transform 0.5s ease;
+        }
+        .btn-accent:hover::before { transform: translateX(100%); }
         .btn-accent:hover {
             background: var(--accent-light);
-            box-shadow: 0 0 32px rgba(229, 165, 37, 0.35);
+            box-shadow: 0 0 32px rgba(229, 165, 37, 0.35), 0 4px 16px rgba(229,165,37,0.2);
             transform: translateY(-2px);
         }
 
@@ -219,6 +257,34 @@
             padding: 180px 0 120px;
             position: relative;
         }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 100px;
+            right: -50px;
+            width: 300px;
+            height: 300px;
+            border: 1px solid rgba(229,165,37,0.06);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: spin-slow 60s linear infinite;
+        }
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: 160px;
+            right: 10px;
+            width: 200px;
+            height: 200px;
+            border: 1px solid rgba(0,212,170,0.04);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: spin-slow 45s linear infinite reverse;
+        }
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
 
         .hero-inner {
             display: grid;
@@ -235,13 +301,30 @@
             gap: 8px;
             padding: 6px 14px 6px 8px;
             background: var(--accent-glow);
-            border: 1px solid rgba(229, 165, 37, 0.2);
+            border: 1px solid rgba(229, 165, 37, 0.25);
             border-radius: 100px;
             font-size: 0.8rem;
             color: var(--accent-light);
             font-weight: 500;
             margin-bottom: 28px;
             animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+            backdrop-filter: blur(8px);
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-badge::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(229,165,37,0.15), transparent);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+        @keyframes shimmer {
+            0% { left: -100%; }
+            50%, 100% { left: 100%; }
         }
         .hero-badge-dot {
             width: 8px;
@@ -392,6 +475,32 @@
         .terminal-body::-webkit-scrollbar-track { background: transparent; }
         .terminal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
 
+        /* CRT scanline effect */
+        .terminal::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.03) 2px,
+                rgba(0,0,0,0.03) 4px
+            );
+            pointer-events: none;
+            border-radius: 14px;
+            z-index: 1;
+        }
+
+        /* Terminal glow */
+        .terminal {
+            box-shadow:
+                0 4px 6px rgba(0,0,0,0.1),
+                0 24px 48px rgba(0,0,0,0.25),
+                0 0 80px rgba(229,165,37,0.04),
+                inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+
         .t-line {
             display: flex;
             margin-bottom: 4px;
@@ -486,6 +595,19 @@
         .divider {
             height: 1px;
             background: linear-gradient(90deg, transparent, var(--border-light) 20%, var(--border-light) 80%, transparent);
+            position: relative;
+        }
+        .divider::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: -3px;
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 12px rgba(229,165,37,0.4);
         }
 
         /* ── Two Ways ── */
@@ -511,9 +633,13 @@
             transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .way-card:hover {
-            border-color: var(--border-light);
+            border-color: rgba(229,165,37,0.2);
             transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2), 0 0 40px rgba(229,165,37,0.05);
+        }
+        .way-card.tui:hover {
+            border-color: rgba(0,212,170,0.2);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2), 0 0 40px rgba(0,212,170,0.05);
         }
         .way-card::before {
             content: '';
@@ -796,8 +922,10 @@
             flex-shrink: 0;
         }
         .client-chip:hover {
-            border-color: var(--border-light);
+            border-color: rgba(229,165,37,0.2);
             background: var(--bg-card-hover);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15), 0 0 20px rgba(229,165,37,0.04);
+            transform: translateY(-2px);
         }
 
         .client-chip-icon {
@@ -841,8 +969,9 @@
             transition: all 0.3s;
         }
         .cmd-card:hover {
-            border-color: var(--border-light);
-            transform: translateY(-2px);
+            border-color: rgba(229,165,37,0.15);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.2), 0 0 20px rgba(229,165,37,0.03);
         }
 
         .cmd-card h4 {
@@ -908,7 +1037,23 @@
             overflow: hidden;
             box-shadow:
                 0 4px 6px rgba(0,0,0,0.1),
-                0 24px 48px rgba(0,0,0,0.3);
+                0 24px 48px rgba(0,0,0,0.3),
+                0 0 60px rgba(0,212,170,0.04);
+            position: relative;
+        }
+        .tui-mock::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.02) 2px,
+                rgba(0,0,0,0.02) 4px
+            );
+            pointer-events: none;
+            border-radius: 14px;
         }
 
         .tui-mock-bar {
@@ -935,7 +1080,6 @@
             line-height: 1.65;
         }
         .tui-mock-body .t { color: var(--teal); font-weight: 600; }
-        .tui-mock-body .s { color: #a78bfa; }
         .tui-mock-body .h { color: var(--text-muted); }
         .tui-mock-body .w { color: var(--text-primary); font-weight: 600; }
         .tui-mock-body .srv { display: flex; align-items: center; gap: 6px; }
@@ -943,12 +1087,48 @@
         .tui-mock-body .chk { color: var(--green); }
         .tui-mock-body .uchk { color: var(--text-muted); }
         .tui-mock-body .nm { color: var(--text-primary); }
-        .tui-mock-body .nm.hl { background: rgba(229,165,37,0.15); padding: 0 4px; border-radius: 3px; }
+        .tui-mock-body .nm.hl { color: var(--accent-light); font-weight: 600; }
         .tui-mock-body .sok { color: var(--green); }
         .tui-mock-body .swarn { color: var(--yellow); }
+        .tui-mock-body .serr { color: var(--red); }
         .tui-mock-body .si { color: var(--text-muted); }
+
+        /* TUI bordered sections */
+        .tui-box {
+            border: 1px solid var(--teal);
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 10px;
+        }
+        .tui-box.header-box {
+            border-color: rgba(0,212,170,0.4);
+        }
+        .tui-box.servers-box {
+            border-color: rgba(0,212,170,0.3);
+        }
+        .tui-box-title {
+            color: var(--teal);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .tui-status-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            margin: 0 4px;
+            vertical-align: middle;
+        }
+        .tui-helpbar-box {
+            border: 1px solid rgba(0,212,170,0.3);
+            border-radius: 4px;
+            padding: 6px 12px;
+            margin-top: 8px;
+        }
         .tui-mock-body .tui-helpbar { color: var(--text-muted); font-size: 0.72rem; margin-top: 2px; }
         .tui-mock-body .tui-helpbar .hk { color: var(--teal); font-weight: 600; }
+        .tui-mock-body .tui-helpbar .dot { color: var(--green); }
 
         .shortcuts-panel {
             background: var(--bg-card);
@@ -988,20 +1168,30 @@
 
         /* ── CTA ── */
         .cta {
-            padding: 100px 0;
+            padding: 120px 0;
             text-align: center;
             background: var(--bg-deep);
             position: relative;
+            overflow: hidden;
         }
         .cta::before {
             content: '';
             position: absolute;
-            top: 0;
+            top: -100px;
             left: 50%;
             transform: translateX(-50%);
-            width: 600px;
-            height: 400px;
-            background: radial-gradient(ellipse, rgba(229,165,37,0.06) 0%, transparent 70%);
+            width: 800px;
+            height: 500px;
+            background: radial-gradient(ellipse, rgba(229,165,37,0.08) 0%, rgba(0,212,170,0.03) 40%, transparent 70%);
+            pointer-events: none;
+            animation: drift 20s ease-in-out infinite;
+        }
+        .cta::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(229,165,37,0.02) 1px, transparent 1px);
+            background-size: 24px 24px;
             pointer-events: none;
         }
 
@@ -1058,7 +1248,7 @@
             border: none;
             padding: 6px 14px;
             border-radius: 6px;
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             font-size: 0.8rem;
             font-weight: 600;
             cursor: pointer;
@@ -1110,6 +1300,7 @@
     </style>
 </head>
 <body>
+    <div class="scroll-progress" id="scrollProgress"></div>
     <div class="ambient"></div>
 
     <header>
@@ -1136,7 +1327,7 @@
                     <div class="hero-text">
                         <div class="hero-badge">
                             <span class="hero-badge-dot"></span>
-                            Open Source CLI Tool
+                            Open Source CLI & TUI Tool
                         </div>
                         <h1>Manage Your <span class="highlight">MCP Servers</span> Across All Clients</h1>
                         <p>The all-in-one tool to manage, test, and sync MCP servers across Claude Desktop, Cursor, Windsurf, VS Code, and more.</p>
@@ -1194,7 +1385,7 @@
                         <div class="way-code">
                             <span class="c">mcpsm</span> <span class="a">list</span> --json<br>
                             <span class="c">mcpsm</span> <span class="a">test</span> filesystem<br>
-                            <span class="c">mcpsm</span> <span class="a">clients sync</span>
+                            <span class="c">mcpsm</span> <span class="a">clients connect</span> claude
                         </div>
                         <div class="way-tags">
                             <span>Scriptable</span>
@@ -1216,10 +1407,10 @@
                         <p>Full-featured terminal interface with keyboard navigation. Manage servers, clients, profiles, and settings visually.</p>
                         <div class="way-code">
                             <span class="c">$</span> mcpsm<br><br>
-                            <span style="color: var(--teal);">MCP Server Manager</span> <span style="color: var(--text-muted);">v2.0.0</span><br>
-                            <span style="color: var(--text-muted);">Profile: default | Port: 8850</span><br><br>
-                            <span style="color: var(--accent);">&gt;</span> <span style="color: var(--green);">[x]</span> filesystem <span style="color: var(--green);">ok</span><br>
-                            <span style="color: var(--text-muted);">&nbsp;&nbsp;</span><span style="color: var(--green);">[x]</span> github <span style="color: var(--green);">ok</span>
+                            <span style="color: var(--text-primary); font-weight:600;">MCP Server Manager v2.4.1</span> <span style="color: var(--green);">●</span> <span style="color: var(--teal);">Healthy</span><br>
+                            <span style="color: var(--text-muted);">Profile: ◄ Default ► │ Port: 8850</span><br><br>
+                            <span style="color: var(--accent);">→</span> <span style="color: var(--text-muted);">[ ]</span> <span style="color: var(--accent-light);">browsermcp</span> <span style="color: var(--green);">✓</span> <span style="color: var(--text-muted);">12/12 tools</span><br>
+                            <span style="color: var(--text-muted);">&nbsp;&nbsp;</span><span style="color: var(--green);">[✓]</span> deepwiki <span style="color: var(--green);">✓</span> <span style="color: var(--text-muted);">3/3 tools</span>
                         </div>
                         <div class="way-tags">
                             <span>Visual</span>
@@ -1524,22 +1715,22 @@
                             <span class="c">mcpsm</span> <span class="a">list</span><br>
                             <span class="c">mcpsm</span> <span class="a">add</span> myserver --type stdio<br>
                             <span class="c">mcpsm</span> <span class="a">test</span><br>
-                            <span class="c">mcpsm</span> <span class="a">enable</span> myserver
+                            <span class="c">mcpsm</span> <span class="a">remove</span> myserver
                         </div>
                     </div>
                     <div class="cmd-card">
                         <h4><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 0 1 9-9"/></svg>Client Sync</h4>
                         <div class="cmd-code">
-                            <span class="c">mcpsm</span> <span class="a">clients</span><br>
-                            <span class="c">mcpsm</span> <span class="a">clients enable</span> claude<br>
-                            <span class="c">mcpsm</span> <span class="a">clients sync</span>
+                            <span class="c">mcpsm</span> <span class="a">clients list</span><br>
+                            <span class="c">mcpsm</span> <span class="a">clients connect</span> claude<br>
+                            <span class="c">mcpsm</span> <span class="a">clients disconnect</span> cursor
                         </div>
                     </div>
                     <div class="cmd-card">
                         <h4><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>Import & Export</h4>
                         <div class="cmd-code">
                             <span class="c">mcpsm</span> <span class="a">import</span> --from claude<br>
-                            <span class="c">mcpsm</span> <span class="a">export</span> -o backup.json
+                            <span class="c">mcpsm</span> <span class="a">export</span> --output backup.json
                         </div>
                     </div>
                     <div class="cmd-card">
@@ -1552,9 +1743,9 @@
                     <div class="cmd-card">
                         <h4><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m6.8 14-3.5 2"/><path d="m20.7 16-3.5-2"/><path d="M6.8 10 3.3 8"/><path d="m20.7 8-3.5 2"/><circle cx="12" cy="12" r="6"/></svg>Daemon</h4>
                         <div class="cmd-code">
-                            <span class="c">mcpsm</span> <span class="a">start</span><br>
-                            <span class="c">mcpsm</span> <span class="a">status</span><br>
-                            <span class="c">mcpsm</span> <span class="a">startup enable</span>
+                            <span class="c">mcpsm</span> <span class="a">daemon start</span><br>
+                            <span class="c">mcpsm</span> <span class="a">daemon status</span><br>
+                            <span class="c">mcpsm</span> <span class="a">daemon startup</span> enable
                         </div>
                     </div>
                     <div class="cmd-card">
@@ -1595,37 +1786,52 @@
                             <div class="tui-mock-bar-title">mcpsm</div>
                         </div>
                         <div class="tui-mock-body">
-                            <div><span class="t">MCP Server Manager</span> <span class="h">v2.4.1</span></div>
-                            <div><span class="s">Profile: default  ◂ ▸  │ Port: 8850</span></div>
-                            <br>
-                            <div><span class="w">Local Servers (STDIO):</span></div>
-                            <div class="srv"><span class="cur">→</span> <span class="chk">[✓]</span> <span class="nm hl">filesystem</span> <span class="si">- 11 tools</span></div>
-                            <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="chk">[✓]</span> <span class="nm">github</span> <span class="si">- 8 tools</span></div>
-                            <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="chk">[✓]</span> <span class="nm">postgres</span> <span class="si">- 5 tools</span></div>
-                            <br>
-                            <div><span class="w">Remote Servers:</span></div>
-                            <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="chk">[✓]</span> <span class="nm">stripe-mcp</span> <span class="si">- 5 tools</span></div>
-                            <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="uchk">[ ]</span> <span class="nm">deepwiki</span> <span class="si">- 3 tools</span></div>
-                            <br>
-                            <div class="tui-helpbar"><span class="hk">↑↓</span> Navigate  <span class="hk">Space</span> Select  <span class="hk">A</span> Add  <span class="hk">D</span> Delete  <span class="hk">E</span> Edit  <span class="hk">X</span> Test</div>
-                            <div class="tui-helpbar"><span class="hk">T</span> Tools  <span class="hk">C</span> Clients  <span class="hk">F</span> Profiles  <span class="hk">G</span> Settings  <span class="hk">M</span> Daemon  <span class="hk">Q</span> Quit</div>
+                            <div class="tui-box header-box">
+                                <div><span class="w">MCP Server Manager v2.4.1</span> <span class="tui-status-dot"></span> <span class="t">Healthy (16 srv, 291 tools)</span></div>
+                                <div><span class="h">Profile: ◄</span> <span class="t">Default</span> <span class="h">► │ Port: 8850 │ Total: 142.8K tokens</span></div>
+                            </div>
+                            <div class="tui-box servers-box">
+                                <div class="tui-box-title">Servers</div>
+                                <br>
+                                <div class="srv"><span class="cur">→</span> <span class="uchk">[ ]</span> <span class="nm hl">browsermcp</span> <span class="sok">✓</span> <span class="h">12/12 tools · 1.1K tokens</span></div>
+                                <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="uchk">[ ]</span> <span class="nm">gemini-mcp-tool</span> <span class="sok">✓</span> <span class="h">6/6 tools · 939 tokens</span></div>
+                                <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="uchk">[ ]</span> <span class="nm">brave-search</span> <span class="sok">✓</span> <span class="h">2/2 tools · 363 tokens</span></div>
+                                <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="uchk">[ ]</span> <span class="nm">filesystem</span> <span class="sok">✓</span> <span class="h">14/14 tools · 3.1K tokens</span></div>
+                                <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="uchk">[ ]</span> <span class="nm">fetch</span> <span class="sok">✓</span> <span class="h">1/1 tools · 276 tokens</span></div>
+                                <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="uchk">[ ]</span> <span class="nm">playwright</span> <span class="sok">✓</span> <span class="h">22/22 tools · 3.5K tokens</span></div>
+                                <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="chk">[✓]</span> <span class="nm">deepwiki</span> <span class="sok">✓</span> <span class="h">3/3 tools · 384 tokens</span></div>
+                                <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="uchk">[ ]</span> <span class="nm">datadog</span> <span class="sok">✓</span> <span class="h">18/20 tools · 12.8K tokens</span></div>
+                                <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="uchk">[ ]</span> <span class="nm">stripe</span> <span class="sok">✓</span> <span class="h">28/28 tools · 8.3K tokens</span></div>
+                                <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="uchk">[ ]</span> <span class="nm">notion</span> <span class="sok">✓</span> <span class="h">14/16 tools · 11.1K tokens</span></div>
+                                <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="uchk">[ ]</span> <span class="nm">postman-minimal</span> <span class="sok">✓</span> <span class="h">40/40 tools · 30.5K tokens · </span><span class="serr">HTTP 401</span></div>
+                                <div class="srv"><span class="h">&nbsp;&nbsp;</span> <span class="uchk">[ ]</span> <span class="nm">figma-desktop</span> <span class="sok">✓</span> <span class="h">6/6 tools · 2.7K tokens · </span><span class="serr">fetch failed</span></div>
+                                <div><span class="h">↓</span></div>
+                            </div>
+                            <div class="tui-helpbar-box">
+                                <div class="tui-helpbar"><span class="dot">•</span><span class="hk">↑↓</span> Navigate <span class="dot">•</span><span class="hk">←→</span> Profile <span class="dot">•</span><span class="hk">Space</span> Toggle <span class="dot">•</span><span class="hk">Enter</span> Daemon <span class="dot">•</span><span class="hk">A</span> Add <span class="dot">•</span><span class="hk">E</span> Edit <span class="dot">•</span><span class="hk">D</span> Del <span class="dot">•</span><span class="hk">X</span> Test <span class="dot">•</span><span class="hk">T</span> Tools</div>
+                                <div class="tui-helpbar"><span class="dot">•</span><span class="hk">F</span> Profiles <span class="dot">•</span><span class="hk">I</span> Import <span class="dot">•</span><span class="hk">C</span> Clients <span class="dot">•</span><span class="hk">G</span> Settings <span class="dot">•</span><span class="hk">H</span> Doctor <span class="dot">•</span><span class="hk">O</span> Auth <span class="dot">•</span><span class="hk">Q</span> Quit</div>
+                            </div>
                         </div>
                     </div>
                     <div class="shortcuts-panel">
                         <h4>Keyboard Shortcuts</h4>
                         <div class="sc-grid">
+                            <div class="sc"><kbd>↑↓</kbd><span>Navigate</span></div>
+                            <div class="sc"><kbd>←→</kbd><span>Switch profile</span></div>
+                            <div class="sc"><kbd>Space</kbd><span>Toggle server</span></div>
+                            <div class="sc"><kbd>Enter</kbd><span>Daemon control</span></div>
                             <div class="sc"><kbd>A</kbd><span>Add server</span></div>
                             <div class="sc"><kbd>E</kbd><span>Edit server</span></div>
                             <div class="sc"><kbd>D</kbd><span>Delete server</span></div>
-                            <div class="sc"><kbd>Space</kbd><span>Select server</span></div>
                             <div class="sc"><kbd>X</kbd><span>Test all servers</span></div>
                             <div class="sc"><kbd>T</kbd><span>Tools screen</span></div>
                             <div class="sc"><kbd>C</kbd><span>Clients screen</span></div>
                             <div class="sc"><kbd>F</kbd><span>Profiles screen</span></div>
-                            <div class="sc"><kbd>G</kbd><span>Settings screen</span></div>
                             <div class="sc"><kbd>I</kbd><span>Import/Export</span></div>
+                            <div class="sc"><kbd>G</kbd><span>Settings screen</span></div>
+                            <div class="sc"><kbd>H</kbd><span>Doctor / Health</span></div>
                             <div class="sc"><kbd>O</kbd><span>Auth screen</span></div>
-                            <div class="sc"><kbd>M</kbd><span>Daemon screen</span></div>
+                            <div class="sc"><kbd>Q</kbd><span>Quit</span></div>
                         </div>
                     </div>
                 </div>
@@ -1678,14 +1884,21 @@
         ];
 
         const tuiBlock = `<div class="t-tui">
-  <div><span class="t-tui-title">MCP Server Manager</span> <span class="t-tui-dim">v2.4.1</span></div>
-  <div class="t-tui-dim">Profile: default  ◂ ▸  │ Port: 8850</div>
-  <div class="t-tui-section">Local Servers (STDIO):</div>
-  <div class="t-tui-row"><span class="t-tui-arrow">→</span> <span class="t-tui-check">[✓]</span> <span class="t-tui-name hl">filesystem</span> <span class="t-tui-dim">- 11 tools</span></div>
-  <div class="t-tui-row">  <span class="t-tui-check">[✓]</span> github <span class="t-tui-dim">- 8 tools</span></div>
-  <div class="t-tui-row">  <span class="t-tui-check">[✓]</span> postgres <span class="t-tui-dim">- 5 tools</span></div>
-  <div class="t-tui-hint">↑↓ Navigate  Space Select  A Add  D Delete  E Edit  X Test</div>
-  <div class="t-tui-hint">T Tools  C Clients  F Profiles  G Settings  M Daemon  Q Quit</div>
+  <div style="border:1px solid rgba(0,212,170,0.4);border-radius:4px;padding:6px 10px;margin-bottom:8px;">
+    <div><span class="t-tui-name" style="font-weight:600;">MCP Server Manager v2.4.1</span> <span style="color:#34d399;">●</span> <span class="t-tui-title">Healthy (16 srv, 291 tools)</span></div>
+    <div class="t-tui-dim">Profile: ◄ <span class="t-tui-title">Default</span> <span class="t-tui-dim">► │ Port: 8850 │ Total: 142.8K tokens</span></div>
+  </div>
+  <div style="border:1px solid rgba(0,212,170,0.3);border-radius:4px;padding:6px 10px;margin-bottom:8px;">
+    <div class="t-tui-title" style="margin-bottom:4px;">Servers</div>
+    <div class="t-tui-row"><span class="t-tui-arrow">→</span> <span class="t-tui-dim">[ ]</span> <span class="t-tui-name hl">browsermcp</span> <span style="color:#34d399;">✓</span> <span class="t-tui-dim">12/12 tools · 1.1K tokens</span></div>
+    <div class="t-tui-row">  <span class="t-tui-dim">[ ]</span> <span class="t-tui-name">filesystem</span> <span style="color:#34d399;">✓</span> <span class="t-tui-dim">14/14 tools · 3.1K tokens</span></div>
+    <div class="t-tui-row">  <span style="color:#34d399;">[✓]</span> <span class="t-tui-name">deepwiki</span> <span style="color:#34d399;">✓</span> <span class="t-tui-dim">3/3 tools · 384 tokens</span></div>
+    <div class="t-tui-row">  <span class="t-tui-dim">[ ]</span> <span class="t-tui-name">stripe</span> <span style="color:#34d399;">✓</span> <span class="t-tui-dim">28/28 tools · 8.3K tokens</span></div>
+    <div class="t-tui-row">  <span class="t-tui-dim">[ ]</span> <span class="t-tui-name">notion</span> <span style="color:#34d399;">✓</span> <span class="t-tui-dim">14/16 tools · 11.1K tokens</span></div>
+  </div>
+  <div style="border:1px solid rgba(0,212,170,0.3);border-radius:4px;padding:4px 10px;">
+    <div class="t-tui-hint"><span style="color:#34d399;">•</span><span style="color:#00d4aa;">↑↓</span> Navigate <span style="color:#34d399;">•</span><span style="color:#00d4aa;">Space</span> Toggle <span style="color:#34d399;">•</span><span style="color:#00d4aa;">A</span> Add <span style="color:#34d399;">•</span><span style="color:#00d4aa;">D</span> Del <span style="color:#34d399;">•</span><span style="color:#00d4aa;">X</span> Test <span style="color:#34d399;">•</span><span style="color:#00d4aa;">Q</span> Quit</div>
+  </div>
 </div>`;
 
         function animateTerminal() {
@@ -1725,6 +1938,14 @@
             btn.textContent = 'Copied!';
             setTimeout(() => btn.textContent = 'Copy', 1500);
         }
+
+        // ── Scroll progress ──
+        window.addEventListener('scroll', () => {
+            const scrollTop = document.documentElement.scrollTop;
+            const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = (scrollTop / scrollHeight) * 100;
+            document.getElementById('scrollProgress').style.width = progress + '%';
+        });
 
         // ── Features interactive ──
         document.addEventListener('DOMContentLoaded', () => {
