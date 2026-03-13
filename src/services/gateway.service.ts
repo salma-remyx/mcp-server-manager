@@ -524,7 +524,9 @@ export async function startGateway(
     );
 
     if (localServers.length === 0 && remoteServers.length === 0) {
-      return { success: false, error: "No servers to start" };
+      logger.info(
+        "No enabled servers found; starting gateway with 0 tools (enable servers and refresh to connect)"
+      );
     }
 
     // Connect to all servers
