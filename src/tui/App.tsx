@@ -350,6 +350,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
   // Navigate back to main screen
   const goBack = useCallback(() => {
+    profileService.syncFromConfig();
     refreshServers();
     refreshAuthStatus();
     setState((prev) => ({
@@ -389,7 +390,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
 
       if (result.success) {
         showMessage(`Server '${server.name}' deleted`, "success");
-        // Refresh daemon if running (auto-sync)
+        profileService.syncFromConfig();
         refreshDaemonIfRunning("deleting server");
         
         // Get fresh server lists after deletion - create new arrays to ensure React detects the change
@@ -555,10 +556,14 @@ export function App({ onExit }: AppProps): React.ReactElement {
       if (key.leftArrow) {
         const profiles = profileService.list();
         if (profiles.length > 1) {
-          setState((prev) => {
-            const prevIdx = prev.currentProfileIndex > 0 ? prev.currentProfileIndex - 1 : profiles.length - 1;
-            return { ...prev, currentProfileIndex: prevIdx };
-          });
+          const prevIdx = state.currentProfileIndex > 0 ? state.currentProfileIndex - 1 : profiles.length - 1;
+          const targetProfile = profiles[prevIdx];
+          if (targetProfile) {
+            profileService.use(targetProfile.id);
+            refreshServers();
+            setState((prev) => ({ ...prev, currentProfileIndex: prevIdx, currentIndex: 0 }));
+            refreshDaemonIfRunning("switching profile");
+          }
         }
         return;
       }
@@ -567,10 +572,14 @@ export function App({ onExit }: AppProps): React.ReactElement {
       if (key.rightArrow) {
         const profiles = profileService.list();
         if (profiles.length > 1) {
-          setState((prev) => {
-            const nextIdx = prev.currentProfileIndex < profiles.length - 1 ? prev.currentProfileIndex + 1 : 0;
-            return { ...prev, currentProfileIndex: nextIdx };
-          });
+          const nextIdx = state.currentProfileIndex < profiles.length - 1 ? state.currentProfileIndex + 1 : 0;
+          const targetProfile = profiles[nextIdx];
+          if (targetProfile) {
+            profileService.use(targetProfile.id);
+            refreshServers();
+            setState((prev) => ({ ...prev, currentProfileIndex: nextIdx, currentIndex: 0 }));
+            refreshDaemonIfRunning("switching profile");
+          }
         }
         return;
       }
@@ -597,34 +606,21 @@ export function App({ onExit }: AppProps): React.ReactElement {
         return;
       }
 
-      // Space - Toggle server membership in current profile
+      // Space - Toggle server enable/disable
       if (input === " ") {
-        const { server, type } = getCurrentServer();
+        const { server } = getCurrentServer();
         if (!server) return;
 
-        const profiles = profileService.list();
-        const currentProfile = profiles[state.currentProfileIndex];
-        if (!currentProfile) return;
+        const result = server.disabled
+          ? configService.enableServer(server.id)
+          : configService.disableServer(server.id);
 
-        const profileData = profileService.getProfile(currentProfile.id);
-        if (!profileData) return;
-
-        const serverId = type === "remote" ? server.id : server.id;
-        const isIncludeAll = profileData.servers.length === 0 && profileData.remoteServers.length === 0;
-        const isMember = isIncludeAll ||
-          (type === "local" ? profileData.servers.includes(serverId) : profileData.remoteServers.includes(serverId));
-
-        if (isMember) {
-          if (isIncludeAll) {
-            profileService.makeExplicit(currentProfile.id);
-          }
-          profileService.removeServer(currentProfile.id, serverId);
-          showMessage(`Removed '${server.name}' from profile '${currentProfile.name}'`, "success");
-        } else {
-          profileService.addServer(currentProfile.id, serverId);
-          showMessage(`Added '${server.name}' to profile '${currentProfile.name}'`, "success");
+        if (result.success) {
+          showMessage(`${server.disabled ? "Enabled" : "Disabled"} '${server.name}'`, "success");
+          profileService.syncFromConfig();
+          refreshServers();
+          refreshDaemonIfRunning("toggling server");
         }
-        refreshDaemonIfRunning("toggling profile membership");
         return;
       }
 
@@ -731,6 +727,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
         type={type}
         onBack={goBack}
         onSaved={(updatedServer) => {
+          profileService.syncFromConfig();
           refreshServers();
           refreshAuthStatus();
           showMessage(`Server '${updatedServer.name}' updated`, "success");
@@ -873,16 +870,6 @@ export function App({ onExit }: AppProps): React.ReactElement {
   const hasServers = localServers.length > 0 || remoteServers.length > 0;
   const profiles = profileService.list();
   const currentProfile = profiles[state.currentProfileIndex];
-  const profileData = currentProfile ? profileService.getProfile(currentProfile.id) : null;
-  const profileMemberIds = new Set<string>();
-  if (profileData) {
-    if (profileData.servers.length === 0 && profileData.remoteServers.length === 0) {
-      unifiedServers.forEach((u) => profileMemberIds.add(u.id));
-    } else {
-      profileData.servers.forEach((id) => profileMemberIds.add(id));
-      profileData.remoteServers.forEach((id) => profileMemberIds.add(`remote:${id}`));
-    }
-  }
   const port = configService.getPort();
   const toolFilters = configService.getToolFilters();
   const totalTokens = (() => {
@@ -897,12 +884,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
       }
     };
 
-    localServers.forEach((server) => {
-      if (profileMemberIds.has(server.id)) accumulate(server.id);
-    });
-    remoteServers.forEach((server) => {
-      if (profileMemberIds.has(`remote:${server.id}`)) accumulate(`remote:${server.id}`);
-    });
+    localServers.forEach((server) => accumulate(server.id));
+    remoteServers.forEach((server) => accumulate(`remote:${server.id}`));
 
     return hasData ? total : null;
   })();
@@ -978,7 +961,6 @@ export function App({ onExit }: AppProps): React.ReactElement {
                     renderItem={(unified, idx) => {
                       const isCurrent = idx === state.currentIndex;
                       const { server, type, id } = unified;
-                      const isMember = profileMemberIds.has(id);
                       const isDisabled = server.disabled;
                       const filter = toolFilters[id];
                       const totalTools = filter?.allTools?.length ?? 0;
@@ -988,7 +970,6 @@ export function App({ onExit }: AppProps): React.ReactElement {
                       const tokenLabel = tokenTotal !== null ? `${formatTokens(tokenTotal)} tokens` : "— tokens";
                       const needsAuth = type === "remote" && state.serversNeedingAuth.has(server.id);
 
-                      const showCheck = isMember;
                       const nameColor = isCurrent ? theme.colors.highlightText : isDisabled ? theme.colors.disabled : undefined;
                       const arrowColor = isCurrent
                         ? theme.colors.serverArrowSelected
@@ -999,8 +980,8 @@ export function App({ onExit }: AppProps): React.ReactElement {
                       return (
                         <Box key={id} gap={1} paddingX={1}>
                           <Text color={arrowColor}>{isCurrent ? "→" : " "}</Text>
-                          <Text color={isDisabled ? theme.colors.warning : showCheck ? theme.colors.serverCheckEnabled : theme.colors.serverCheckDisabled}>
-                            {showCheck ? "[✓]" : "[ ]"}
+                          <Text color={isDisabled ? theme.colors.warning : theme.colors.serverCheckEnabled}>
+                            {isDisabled ? "[○]" : "[✓]"}
                           </Text>
                           <Text color={nameColor} bold={isCurrent}>
                             {server.name || server.id}

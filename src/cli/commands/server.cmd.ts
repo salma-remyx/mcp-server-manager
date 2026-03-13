@@ -10,6 +10,7 @@ import { getConfigService } from "../../services/config.service.js";
 import { getTestingService } from "../../services/testing.service.js";
 import { getAuthService } from "../../services/auth.service.js";
 import { getDaemonService } from "../../services/daemon.service.js";
+import { getProfileService } from "../../services/profile.service.js";
 import type { LocalServer, RemoteServer, TransportType, OAuthConfig } from "../../types/index.js";
 import { redactServerForOutput } from "../../shared/redaction.js";
 
@@ -209,6 +210,7 @@ export function registerServerCommands(program: Command): void {
           process.exit(1);
         }
 
+        getProfileService().syncFromConfig();
         console.log(`${c.checkmark} Server '${name}' added successfully!`);
 
         // Test if --test flag provided
@@ -278,6 +280,7 @@ export function registerServerCommands(program: Command): void {
           process.exit(1);
         }
 
+        getProfileService().syncFromConfig();
         console.log(`${c.checkmark} Server '${name}' added successfully!`);
 
         // Test if --test flag provided
@@ -380,6 +383,7 @@ export function registerServerCommands(program: Command): void {
 
       const deleteResult = configService.deleteServer(server.id);
       if (deleteResult.success) {
+        getProfileService().syncFromConfig();
         console.log(`${c.checkmark} Server '${server.name}' deleted`);
       } else {
         console.log(`${c.cross} ${deleteResult.error}`);
@@ -440,6 +444,7 @@ export function registerServerCommands(program: Command): void {
 
         const updateResult = configService.updateLocalServer(server.id, updates);
         if (updateResult.success) {
+          getProfileService().syncFromConfig();
           console.log(`${c.checkmark} Server '${server.name}' updated`);
         } else {
           console.log(`${c.cross} ${updateResult.error}`);
@@ -493,6 +498,7 @@ export function registerServerCommands(program: Command): void {
 
         const updateResult = configService.updateRemoteServer(server.id, updates);
         if (updateResult.success) {
+          getProfileService().syncFromConfig();
           console.log(`${c.checkmark} Server '${server.name}' updated`);
 
           if (updates.oauth?.enabled === true && !remoteServer.oauth?.enabled) {
@@ -533,6 +539,7 @@ export function registerServerCommands(program: Command): void {
 
       const enableResult = configService.enableServer(server.id);
       if (enableResult.success) {
+        getProfileService().syncFromConfig();
         console.log(`${c.checkmark} Server '${server.name}' enabled`);
         refreshDaemonIfRunning("enabling server");
       } else {
@@ -573,6 +580,7 @@ export function registerServerCommands(program: Command): void {
 
       const disableResult = configService.disableServer(server.id);
       if (disableResult.success) {
+        getProfileService().syncFromConfig();
         console.log(`${c.checkmark} Server '${server.name}' disabled`);
         refreshDaemonIfRunning("disabling server");
       } else {

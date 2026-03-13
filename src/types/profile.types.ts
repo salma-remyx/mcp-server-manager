@@ -3,15 +3,16 @@
  */
 
 import type { ToolFilters } from "./config.types.js";
+import type { LocalServer, RemoteServer } from "./server.types.js";
 
 /** Single profile definition */
 export interface Profile {
   /** Profile display name */
   name: string;
-  /** Local server IDs in this profile (empty = all) */
-  servers: string[];
-  /** Remote server IDs in this profile (empty = all) */
-  remoteServers: string[];
+  /** Local servers owned by this profile */
+  servers: LocalServer[];
+  /** Remote servers owned by this profile */
+  remoteServers: RemoteServer[];
   /** Per-profile tool filters (optional, for independent tool management) */
   toolFilters?: ToolFilters;
 }
@@ -34,18 +35,10 @@ export interface ProfileListItem {
   serverCount: number;
   /** Whether this is the active profile */
   isActive: boolean;
-  /** Whether profile includes all servers */
-  includesAll: boolean;
 }
 
 /** Profile operation result */
 export interface ProfileResult {
   success: boolean;
   error?: string;
-}
-
-/** Servers for a profile */
-export interface ProfileServers {
-  servers: import("./server.types.js").LocalServer[];
-  remoteServers: import("./server.types.js").RemoteServer[];
 }

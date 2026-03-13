@@ -1,5 +1,9 @@
 /**
  * Profile service - manages server profiles
+ *
+ * Each profile owns its own embedded server objects.
+ * When switching profiles, the profile's servers are loaded into config.json.
+ * After any server mutation, syncFromConfig() copies config.json servers back into the active profile.
  */
 
 import fs from "fs";
@@ -8,7 +12,8 @@ import type {
   ProfilesConfig,
   ProfileListItem,
   ProfileResult,
-  ProfileServers,
+  LocalServer,
+  RemoteServer,
 } from "../types/index.js";
 import { getConfigService } from "./config.service.js";
 import { createLogger } from "../shared/logger.js";
@@ -36,6 +41,7 @@ export class ProfileService {
     const configService = getConfigService();
     this.profilesPath = configService.getPaths().profilesPath;
     this.profiles = this.load();
+    this.migrateIfNeeded();
   }
 
   /** Load profiles from file */
@@ -50,6 +56,42 @@ export class ProfileService {
       log.debug("Failed to load profiles, using defaults:", error);
     }
     return { ...DEFAULT_PROFILES };
+  }
+
+  /** Migrate old string-ID profiles to embedded server objects */
+  private migrateIfNeeded(): void {
+    const configService = getConfigService();
+    let changed = false;
+
+    for (const [_id, profile] of Object.entries(this.profiles.profiles)) {
+      // Detect old format: servers array contains strings instead of objects
+      if (profile.servers.length > 0 && typeof profile.servers[0] === "string") {
+        const serverIds = profile.servers as unknown as string[];
+        const remoteIds = profile.remoteServers as unknown as string[];
+        profile.servers = configService
+          .getLocalServers()
+          .filter((s) => serverIds.includes(s.id))
+          .map((s) => ({ ...s }));
+        profile.remoteServers = configService
+          .getRemoteServers()
+          .filter((s) => remoteIds.includes(s.id))
+          .map((s) => ({ ...s }));
+        changed = true;
+      } else if (profile.servers.length === 0 && profile.remoteServers.length === 0) {
+        // Old "include all" semantic — populate from config.json
+        const localServers = configService.getLocalServers();
+        const remoteServers = configService.getRemoteServers();
+        if (localServers.length > 0 || remoteServers.length > 0) {
+          profile.servers = localServers.map((s) => ({ ...s }));
+          profile.remoteServers = remoteServers.map((s) => ({ ...s }));
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) {
+      this.save();
+    }
   }
 
   /** Save profiles to file */
@@ -79,11 +121,10 @@ export class ProfileService {
       name: profile.name,
       serverCount: profile.servers.length + profile.remoteServers.length,
       isActive: id === this.profiles.activeProfile,
-      includesAll: profile.servers.length === 0 && profile.remoteServers.length === 0,
     }));
   }
 
-  /** Create a new profile */
+  /** Create a new profile (starts with no servers) */
   create(id: string, name?: string): ProfileResult {
     if (this.profiles.profiles[id]) {
       return { success: false, error: "Profile already exists" };
@@ -99,7 +140,7 @@ export class ProfileService {
     return { success: true };
   }
 
-  /** Clone a profile */
+  /** Clone a profile (deep copies server objects) */
   clone(sourceId: string, newId: string, newName?: string): ProfileResult {
     const source = this.profiles.profiles[sourceId];
     if (!source) {
@@ -110,11 +151,10 @@ export class ProfileService {
       return { success: false, error: "Profile already exists" };
     }
 
-    // Deep clone the profile
     this.profiles.profiles[newId] = {
       name: newName || `${source.name} (Copy)`,
-      servers: [...source.servers],
-      remoteServers: [...source.remoteServers],
+      servers: JSON.parse(JSON.stringify(source.servers)),
+      remoteServers: JSON.parse(JSON.stringify(source.remoteServers)),
       toolFilters: source.toolFilters ? JSON.parse(JSON.stringify(source.toolFilters)) : undefined,
     };
 
@@ -138,73 +178,46 @@ export class ProfileService {
     return { success: true };
   }
 
-  /** Switch to a profile */
+  /** Switch to a profile — loads profile's servers into config.json */
   use(id: string): ProfileResult {
     if (!this.profiles.profiles[id]) {
       return { success: false, error: "Profile not found" };
     }
 
+    // Save current config into the currently active profile before switching
+    this.syncFromConfig();
+
     this.profiles.activeProfile = id;
     this.save();
-    return { success: true };
-  }
 
-  /** Add server to profile */
-  addServer(profileId: string, serverId: string): ProfileResult {
-    const profile = this.profiles.profiles[profileId];
-    if (!profile) {
-      return { success: false, error: "Profile not found" };
-    }
-
+    // Load the new profile's servers into config.json
+    const profile = this.profiles.profiles[id];
     const configService = getConfigService();
-    const serverResult = configService.findServer(serverId);
+    const config = configService.getConfig();
+    config.servers = JSON.parse(JSON.stringify(profile.servers));
+    config.remoteServers = JSON.parse(JSON.stringify(profile.remoteServers));
+    configService.saveConfig();
+    configService.reload();
 
-    if (!serverResult) {
-      return { success: false, error: "Server not found" };
-    }
-
-    if (serverResult.type === "local") {
-      if (!profile.servers.includes(serverId)) {
-        profile.servers.push(serverId);
-      }
-    } else {
-      if (!profile.remoteServers.includes(serverId)) {
-        profile.remoteServers.push(serverId);
-      }
-    }
-
-    this.save();
     return { success: true };
   }
 
-  /** Remove server from profile */
-  removeServer(profileId: string, serverId: string): ProfileResult {
-    const profile = this.profiles.profiles[profileId];
-    if (!profile) {
-      return { success: false, error: "Profile not found" };
-    }
-
-    profile.servers = profile.servers.filter((id) => id !== serverId);
-    profile.remoteServers = profile.remoteServers.filter((id) => id !== serverId);
-
-    this.save();
-    return { success: true };
-  }
-
-  /** Get servers for active profile */
-  getServersForActiveProfile(): ProfileServers {
-    const configService = getConfigService();
+  /** Sync current config.json servers into the active profile */
+  syncFromConfig(): void {
     const profile = this.getActiveProfile();
+    if (!profile) return;
 
+    const configService = getConfigService();
+    profile.servers = configService.getLocalServers().map((s) => ({ ...s }));
+    profile.remoteServers = configService.getRemoteServers().map((s) => ({ ...s }));
+    this.save();
+  }
+
+  /** Get servers for active profile (returns the embedded arrays directly) */
+  getServersForActiveProfile(): { servers: LocalServer[]; remoteServers: RemoteServer[] } {
+    const profile = this.getActiveProfile();
     if (!profile) {
-      return {
-        servers: configService.getLocalServers(),
-        remoteServers: configService.getRemoteServers(),
-      };
-    }
-
-    // Empty arrays mean "include all"
-    if (profile.servers.length === 0 && profile.remoteServers.length === 0) {
+      const configService = getConfigService();
       return {
         servers: configService.getLocalServers(),
         remoteServers: configService.getRemoteServers(),
@@ -212,35 +225,23 @@ export class ProfileService {
     }
 
     return {
-      servers: configService.getLocalServers().filter((s) => profile.servers.includes(s.id)),
-      remoteServers: configService
-        .getRemoteServers()
-        .filter((s) => profile.remoteServers.includes(s.id)),
+      servers: profile.servers,
+      remoteServers: profile.remoteServers,
     };
   }
 
   /** Get servers for a specific profile */
-  getServersForProfile(profileId: string): ProfileServers | null {
+  getServersForProfile(
+    profileId: string
+  ): { servers: LocalServer[]; remoteServers: RemoteServer[] } | null {
     const profile = this.getProfile(profileId);
     if (!profile) {
       return null;
     }
 
-    const configService = getConfigService();
-
-    // Empty arrays mean "include all"
-    if (profile.servers.length === 0 && profile.remoteServers.length === 0) {
-      return {
-        servers: configService.getLocalServers(),
-        remoteServers: configService.getRemoteServers(),
-      };
-    }
-
     return {
-      servers: configService.getLocalServers().filter((s) => profile.servers.includes(s.id)),
-      remoteServers: configService
-        .getRemoteServers()
-        .filter((s) => profile.remoteServers.includes(s.id)),
+      servers: profile.servers,
+      remoteServers: profile.remoteServers,
     };
   }
 
@@ -254,17 +255,6 @@ export class ProfileService {
     profile.name = newName;
     this.save();
     return { success: true };
-  }
-
-  /** Convert "include all" profile to explicit server lists */
-  makeExplicit(profileId: string): void {
-    const profile = this.profiles.profiles[profileId];
-    if (!profile) return;
-    if (profile.servers.length > 0 || profile.remoteServers.length > 0) return;
-    const configService = getConfigService();
-    profile.servers = configService.getLocalServers().map((s) => s.id);
-    profile.remoteServers = configService.getRemoteServers().map((s) => s.id);
-    this.save();
   }
 
   /** Reload profiles from disk */

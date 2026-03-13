@@ -173,22 +173,6 @@ export const FEATURES: Feature[] = [
     requiredInTui: true,
   },
   {
-    id: "profiles-add-server",
-    name: "Add server to profile",
-    category: "profiles",
-    cliCommands: ["profile add"],
-    tuiImplementation: "ProfilesScreen.tsx",
-    requiredInTui: true,
-  },
-  {
-    id: "profiles-remove-server",
-    name: "Remove server from profile",
-    category: "profiles",
-    cliCommands: ["profile remove"],
-    tuiImplementation: "ProfilesScreen.tsx",
-    requiredInTui: true,
-  },
-  {
     id: "profiles-rename",
     name: "Rename profile",
     category: "profiles",

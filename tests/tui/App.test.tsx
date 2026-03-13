@@ -425,12 +425,6 @@ describe("Profile Switching", () => {
     vi.clearAllMocks();
     mockConfigService.getLocalServers.mockReturnValue(sampleLocalServers);
     mockConfigService.getRemoteServers.mockReturnValue(sampleRemoteServers);
-    // "dev" profile only includes server1 and remote1
-    mockProfileService.getProfile.mockImplementation((id: string) => {
-      if (id === "default") return { name: "Default", servers: [], remoteServers: [] };
-      if (id === "dev") return { name: "Development", servers: ["server1"], remoteServers: ["remote1"] };
-      return null;
-    });
     // Token data: server1=1000, server2=2000, server3=3000, remote1=500, remote2=700
     mockConfigService.getToolFilters.mockReturnValue({
       server1: { toolsData: { t1: { tokens: 1000 } }, disabledTools: [] },
@@ -441,21 +435,10 @@ describe("Profile Switching", () => {
     });
   });
 
-  it("should show all tokens when default profile (include all) is active", () => {
+  it("should show all tokens for active profile", () => {
     const { lastFrame } = render(<App />);
-    // Default profile includes all servers: 1000+2000+3000+500+700 = 7,200
+    // All servers in config: 1000+2000+3000+500+700 = 7,200
     expect(lastFrame()).toContain("7,200 tokens");
-  });
-
-  it("should show only profile member tokens after switching profile", async () => {
-    const { lastFrame, stdin } = render(<App />);
-
-    // Switch to "dev" profile (index 1) by pressing right arrow
-    stdin.write(KEYS.RIGHT);
-    await waitForStateUpdate();
-
-    // Dev profile includes server1 (1000) + remote1 (500) = 1,500
-    expect(lastFrame()).toContain("1,500 tokens");
   });
 
   it("should update header profile name when switching profiles", async () => {
@@ -469,27 +452,25 @@ describe("Profile Switching", () => {
     expect(lastFrame()).toContain("Development");
   });
 
-  it("should show all checkmarks for include-all profile", () => {
-    const { lastFrame } = render(<App />);
-
-    // Default profile includes all — every server should be checked
-    const frame = lastFrame();
-    const checkCount = (frame.match(/\[✓\]/g) || []).length;
-    expect(checkCount).toBe(sampleLocalServers.length + sampleRemoteServers.length);
-  });
-
-  it("should show partial checkmarks for explicit profile", async () => {
-    const { lastFrame, stdin } = render(<App />);
+  it("should call profileService.use when switching profiles", async () => {
+    const { stdin } = render(<App />);
 
     stdin.write(KEYS.RIGHT);
     await waitForStateUpdate();
 
-    // Dev profile has server1 + remote1 checked, others unchecked
+    expect(mockProfileService.use).toHaveBeenCalledWith("dev");
+  });
+
+  it("should show enabled/disabled status with checkmarks", () => {
+    const { lastFrame } = render(<App />);
+
     const frame = lastFrame();
+    // All enabled servers should have [✓], disabled ones should have [○]
     const checkedCount = (frame.match(/\[✓\]/g) || []).length;
-    const uncheckedCount = (frame.match(/\[ \]/g) || []).length;
-    expect(checkedCount).toBe(2); // server1 + remote1
-    expect(uncheckedCount).toBe(3); // server2, server3, remote2
+    const disabledCount = (frame.match(/\[○\]/g) || []).length;
+    // server2 is disabled in the sample data
+    expect(checkedCount).toBeGreaterThan(0);
+    expect(disabledCount + checkedCount).toBe(sampleLocalServers.length + sampleRemoteServers.length);
   });
 
   it("should cycle profiles with left arrow (wraps around)", async () => {
@@ -500,7 +481,6 @@ describe("Profile Switching", () => {
     await waitForStateUpdate();
 
     expect(lastFrame()).toContain("Development");
-    expect(lastFrame()).toContain("1,500 tokens");
   });
 
   it("should cycle profiles with right arrow (wraps around)", async () => {
@@ -513,36 +493,19 @@ describe("Profile Switching", () => {
     await waitForStateUpdate();
 
     expect(lastFrame()).toContain("Default");
-    expect(lastFrame()).toContain("7,200 tokens");
   });
 
-  it("should toggle profile membership with Space", async () => {
+  it("should toggle server enable/disable with Space", async () => {
     const { stdin } = render(<App />);
 
-    // Press space on first server (server1) while on default profile
+    // Press space on first server (server1) — should call enableServer or disableServer
     stdin.write(KEYS.SPACE);
     await waitForStateUpdate();
 
-    // Default profile is include-all, so Space should call makeExplicit then removeServer
-    expect(mockProfileService.makeExplicit).toHaveBeenCalledWith("default");
-    expect(mockProfileService.removeServer).toHaveBeenCalledWith("default", "server1");
-  });
-
-  it("should add server to explicit profile with Space", async () => {
-    const { stdin } = render(<App />);
-
-    // Switch to dev profile
-    stdin.write(KEYS.RIGHT);
-    await waitForStateUpdate();
-
-    // Navigate to server2 (index 1) which is NOT in dev profile
-    stdin.write(KEYS.DOWN);
-    await waitForStateUpdate();
-
-    stdin.write(KEYS.SPACE);
-    await waitForStateUpdate();
-
-    expect(mockProfileService.addServer).toHaveBeenCalledWith("dev", "server2");
+    // Should call disableServer since server1 is enabled
+    expect(mockConfigService.disableServer).toHaveBeenCalledWith("server1");
+    // Should sync to profile
+    expect(mockProfileService.syncFromConfig).toHaveBeenCalled();
   });
 });
 

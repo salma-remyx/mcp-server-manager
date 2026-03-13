@@ -98,21 +98,38 @@ export const mockClientService = {
 // Mock profile service
 export const mockProfileService = {
   list: vi.fn(() => [
-    { id: "default", name: "Default", isActive: true, includesAll: true, serverCount: 0 },
-    { id: "dev", name: "Development", isActive: false, includesAll: false, serverCount: 2 },
+    { id: "default", name: "Default", isActive: true, serverCount: 5 },
+    { id: "dev", name: "Development", isActive: false, serverCount: 2 },
   ]),
   create: vi.fn(() => ({ success: true })),
   delete: vi.fn(() => ({ success: true })),
   use: vi.fn(() => ({ success: true })),
   getActiveProfileId: vi.fn(() => "default"),
   getProfile: vi.fn((id: string) => {
-    if (id === "default") return { name: "Default", servers: [], remoteServers: [] };
-    if (id === "dev") return { name: "Development", servers: ["s1", "s2"], remoteServers: [] };
+    if (id === "default")
+      return {
+        name: "Default",
+        servers: [
+          { id: "server1", name: "Server One", command: "test", args: [] },
+          { id: "server2", name: "Server Two", command: "test", args: [], disabled: true },
+          { id: "server3", name: "Server Three", command: "test", args: [] },
+        ],
+        remoteServers: [
+          { id: "remote1", name: "Remote One", type: "http", url: "http://localhost" },
+          { id: "remote2", name: "Remote Two", type: "http", url: "http://localhost" },
+        ],
+      };
+    if (id === "dev")
+      return {
+        name: "Development",
+        servers: [{ id: "server1", name: "Server One", command: "test", args: [] }],
+        remoteServers: [
+          { id: "remote1", name: "Remote One", type: "http", url: "http://localhost" },
+        ],
+      };
     return null;
   }),
-  addServer: vi.fn(() => ({ success: true })),
-  removeServer: vi.fn(() => ({ success: true })),
-  makeExplicit: vi.fn(),
+  syncFromConfig: vi.fn(),
   rename: vi.fn(() => ({ success: true })),
   clone: vi.fn(() => ({ success: true })),
   reload: vi.fn(),

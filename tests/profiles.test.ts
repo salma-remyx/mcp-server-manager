@@ -52,7 +52,7 @@ describe("ProfileService", () => {
       expect(profileService.getActiveProfile()).toBeDefined();
     });
 
-    it("should load existing profile", () => {
+    it("should load existing profile and migrate string IDs to objects", () => {
       fs.writeFileSync(
         path.join(testConfigDir, "profiles.json"),
         JSON.stringify({
@@ -69,7 +69,9 @@ describe("ProfileService", () => {
       expect(profileService.getActiveProfileId()).toBe("custom");
       const profile = profileService.getProfile("custom");
       expect(profile).toBeDefined();
-      expect(profile?.servers).toContain("server1");
+      // After migration, servers should be objects
+      expect(profile?.servers).toHaveLength(1);
+      expect(profile?.servers[0].id).toBe("server1");
     });
   });
 
@@ -88,7 +90,7 @@ describe("ProfileService", () => {
   });
 
   describe("create", () => {
-    it("should create a new profile", () => {
+    it("should create a new profile with empty server arrays", () => {
       profileService = new ProfileService();
 
       const result = profileService.create("test", "Test Profile");
@@ -97,6 +99,8 @@ describe("ProfileService", () => {
       const profile = profileService.getProfile("test");
       expect(profile).toBeDefined();
       expect(profile?.name).toBe("Test Profile");
+      expect(profile?.servers).toEqual([]);
+      expect(profile?.remoteServers).toEqual([]);
     });
 
     it("should fail when profile already exists", () => {
@@ -179,105 +183,79 @@ describe("ProfileService", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain("not found");
     });
-  });
 
-  describe("addServer", () => {
-    it("should add local server to profile", () => {
+    it("should load profile servers into config.json when switching", () => {
       profileService = new ProfileService();
+      const configService = getConfigService();
 
-      profileService.create("test", "Test");
-      const result = profileService.addServer("test", "server1");
+      // Default profile was migrated to have all servers from config
+      // Create a new profile with specific servers
+      profileService.create("minimal", "Minimal");
+      const minimalProfile = profileService.getProfile("minimal");
+      expect(minimalProfile?.servers).toEqual([]);
 
-      expect(result.success).toBe(true);
+      // Switch to the minimal profile
+      profileService.use("minimal");
 
-      const profile = profileService.getProfile("test");
-      expect(profile?.servers).toContain("server1");
-    });
+      // Config should now have no servers (empty profile)
+      configService.reload();
+      expect(configService.getLocalServers()).toEqual([]);
+      expect(configService.getRemoteServers()).toEqual([]);
 
-    it("should add remote server to profile", () => {
-      profileService = new ProfileService();
+      // Switch back to default
+      profileService.use("default");
 
-      profileService.create("test", "Test");
-      const result = profileService.addServer("test", "remote1");
-
-      expect(result.success).toBe(true);
-
-      const profile = profileService.getProfile("test");
-      expect(profile?.remoteServers).toContain("remote1");
-    });
-
-    it("should fail when profile not found", () => {
-      profileService = new ProfileService();
-
-      const result = profileService.addServer("nonexistent", "server1");
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("Profile not found");
-    });
-
-    it("should fail when server not found", () => {
-      profileService = new ProfileService();
-
-      profileService.create("test", "Test");
-      const result = profileService.addServer("test", "nonexistent");
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("Server not found");
+      // Config should have the original servers
+      configService.reload();
+      expect(configService.getLocalServers()).toHaveLength(2);
+      expect(configService.getRemoteServers()).toHaveLength(1);
     });
   });
 
-  describe("removeServer", () => {
-    it("should remove server from profile", () => {
+  describe("syncFromConfig", () => {
+    it("should sync config.json servers into active profile", () => {
       profileService = new ProfileService();
+      const configService = getConfigService();
 
-      profileService.create("test", "Test");
-      profileService.addServer("test", "server1");
+      // Add a server to config.json
+      configService.addLocalServer({
+        id: "server3",
+        name: "Server 3",
+        command: "test",
+        args: [],
+      });
 
-      let profile = profileService.getProfile("test");
-      expect(profile?.servers).toContain("server1");
+      // Sync into active profile
+      profileService.syncFromConfig();
 
-      const result = profileService.removeServer("test", "server1");
-      expect(result.success).toBe(true);
-
-      profile = profileService.getProfile("test");
-      expect(profile?.servers).not.toContain("server1");
-    });
-
-    it("should fail when profile not found", () => {
-      profileService = new ProfileService();
-
-      const result = profileService.removeServer("nonexistent", "server1");
-      expect(result.success).toBe(false);
+      const profile = profileService.getActiveProfile();
+      expect(profile?.servers).toHaveLength(3);
+      expect(profile?.servers.some((s) => s.id === "server3")).toBe(true);
     });
   });
 
   describe("getServersForActiveProfile", () => {
-    it("should return all servers when profile has empty lists", () => {
+    it("should return profile servers directly", () => {
       profileService = new ProfileService();
 
+      // Default profile was migrated — should match what's in config.json
       const { servers, remoteServers } = profileService.getServersForActiveProfile();
-      expect(servers).toHaveLength(2);
-      expect(remoteServers).toHaveLength(1);
+      // Verify the servers are full objects (not string IDs)
+      expect(servers.length).toBeGreaterThan(0);
+      expect(servers[0]).toHaveProperty("id");
+      expect(servers[0]).toHaveProperty("command");
+      expect(remoteServers.length).toBeGreaterThan(0);
+      expect(remoteServers[0]).toHaveProperty("url");
     });
 
-    it("should return filtered servers when profile has specific servers", () => {
-      resetProfileService();
+    it("should return empty arrays for new empty profile", () => {
       profileService = new ProfileService();
 
-      // Use a unique profile name to avoid state from previous tests
-      profileService.create("filtered-test", "Filtered Test");
-      const addResult = profileService.addServer("filtered-test", "server1");
-      expect(addResult.success).toBe(true);
-
-      profileService.use("filtered-test");
-
-      const profile = profileService.getProfile("filtered-test");
-      // Verify profile state
-      expect(profile?.servers).toEqual(["server1"]);
-      expect(profile?.remoteServers).toEqual([]);
+      profileService.create("empty", "Empty");
+      profileService.use("empty");
 
       const { servers, remoteServers } = profileService.getServersForActiveProfile();
-      expect(servers).toHaveLength(1);
-      expect(servers[0].id).toBe("server1");
+      expect(servers).toHaveLength(0);
       expect(remoteServers).toHaveLength(0);
     });
   });
@@ -311,19 +289,18 @@ describe("ProfileService", () => {
   });
 
   describe("clone", () => {
-    it("should successfully clone a profile with new ID", () => {
+    it("should successfully clone a profile with servers", () => {
       profileService = new ProfileService();
 
-      profileService.create("source", "Source Profile");
-      profileService.addServer("source", "server1");
-
-      const result = profileService.clone("source", "target");
+      // Default profile has all servers from migration
+      const result = profileService.clone("default", "target");
       expect(result.success).toBe(true);
 
       const cloned = profileService.getProfile("target");
       expect(cloned).toBeDefined();
-      expect(cloned?.name).toBe("Source Profile (Copy)");
-      expect(cloned?.servers).toEqual(["server1"]);
+      expect(cloned?.name).toBe("Default (Copy)");
+      expect(cloned?.servers).toHaveLength(2);
+      expect(cloned?.servers[0].id).toBe("server1");
     });
 
     it("should clone with custom display name", () => {
@@ -336,16 +313,13 @@ describe("ProfileService", () => {
       expect(profileService.getProfile("target2")?.name).toBe("Custom Name");
     });
 
-    it("should deep clone servers and remoteServers arrays", () => {
+    it("should deep clone server objects", () => {
       profileService = new ProfileService();
 
-      profileService.create("source3", "Source");
-      profileService.addServer("source3", "server1");
-      profileService.addServer("source3", "remote1");
+      // Default profile has servers from migration
+      profileService.clone("default", "target3");
 
-      profileService.clone("source3", "target3");
-
-      const source = profileService.getProfile("source3");
+      const source = profileService.getProfile("default");
       const target = profileService.getProfile("target3");
 
       // Should be equal values
@@ -416,6 +390,39 @@ describe("ProfileService", () => {
       profileService.clone("source4", "target4");
 
       expect(profileService.getProfile("target4")?.name).toBe("My Profile (Copy)");
+    });
+  });
+
+  describe("migration", () => {
+    it("should migrate old string-ID profiles to embedded server objects", () => {
+      fs.writeFileSync(
+        path.join(testConfigDir, "profiles.json"),
+        JSON.stringify({
+          activeProfile: "default",
+          profiles: {
+            default: { name: "Default", servers: [], remoteServers: [] },
+            old: { name: "Old", servers: ["server1", "server2"], remoteServers: ["remote1"] },
+          },
+        })
+      );
+
+      profileService = new ProfileService();
+
+      const profile = profileService.getProfile("old");
+      expect(profile?.servers).toHaveLength(2);
+      expect(profile?.servers[0].id).toBe("server1");
+      expect(profile?.servers[0].name).toBe("Server 1");
+      expect(profile?.remoteServers).toHaveLength(1);
+      expect(profile?.remoteServers[0].id).toBe("remote1");
+    });
+
+    it("should populate empty profiles from config.json on first load", () => {
+      // Default profile with empty arrays should be populated from config
+      profileService = new ProfileService();
+
+      const profile = profileService.getActiveProfile();
+      expect(profile?.servers).toHaveLength(2);
+      expect(profile?.remoteServers).toHaveLength(1);
     });
   });
 });

@@ -29,9 +29,7 @@ export function registerProfileCommands(program: Command): void {
 
       for (const p of profiles) {
         const active = p.isActive ? ` ${colors.green}(active)${colors.reset}` : "";
-        const servers = p.includesAll
-          ? `${colors.gray}all servers${colors.reset}`
-          : `${p.serverCount} server(s)`;
+        const servers = `${p.serverCount} server(s)`;
 
         console.log(`  ${colors.cyan}${p.id}${colors.reset} - ${p.name}${active}`);
         console.log(`    ${servers}`);
@@ -96,38 +94,6 @@ export function registerProfileCommands(program: Command): void {
 
       if (result.success) {
         console.log(`${c.checkmark} Switched to profile '${name}'`);
-      } else {
-        console.log(`${c.cross} ${result.error}`);
-        process.exit(1);
-      }
-    });
-
-  // Add server to profile
-  profile
-    .command("add <profile> <server>")
-    .description("Add a server to a profile")
-    .action(async (profileId: string, serverId: string) => {
-      const profileService = getProfileService();
-      const result = profileService.addServer(profileId, serverId);
-
-      if (result.success) {
-        console.log(`${c.checkmark} Server '${serverId}' added to profile '${profileId}'`);
-      } else {
-        console.log(`${c.cross} ${result.error}`);
-        process.exit(1);
-      }
-    });
-
-  // Remove server from profile
-  profile
-    .command("remove <profile> <server>")
-    .description("Remove a server from a profile")
-    .action(async (profileId: string, serverId: string) => {
-      const profileService = getProfileService();
-      const result = profileService.removeServer(profileId, serverId);
-
-      if (result.success) {
-        console.log(`${c.checkmark} Server '${serverId}' removed from profile '${profileId}'`);
       } else {
         console.log(`${c.cross} ${result.error}`);
         process.exit(1);

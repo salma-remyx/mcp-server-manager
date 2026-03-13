@@ -109,17 +109,19 @@ async function handleStart(
       console.error(`${colors.red}Error: Profile '${options.profile}' not found${colors.reset}`);
       process.exit(1);
     }
-    selectedServers = profileData.servers || [];
-    const includesAll =
-      selectedServers.length === 0 && (profileData.remoteServers || []).length === 0;
-    if (selectedServers.length === 0 && !includesAll) {
+    const localIds = (profileData.servers || []).map((s) => (typeof s === "string" ? s : s.id));
+    const remoteIds = (profileData.remoteServers || []).map((s) =>
+      typeof s === "string" ? s : s.id
+    );
+    selectedServers = [...localIds, ...remoteIds];
+    if (selectedServers.length === 0) {
       console.error(
         `${colors.red}Error: Profile '${options.profile}' has no servers${colors.reset}`
       );
       process.exit(1);
     }
     console.log(
-      `${colors.gray}Using profile '${options.profile}' with ${selectedServers.length || "all"} server(s)${colors.reset}`
+      `${colors.gray}Using profile '${options.profile}' with ${selectedServers.length} server(s)${colors.reset}`
     );
   } else if (serverNames.length > 0) {
     // Validate server names

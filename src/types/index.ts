@@ -55,13 +55,7 @@ export type {
 } from "./client-strategy.types.js";
 
 // Profile types
-export type {
-  Profile,
-  ProfilesConfig,
-  ProfileListItem,
-  ProfileResult,
-  ProfileServers,
-} from "./profile.types.js";
+export type { Profile, ProfilesConfig, ProfileListItem, ProfileResult } from "./profile.types.js";
 
 // Settings types
 export type {

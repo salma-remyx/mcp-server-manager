@@ -354,12 +354,14 @@ function buildProfileView(profileId: string): ProfileView | null {
   if (!profile) return null;
 
   // Build the set of server IDs this profile includes.
-  // Empty arrays = include all connected servers (backwards compat).
-  const includesAll = profile.servers.length === 0 && profile.remoteServers.length === 0;
-
-  const profileServerIds = includesAll
-    ? null // null = match everything
-    : new Set<string>([...profile.servers, ...profile.remoteServers.map((id) => `remote:${id}`)]);
+  const localIds = profile.servers.map((s) => (typeof s === "string" ? s : s.id));
+  const remoteIds = profile.remoteServers.map((s) =>
+    typeof s === "string" ? s : `remote:${typeof s === "string" ? s : s.id}`
+  );
+  const profileServerIds =
+    localIds.length === 0 && remoteIds.length === 0
+      ? null // null = match everything (empty profile)
+      : new Set<string>([...localIds, ...remoteIds]);
 
   const tools: Tool[] = [];
   const toolMap = new Map<string, string>();
@@ -379,7 +381,7 @@ function buildProfileView(profileId: string): ProfileView | null {
   }
 
   logger.debug(
-    `Profile '${profileId}': ${tools.length} tool(s) from ${includesAll ? "all" : (profileServerIds?.size ?? 0)} server(s)`
+    `Profile '${profileId}': ${tools.length} tool(s) from ${profileServerIds ? profileServerIds.size : "all"} server(s)`
   );
 
   return { profileId, toolToServerMap: toolMap, aggregatedTools: tools };
@@ -511,8 +513,9 @@ export async function startGateway(
     for (const profileItem of profileService.list()) {
       const profile = profileService.getProfile(profileItem.id);
       if (!profile) continue;
-      for (const id of profile.servers) serverIdsToStart.add(id);
-      for (const id of profile.remoteServers) serverIdsToStart.add(`remote:${id}`);
+      for (const s of profile.servers) serverIdsToStart.add(typeof s === "string" ? s : s.id);
+      for (const s of profile.remoteServers)
+        serverIdsToStart.add(`remote:${typeof s === "string" ? s : s.id}`);
     }
 
     // Filter servers to only those in the start set
@@ -839,8 +842,9 @@ export async function refreshGateway(
     for (const profileItem of profileService.list()) {
       const profile = profileService.getProfile(profileItem.id);
       if (!profile) continue;
-      for (const id of profile.servers) serverIdsToStart.add(id);
-      for (const id of profile.remoteServers) serverIdsToStart.add(`remote:${id}`);
+      for (const s of profile.servers) serverIdsToStart.add(typeof s === "string" ? s : s.id);
+      for (const s of profile.remoteServers)
+        serverIdsToStart.add(`remote:${typeof s === "string" ? s : s.id}`);
     }
 
     const localServers = configService
