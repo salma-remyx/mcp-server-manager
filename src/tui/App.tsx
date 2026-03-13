@@ -616,7 +616,6 @@ export function App({ onExit }: AppProps): React.ReactElement {
           : configService.disableServer(server.id);
 
         if (result.success) {
-          showMessage(`${server.disabled ? "Enabled" : "Disabled"} '${server.name}'`, "success");
           profileService.syncFromConfig();
           refreshServers();
           refreshDaemonIfRunning("toggling server");
@@ -981,7 +980,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                         <Box key={id} gap={1} paddingX={1}>
                           <Text color={arrowColor}>{isCurrent ? "→" : " "}</Text>
                           <Text color={isDisabled ? theme.colors.warning : theme.colors.serverCheckEnabled}>
-                            {isDisabled ? "[○]" : "[✓]"}
+                            {isDisabled ? "[ ]" : "[✓]"}
                           </Text>
                           <Text color={nameColor} bold={isCurrent}>
                             {server.name || server.id}

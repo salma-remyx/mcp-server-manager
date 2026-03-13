@@ -465,12 +465,11 @@ describe("Profile Switching", () => {
     const { lastFrame } = render(<App />);
 
     const frame = lastFrame();
-    // All enabled servers should have [✓], disabled ones should have [○]
+    // All enabled servers should have [✓], disabled ones show blank space
     const checkedCount = (frame.match(/\[✓\]/g) || []).length;
-    const disabledCount = (frame.match(/\[○\]/g) || []).length;
     // server2 is disabled in the sample data
     expect(checkedCount).toBeGreaterThan(0);
-    expect(disabledCount + checkedCount).toBe(sampleLocalServers.length + sampleRemoteServers.length);
+    expect(checkedCount).toBe(sampleLocalServers.filter(s => !s.disabled).length + sampleRemoteServers.length);
   });
 
   it("should cycle profiles with left arrow (wraps around)", async () => {
