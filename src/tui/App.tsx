@@ -957,19 +957,12 @@ export function App({ onExit }: AppProps): React.ReactElement {
           )}
 
           {/* Main content: Unified server list */}
-          <Box marginTop={1} flexDirection="column">
+          <Box marginTop={1} flexDirection="column" marginX={contentMargin}>
             {hasServers ? (
               <Box
                 flexDirection="column"
-                borderStyle="round"
-                borderColor={theme.colors.border}
                 paddingX={1}
-                paddingY={0}
-                marginX={contentMargin}
               >
-                <Text color={theme.colors.border} bold>
-                  Servers
-                </Text>
                 {unifiedServers.length > 0 ? (
                   <ScrollableList
                     items={unifiedServers}
@@ -987,6 +980,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                       const tokenTotal = getEnabledTokenTotal(filter);
                       const tokenLabel = tokenTotal !== null ? `${formatTokens(tokenTotal)} tokens` : "— tokens";
                       const needsAuth = type === "remote" && state.serversNeedingAuth.has(server.id);
+                      const serverType = type === "local" ? "stdio" : (server as RemoteServer).type || "http";
 
                       const showCheck = isMember;
                       const nameColor = isCurrent ? theme.colors.highlightText : isDisabled ? theme.colors.disabled : undefined;
@@ -995,34 +989,39 @@ export function App({ onExit }: AppProps): React.ReactElement {
                         : type === "local"
                           ? theme.colors.serverArrowLocal
                           : theme.colors.serverArrowRemote;
+                      const metaColor = isCurrent ? theme.colors.highlightText : isDisabled ? theme.colors.disabled : theme.colors.accent;
+                      const dimColor = isCurrent ? theme.colors.highlightText : undefined;
 
                       return (
                         <Box key={id} gap={1} paddingX={1}>
-                          <Text color={arrowColor}>{isCurrent ? "→" : " "}</Text>
+                          <Text color={arrowColor} bold={isCurrent}>{isCurrent ? "→" : " "}</Text>
                           <Text color={isDisabled ? theme.colors.warning : showCheck ? theme.colors.serverCheckEnabled : theme.colors.serverCheckDisabled}>
                             {showCheck ? "[✓]" : "[ ]"}
                           </Text>
                           <Text color={nameColor} bold={isCurrent}>
                             {server.name || server.id}
                           </Text>
+                          {type !== "local" && (
+                            <Text color={isCurrent ? theme.colors.highlightText : theme.colors.disabled}>[{serverType}]</Text>
+                          )}
                           <>
                             <Text color={needsAuth ? theme.colors.serverNeedsAuth : isDisabled ? theme.colors.disabled : theme.colors.serverStatus}>
                               {needsAuth ? "!" : "✓"}
                             </Text>
-                            <Text color={isDisabled ? theme.colors.disabled : theme.colors.accent}>
+                            <Text color={metaColor}>
                               {enabledTools}/{totalTools} tools
                             </Text>
-                            <Text dimColor>·</Text>
-                            <Text color={isDisabled ? theme.colors.disabled : theme.colors.accent}>{tokenLabel}</Text>
+                            <Text color={dimColor} dimColor={!isCurrent}>·</Text>
+                            <Text color={metaColor}>{tokenLabel}</Text>
                             {filter?.error && (
                               <>
-                                <Text dimColor>·</Text>
+                                <Text color={dimColor} dimColor={!isCurrent}>·</Text>
                                 <Text color={theme.colors.serverStatusError}>{filter.error}</Text>
                               </>
                             )}
                             {needsAuth && (
                               <>
-                                <Text dimColor>·</Text>
+                                <Text color={dimColor} dimColor={!isCurrent}>·</Text>
                                 <Text color={theme.colors.serverNeedsAuth}>needs auth</Text>
                               </>
                             )}
@@ -1038,14 +1037,10 @@ export function App({ onExit }: AppProps): React.ReactElement {
             ) : (
               <Box
                 flexDirection="column"
-                borderStyle="round"
-                borderColor={theme.colors.disabled}
                 paddingX={1}
                 paddingY={1}
-                marginX={contentMargin}
               >
-                <Text dimColor>No servers configured.</Text>
-                <Text dimColor>Press <Text color={theme.colors.border} bold>A</Text> to add a new server.</Text>
+                <Text dimColor>No servers configured. Press <Text color={theme.colors.primary} bold>A</Text> to add a new server.</Text>
               </Box>
             )}
           </Box>
@@ -1053,23 +1048,29 @@ export function App({ onExit }: AppProps): React.ReactElement {
           {/* Bottom shortcuts bar */}
           <Box marginTop={1} flexGrow={1} marginX={contentMargin}>
             <ShortcutsBar
-              shortcuts={[
-                { key: "↑↓", label: "Navigate" },
-                { key: "←→", label: "Profile" },
-                { key: "Space", label: "Toggle" },
-                { key: "Enter", label: "Daemon" },
-                { key: "A", label: "Add" },
-                { key: "E", label: "Edit" },
-                { key: "D", label: "Del" },
-                { key: "X", label: "Test" },
-                { key: "T", label: "Tools" },
-                { key: "F", label: "Profiles" },
-                { key: "I", label: "Import" },
-                { key: "C", label: "Clients" },
-                { key: "G", label: "Settings" },
-                { key: "H", label: "Doctor" },
-                { key: "O", label: "Auth" },
-                { key: "Q", label: "Quit" },
+              groups={[
+                { shortcuts: [
+                  { key: "↑↓", label: "Navigate" },
+                  { key: "←→", label: "Profile" },
+                ] },
+                { shortcuts: [
+                  { key: "A", label: "Add" },
+                  { key: "E", label: "Edit" },
+                  { key: "D", label: "Del" },
+                  { key: "Space", label: "Toggle" },
+                  { key: "X", label: "Test" },
+                ] },
+                { shortcuts: [
+                  { key: "T", label: "Tools" },
+                  { key: "C", label: "Clients" },
+                  { key: "F", label: "Profiles" },
+                  { key: "G", label: "Settings" },
+                ] },
+                { shortcuts: [
+                  { key: "Enter", label: "Daemon" },
+                  { key: "H", label: "Doctor" },
+                  { key: "Q", label: "Quit" },
+                ] },
               ]}
             />
           </Box>

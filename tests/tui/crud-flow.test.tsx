@@ -179,7 +179,7 @@ describe("TUI CRUD with sardine config", () => {
     // Open add wizard
     stdin.write("a");
     await waitForStateUpdate(200);
-    expect(lastFrame()).toContain("Add New MCP Server");
+    expect(lastFrame()).toContain("Add Server");
 
     stdin.write("sardineInternalSandbox");
     stdin.write(KEYS.ENTER);

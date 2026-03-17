@@ -34,12 +34,16 @@ export function DaemonStatus({ compact = false, polling = false }: DaemonStatusP
   }
 
   if (status.healthy) {
+    const srvCount = status.health?.servers ?? 0;
+    const toolCount = status.health?.tools ?? 0;
+    const hasCounts = srvCount > 0 || toolCount > 0;
+
     if (compact) {
       return (
         <Box gap={1}>
           <Text color={theme.colors.success}>●</Text>
           <Text color={theme.colors.success}>
-            Healthy ({status.health?.servers ?? 0} srv, {status.health?.tools ?? 0} tools)
+            {hasCounts ? `Healthy (${srvCount} srv, ${toolCount} tools)` : "Healthy"}
           </Text>
         </Box>
       );
@@ -49,8 +53,7 @@ export function DaemonStatus({ compact = false, polling = false }: DaemonStatusP
       <Box gap={1}>
         <Text color={theme.colors.success}>●</Text>
         <Text color={theme.colors.success}>
-          Healthy (PID: {status.pid}, {status.health?.servers ?? 0} servers,{" "}
-          {status.health?.tools ?? 0} tools)
+          Healthy (PID: {status.pid}{hasCounts ? `, ${srvCount} servers, ${toolCount} tools` : ""})
         </Text>
       </Box>
     );

@@ -34,7 +34,7 @@ describe("AddServerScreen", () => {
     it("should render the add server screen with title", () => {
       const { lastFrame } = render(<AddServerScreen onBack={mockOnBack} />);
 
-      expect(lastFrame()).toContain("Add New MCP Server");
+      expect(lastFrame()).toContain("Add Server");
     });
 
     it("should display server name input field", () => {
@@ -93,7 +93,7 @@ describe("AddServerScreen", () => {
     it("should have a styled header", () => {
       const { lastFrame } = render(<AddServerScreen onBack={mockOnBack} />);
 
-      expect(lastFrame()).toContain("Add New MCP Server");
+      expect(lastFrame()).toContain("Add Server");
     });
   });
 
@@ -102,7 +102,7 @@ describe("AddServerScreen", () => {
       const { lastFrame } = render(<AddServerScreen onBack={mockOnBack} />);
 
       // Should show the form
-      expect(lastFrame()).toContain("Add New MCP Server");
+      expect(lastFrame()).toContain("Add Server");
       expect(lastFrame()).toContain("Server name");
     });
 

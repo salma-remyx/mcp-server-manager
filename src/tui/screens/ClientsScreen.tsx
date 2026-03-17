@@ -204,48 +204,30 @@ export function ClientsScreen({ onBack, currentProfileId }: ClientsScreenProps):
       ) : (
         clients.map((client, idx) => {
           const isCurrent = idx === currentIndex;
+          const isNotInstalled = client.status === "not-installed";
+          const isConnected = client.status === "connected";
 
-          // Status icon and color based on connection status
-          let statusIcon: string;
-          let statusColor: "green" | "yellow" | "gray";
-          let statusText: string;
-
-          if (client.status === "connected") {
-            statusIcon = "✔";
-            statusColor = "green";
-            statusText = "connected";
-          } else if (client.status === "disconnected") {
-            statusIcon = "○";
-            statusColor = "yellow";
-            statusText = "disconnected";
-          } else {
-            statusIcon = "✗";
-            statusColor = "gray";
-            statusText = "not installed";
-          }
+          const statusIcon = isConnected ? "✔" : isNotInstalled ? "✗" : "○";
+          const statusColor = isConnected ? theme.colors.success : isNotInstalled ? theme.colors.disabled : theme.colors.warning;
+          const statusText = isConnected ? "connected" : isNotInstalled ? "not installed" : "disconnected";
 
           return (
-            <Box key={client.id} flexDirection="column" marginBottom={1}>
-              {/* First line: arrow, icon, name, status, servers */}
-              <Box gap={1}>
-                <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary}>{isCurrent ? "→" : " "}</Text>
-                <Text color={statusColor}>{statusIcon}</Text>
-                <Text color={isCurrent ? theme.colors.highlightText : undefined} bold={isCurrent}>
-                  {client.name}
-                </Text>
-                <Text dimColor>[{client.id}]</Text>
-                <Text dimColor>-</Text>
-                <Text color={statusColor}>{statusText}</Text>
-                <Text dimColor>-</Text>
-                <Text dimColor>
+            <Box key={client.id} gap={1}>
+              <Text color={isCurrent ? theme.colors.highlightText : theme.colors.primary} bold={isCurrent}>{isCurrent ? "→" : " "}</Text>
+              <Text color={statusColor}>{statusIcon}</Text>
+              <Text color={isNotInstalled ? theme.colors.disabled : isCurrent ? theme.colors.highlightText : undefined} bold={isCurrent && !isNotInstalled}>
+                {client.name}
+              </Text>
+              <Text color={statusColor}>
+                {statusText}
+              </Text>
+              {client.serverCount > 0 && (
+                <Text color={isCurrent ? theme.colors.highlightText : undefined} dimColor={!isCurrent}>
                   {client.serverCount} {client.serverCount === 1 ? "server" : "servers"}
                 </Text>
-              </Box>
-              {/* Second line: config path (prefer real-time path, fallback to primary) */}
-              {(client.mcpConfigPath || client.configPath) && (
-                <Box marginLeft={3}>
-                  <Text dimColor>{shortenPath(client.mcpConfigPath || client.configPath || "")}</Text>
-                </Box>
+              )}
+              {isCurrent && (client.mcpConfigPath || client.configPath) && (
+                <Text dimColor>{shortenPath(client.mcpConfigPath || client.configPath || "")}</Text>
               )}
             </Box>
           );

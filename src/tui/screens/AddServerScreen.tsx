@@ -369,11 +369,77 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
     [finalizeRemoteServer]
   );
 
+  // Build summary of completed fields for context
+  const completedFields: Array<{ label: string; value: string }> = [];
+  if (form.name && step !== "name") completedFields.push({ label: "Name", value: form.name });
+  if (form.serverType && step !== "type") completedFields.push({ label: "Type", value: form.serverType });
+  if (form.serverType === "stdio") {
+    if (form.command && !["name", "type", "command"].includes(step)) completedFields.push({ label: "Command", value: form.command });
+    if (form.args && !["name", "type", "command", "args"].includes(step)) completedFields.push({ label: "Args", value: form.args });
+  } else if (form.serverType) {
+    if (form.url && !["name", "type", "url"].includes(step)) completedFields.push({ label: "URL", value: form.url });
+  }
+
+  // Step number for local: name(1) type(2) command(3) args(4) env(5) → 5 steps
+  // Step number for remote: name(1) type(2) url(3) token(4) oauth(5) [clientId(6) clientSecret(7) scopes(8) authServer(9)] → 5-9 steps
+  const stepLabels: Record<Step, string> = {
+    name: "Server Name",
+    type: "Server Type",
+    command: "Command",
+    args: "Arguments",
+    env: "Environment",
+    url: "Server URL",
+    token: "Bearer Token",
+    oauthToggle: "OAuth",
+    clientId: "OAuth Client ID",
+    clientSecret: "OAuth Secret",
+    scopes: "OAuth Scopes",
+    authServer: "Auth Server",
+    testing: "Testing",
+    authenticating: "Authenticating",
+    done: "Done",
+  };
+
+  const localSteps: Step[] = ["name", "type", "command", "args", "env"];
+  const remoteSteps: Step[] = ["name", "type", "url", "token", "oauthToggle"];
+  const remoteOauthSteps: Step[] = ["name", "type", "url", "token", "oauthToggle", "clientId", "clientSecret", "scopes", "authServer"];
+  const currentSteps = form.serverType === "stdio" ? localSteps
+    : form.oauthEnabled ? remoteOauthSteps
+    : form.serverType ? remoteSteps
+    : localSteps;
+  const currentStepIdx = currentSteps.indexOf(step);
+  const isFormStep = currentStepIdx >= 0;
+  const stepProgress = isFormStep ? `Step ${currentStepIdx + 1}/${currentSteps.length}` : "";
+
+  const titleLabel = isFormStep ? `Add Server — ${stepLabels[step]}` : `Add Server — ${stepLabels[step]}`;
+
   return (
-    <ScreenLayout title="Add New MCP Server" shortcuts={[{ key: "ESC", label: "Go back" }]}>
+    <ScreenLayout title={titleLabel} shortcuts={[{ key: "ESC", label: "Go back" }]}>
+      {/* Step progress indicator */}
+      {isFormStep && (
+        <Box marginBottom={1} gap={1}>
+          <Text dimColor>{stepProgress}</Text>
+          <Text dimColor>
+            {currentSteps.map((_s, i) => i <= currentStepIdx ? "●" : "○").join(" ")}
+          </Text>
+        </Box>
+      )}
+
+      {/* Summary of previous answers */}
+      {completedFields.length > 0 && (
+        <Box flexDirection="column" marginBottom={1}>
+          {completedFields.map((field) => (
+            <Box key={field.label} gap={1}>
+              <Text dimColor>{field.label}:</Text>
+              <Text color={theme.colors.success}>{field.value}</Text>
+            </Box>
+          ))}
+        </Box>
+      )}
+
       {step === "name" && (
-        <Box flexDirection="column" paddingY={1}>
-          <Text>Server name:</Text>
+        <Box flexDirection="column">
+          <Text bold>Server name:</Text>
           <Box marginTop={1}>
             <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
@@ -386,8 +452,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       )}
 
       {step === "type" && (
-        <Box flexDirection="column" paddingY={1}>
-          <Text>Server type:</Text>
+        <Box flexDirection="column">
+          <Text bold>Server type:</Text>
           <Box marginTop={1}>
             <SelectInput items={SERVER_TYPE_OPTIONS} onSelect={handleTypeSelect} />
           </Box>
@@ -395,8 +461,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       )}
 
       {step === "command" && (
-        <Box flexDirection="column" paddingY={1}>
-          <Text>Command executable:</Text>
+        <Box flexDirection="column">
+          <Text bold>Command executable:</Text>
           <Text dimColor>Examples: npx, node, python, uvx</Text>
           <Box marginTop={1}>
             <Text color={theme.colors.inputPrompt}>&gt; </Text>
@@ -410,8 +476,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       )}
 
       {step === "args" && (
-        <Box flexDirection="column" paddingY={1}>
-          <Text>Arguments (space separated, optional):</Text>
+        <Box flexDirection="column">
+          <Text bold>Arguments (space separated, optional):</Text>
           <Box marginTop={1}>
             <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
@@ -424,8 +490,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       )}
 
       {step === "env" && (
-        <Box flexDirection="column" paddingY={1}>
-          <Text>Environment variables (optional):</Text>
+        <Box flexDirection="column">
+          <Text bold>Environment variables (optional):</Text>
           <Text dimColor>
             Format: KEY=VALUE pairs, separated by space or comma. Leave blank to skip.
           </Text>
@@ -441,8 +507,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       )}
 
       {step === "url" && (
-        <Box flexDirection="column" paddingY={1}>
-          <Text>Server URL:</Text>
+        <Box flexDirection="column">
+          <Text bold>Server URL:</Text>
           <Box marginTop={1}>
             <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
@@ -455,8 +521,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       )}
 
       {step === "token" && (
-        <Box flexDirection="column" paddingY={1}>
-          <Text>Bearer token (optional):</Text>
+        <Box flexDirection="column">
+          <Text bold>Bearer token (optional):</Text>
           <Box marginTop={1}>
             <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
@@ -469,8 +535,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       )}
 
       {step === "oauthToggle" && (
-        <Box flexDirection="column" paddingY={1}>
-          <Text>Enable OAuth? (y/N)</Text>
+        <Box flexDirection="column">
+          <Text bold>Enable OAuth? (y/N)</Text>
           <Box marginTop={1}>
             <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
@@ -488,8 +554,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       )}
 
       {step === "clientId" && (
-        <Box flexDirection="column" paddingY={1}>
-          <Text>OAuth Client ID (optional):</Text>
+        <Box flexDirection="column">
+          <Text bold>OAuth Client ID (optional):</Text>
           <Box marginTop={1}>
             <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
@@ -502,8 +568,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       )}
 
       {step === "clientSecret" && (
-        <Box flexDirection="column" paddingY={1}>
-          <Text>OAuth Client Secret (optional):</Text>
+        <Box flexDirection="column">
+          <Text bold>OAuth Client Secret (optional):</Text>
           <Box marginTop={1}>
             <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
@@ -516,8 +582,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       )}
 
       {step === "scopes" && (
-        <Box flexDirection="column" paddingY={1}>
-          <Text>OAuth Scopes (comma or space separated, optional):</Text>
+        <Box flexDirection="column">
+          <Text bold>OAuth Scopes (comma or space separated, optional):</Text>
           <Box marginTop={1}>
             <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput
@@ -530,8 +596,8 @@ export function AddServerScreen({ onBack }: AddServerScreenProps): React.ReactEl
       )}
 
       {step === "authServer" && (
-        <Box flexDirection="column" paddingY={1}>
-          <Text>Auth Server URL (optional, overrides discovery):</Text>
+        <Box flexDirection="column">
+          <Text bold>Auth Server URL (optional, overrides discovery):</Text>
           <Box marginTop={1}>
             <Text color={theme.colors.inputPrompt}>&gt; </Text>
             <TextInput

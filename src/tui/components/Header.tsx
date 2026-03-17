@@ -26,15 +26,6 @@ export function Header({
 }: HeaderProps): React.ReactElement {
   const { theme } = useTheme();
 
-  const subtitleParts: string[] = [];
-  if (profile) subtitleParts.push(`Profile: ◀ ${profile} ▶`);
-  if (port) subtitleParts.push(`Port: ${port}`);
-  if (totalTokens !== undefined) {
-    const tokensLabel =
-      typeof totalTokens === "number" ? `${formatTokens(totalTokens)} tokens` : "— tokens";
-    subtitleParts.push(`Total: ${tokensLabel}`);
-  }
-
   return (
     <Box paddingX={2} paddingY={0} borderStyle="round" borderColor={theme.colors.headerBorder} flexDirection="column">
       <Box gap={1}>
@@ -43,7 +34,22 @@ export function Header({
         </Text>
         {trailing}
       </Box>
-      {subtitleParts.length > 0 && <Text dimColor>{subtitleParts.join(" | ")}</Text>}
+      <Box gap={1}>
+        {profile && (
+          <>
+            <Text dimColor>Profile:</Text>
+            <Text color={theme.colors.accent} bold> ◀ {profile} ▶</Text>
+          </>
+        )}
+        {profile && port && <Text dimColor>|</Text>}
+        {port && <Text dimColor>Port: {port}</Text>}
+        {(profile || port) && totalTokens !== undefined && <Text dimColor>|</Text>}
+        {totalTokens !== undefined && (
+          <Text dimColor>
+            {typeof totalTokens === "number" ? `${formatTokens(totalTokens)} tokens` : "— tokens"}
+          </Text>
+        )}
+      </Box>
     </Box>
   );
 }
