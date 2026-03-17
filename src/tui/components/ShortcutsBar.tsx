@@ -39,7 +39,7 @@ export function ShortcutsBar({ shortcuts = defaultShortcuts, groups }: Shortcuts
 
   if (groups) {
     return (
-      <Box paddingX={1} paddingY={0} borderStyle="round" borderColor="gray" width="100%">
+      <Box paddingX={1} paddingY={0}>
         <Box flexWrap="wrap" gap={0}>
           {groups.map((group, groupIdx) => (
             <Box key={groupIdx} gap={0}>
