@@ -619,11 +619,10 @@ export function App({ onExit }: AppProps): React.ReactElement {
             profileService.makeExplicit(currentProfile.id);
           }
           profileService.removeServer(currentProfile.id, serverId);
-          showMessage(`Removed '${server.name}' from profile '${currentProfile.name}'`, "success");
         } else {
           profileService.addServer(currentProfile.id, serverId);
-          showMessage(`Added '${server.name}' to profile '${currentProfile.name}'`, "success");
         }
+        setState((prev) => ({ ...prev }));
         refreshDaemonIfRunning("toggling profile membership");
         return;
       }
@@ -754,7 +753,29 @@ export function App({ onExit }: AppProps): React.ReactElement {
   if (screen === "clients") {
     const profiles = profileService.list();
     const currentProfile = profiles[state.currentProfileIndex];
-    return <ClientsScreen onBack={goBack} currentProfileId={currentProfile?.id} />;
+    return (
+      <ClientsScreen
+        onBack={goBack}
+        currentProfileId={currentProfile?.id}
+        currentProfileName={currentProfile?.name}
+        onProfilePrev={() => {
+          if (profiles.length > 1) {
+            setState((prev) => {
+              const prevIdx = prev.currentProfileIndex > 0 ? prev.currentProfileIndex - 1 : profiles.length - 1;
+              return { ...prev, currentProfileIndex: prevIdx };
+            });
+          }
+        }}
+        onProfileNext={() => {
+          if (profiles.length > 1) {
+            setState((prev) => {
+              const nextIdx = prev.currentProfileIndex < profiles.length - 1 ? prev.currentProfileIndex + 1 : 0;
+              return { ...prev, currentProfileIndex: nextIdx };
+            });
+          }
+        }}
+      />
+    );
   }
 
   if (screen === "profiles") {
@@ -971,8 +992,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                     renderItem={(unified, idx) => {
                       const isCurrent = idx === state.currentIndex;
                       const { server, type, id } = unified;
-                      const isMember = profileMemberIds.has(id);
-                      const isDisabled = server.disabled;
+                      const isEnabled = profileMemberIds.has(id);
                       const filter = toolFilters[id];
                       const totalTools = filter?.allTools?.length ?? 0;
                       const disabledCount = filter?.disabledTools?.length ?? 0;
@@ -982,21 +1002,20 @@ export function App({ onExit }: AppProps): React.ReactElement {
                       const needsAuth = type === "remote" && state.serversNeedingAuth.has(server.id);
                       const serverType = type === "local" ? "stdio" : (server as RemoteServer).type || "http";
 
-                      const showCheck = isMember;
-                      const nameColor = isCurrent ? theme.colors.highlightText : isDisabled ? theme.colors.disabled : undefined;
+                      const nameColor = isCurrent ? theme.colors.highlightText : !isEnabled ? theme.colors.disabled : undefined;
                       const arrowColor = isCurrent
                         ? theme.colors.serverArrowSelected
                         : type === "local"
                           ? theme.colors.serverArrowLocal
                           : theme.colors.serverArrowRemote;
-                      const metaColor = isCurrent ? theme.colors.highlightText : isDisabled ? theme.colors.disabled : theme.colors.accent;
+                      const metaColor = isCurrent ? theme.colors.highlightText : !isEnabled ? theme.colors.disabled : theme.colors.accent;
                       const dimColor = isCurrent ? theme.colors.highlightText : undefined;
 
                       return (
                         <Box key={id} gap={1} paddingX={1}>
                           <Text color={arrowColor} bold={isCurrent}>{isCurrent ? "→" : " "}</Text>
-                          <Text color={isDisabled ? theme.colors.warning : showCheck ? theme.colors.serverCheckEnabled : theme.colors.serverCheckDisabled}>
-                            {showCheck ? "[✓]" : "[ ]"}
+                          <Text color={isEnabled ? theme.colors.serverCheckEnabled : theme.colors.serverCheckDisabled}>
+                            {isEnabled ? "[✓]" : "[ ]"}
                           </Text>
                           <Text color={nameColor} bold={isCurrent}>
                             {server.name || server.id}
@@ -1005,7 +1024,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
                             <Text color={isCurrent ? theme.colors.highlightText : theme.colors.disabled}>[{serverType}]</Text>
                           )}
                           <>
-                            <Text color={needsAuth ? theme.colors.serverNeedsAuth : isDisabled ? theme.colors.disabled : theme.colors.serverStatus}>
+                            <Text color={needsAuth ? theme.colors.serverNeedsAuth : !isEnabled ? theme.colors.disabled : theme.colors.serverStatus}>
                               {needsAuth ? "!" : "✓"}
                             </Text>
                             <Text color={metaColor}>

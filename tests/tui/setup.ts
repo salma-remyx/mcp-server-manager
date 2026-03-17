@@ -33,8 +33,6 @@ export const mockConfigService = {
   removeRemoteServer: vi.fn(() => ({ success: true })),
   updateLocalServer: vi.fn(() => ({ success: true })),
   updateRemoteServer: vi.fn(() => ({ success: true })),
-  enableServer: vi.fn(() => ({ success: true })),
-  disableServer: vi.fn(() => ({ success: true })),
   toggleTool: vi.fn(),
   enableAllTools: vi.fn(),
   disableAllTools: vi.fn(),
@@ -265,6 +263,7 @@ export function setupMocks(): void {
 
   vi.mock("../../src/shared/formatters.js", () => ({
     formatTokens: vi.fn((n: number) => n.toLocaleString()),
+    formatSwitchable: vi.fn((label: string) => `◀ ${label} ▶`),
     outputJson: vi.fn(),
   }));
 }

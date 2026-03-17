@@ -10,8 +10,8 @@ const mockConfigService = {
   reload: vi.fn(),
   getPort: vi.fn(() => 8850),
   getSelectionState: vi.fn(() => ({ local: [], remote: [] })),
-  getEnabledLocalServers: vi.fn(() => []),
-  getEnabledRemoteServers: vi.fn(() => []),
+  getLocalServers: vi.fn(() => []),
+  getRemoteServers: vi.fn(() => []),
 };
 
 const mockAuthService = {
