@@ -114,6 +114,7 @@ export const mockProfileService = {
   rename: vi.fn(() => ({ success: true })),
   clone: vi.fn(() => ({ success: true })),
   reload: vi.fn(),
+  getServersForProfile: vi.fn(() => ({ servers: [], remoteServers: [] })),
 };
 
 // Mock settings service

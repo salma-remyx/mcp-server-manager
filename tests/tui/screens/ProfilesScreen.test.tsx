@@ -35,10 +35,12 @@ describe("ProfilesScreen", () => {
       expect(lastFrame()).toContain("Development");
     });
 
-    it("should show profile IDs", () => {
+    it("should show profile IDs when different from name", () => {
       const { lastFrame } = render(<ProfilesScreen onBack={mockOnBack} />);
 
-      expect(lastFrame()).toContain("[default]");
+      // "Default" → "default" matches ID, so [default] is hidden
+      expect(lastFrame()).not.toContain("[default]");
+      // "Development" → "development" ≠ "dev", so [dev] is shown
       expect(lastFrame()).toContain("[dev]");
     });
 
