@@ -82,7 +82,7 @@ export const FEATURES: Feature[] = [
     id: "server-enable-disable",
     name: "Enable/disable server",
     category: "servers",
-    cliCommands: ["enable", "disable"],
+    cliCommands: ["profile add", "profile remove"],
     tuiImplementation: "key:space",
     requiredInTui: true,
   },

@@ -2,7 +2,7 @@
  * ClientsScreen - Manage MCP client connections (ink component)
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import os from "os";
@@ -11,6 +11,7 @@ import { createMenuSections } from "../utils/menu.js";
 import { getClientService } from "../../services/client.service.js";
 import type { DetectedClient } from "../../types/index.js";
 import { useTheme } from "../theme/index.js";
+import { formatSwitchable } from "../../shared/formatters.js";
 
 /** Convert absolute path to use ~ for home directory */
 function shortenPath(path: string): string {
@@ -24,6 +25,9 @@ function shortenPath(path: string): string {
 interface ClientsScreenProps {
   onBack: () => void;
   currentProfileId?: string;
+  currentProfileName?: string;
+  onProfilePrev?: () => void;
+  onProfileNext?: () => void;
 }
 
 interface ClientsState {
@@ -34,7 +38,7 @@ interface ClientsState {
   messageType: "success" | "error" | "info";
 }
 
-export function ClientsScreen({ onBack, currentProfileId }: ClientsScreenProps): React.ReactElement {
+export function ClientsScreen({ onBack, currentProfileId, currentProfileName, onProfilePrev, onProfileNext }: ClientsScreenProps): React.ReactElement {
   const { theme } = useTheme();
   const clientService = getClientService();
 
@@ -99,12 +103,31 @@ export function ClientsScreen({ onBack, currentProfileId }: ClientsScreenProps):
     }));
   }, [clientService, currentProfileId]);
 
+  useEffect(() => {
+    setState((prev) => ({
+      ...prev,
+      clients: clientService.detectClients(currentProfileId),
+    }));
+  }, [clientService, currentProfileId]);
+
   // Handle keyboard input
   useInput((input, key) => {
     const { clients, currentIndex, connecting } = state;
 
     // Don't process input while connecting
     if (connecting) return;
+
+    // Left arrow - previous profile
+    if (key.leftArrow) {
+      onProfilePrev?.();
+      return;
+    }
+
+    // Right arrow - next profile
+    if (key.rightArrow) {
+      onProfileNext?.();
+      return;
+    }
 
     // Quit
     if (input === "q" || key.escape) {
@@ -130,8 +153,8 @@ export function ClientsScreen({ onBack, currentProfileId }: ClientsScreenProps):
       return;
     }
 
-    // Connect/Disconnect - Enter
-    if (key.return && clients.length > 0) {
+    // Connect/Disconnect - Space
+    if (input === " " && clients.length > 0) {
       handleToggleConnection();
       return;
     }
@@ -162,7 +185,8 @@ export function ClientsScreen({ onBack, currentProfileId }: ClientsScreenProps):
 
   const clientsMenuSections = createMenuSections({
     actions: [
-      { key: "Enter", label: "Connect/Disconnect" },
+      { key: "Space", label: "Connect/Disconnect" },
+      { key: "←→", label: "Profile" },
       { key: "O", label: "Open config" },
       { key: "R", label: "Refresh" },
     ],
@@ -174,7 +198,7 @@ export function ClientsScreen({ onBack, currentProfileId }: ClientsScreenProps):
   // Show connecting spinner
   if (connecting) {
     return (
-      <ScreenLayout title={currentProfileId ? `MCP Clients — ${currentProfileId}` : "MCP Clients"} menuSections={clientsMenuSections}>
+      <ScreenLayout title={currentProfileName ? `MCP Clients — ${formatSwitchable(currentProfileName)}` : "MCP Clients"} menuSections={clientsMenuSections}>
         <Box paddingY={1} gap={1}>
           <Text color={theme.colors.primary}>
             <Spinner type="dots" />
@@ -187,7 +211,7 @@ export function ClientsScreen({ onBack, currentProfileId }: ClientsScreenProps):
 
   return (
     <ScreenLayout
-      title={currentProfileId ? `MCP Clients — ${currentProfileId}` : "MCP Clients"}
+      title={currentProfileName ? `MCP Clients — ${formatSwitchable(currentProfileName)}` : "MCP Clients"}
       menuSections={clientsMenuSections}
       footer={
         message ? (
