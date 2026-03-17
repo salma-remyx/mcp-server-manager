@@ -9,23 +9,11 @@ import { parseEnvInput, normalizeEnv } from "../../shared/env.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getTestingService } from "../../services/testing.service.js";
 import { getAuthService } from "../../services/auth.service.js";
-import { getDaemonService } from "../../services/daemon.service.js";
 import type { LocalServer, RemoteServer, TransportType, OAuthConfig } from "../../types/index.js";
 import { redactServerForOutput } from "../../shared/redaction.js";
 
 /** Register server commands */
 export function registerServerCommands(program: Command): void {
-  const daemonService = getDaemonService();
-
-  const refreshDaemonIfRunning = (context: string): void => {
-    const status = daemonService.isDaemonRunning();
-    if (status.running) {
-      daemonService.refreshDaemon().catch((error) => {
-        console.error(`Failed to refresh daemon after ${context}:`, error);
-      });
-    }
-  };
-
   // List servers
   program
     .command("list")
@@ -75,9 +63,6 @@ export function registerServerCommands(program: Command): void {
         console.log(`${colors.bright}Local Servers (STDIO):${colors.reset}`);
         for (const server of servers) {
           const filter = toolFilters[server.id];
-          const status = server.disabled
-            ? `${colors.red}disabled${colors.reset}`
-            : `${colors.green}enabled${colors.reset}`;
           const toolCount = filter?.allTools?.length || 0;
           const tokens =
             options.tokens && filter?.totalTokens
@@ -85,7 +70,7 @@ export function registerServerCommands(program: Command): void {
               : "";
 
           console.log(
-            `  ${colors.cyan}${server.name}${colors.reset} [${server.id}] - ${status} · ${toolCount} tools${tokens}`
+            `  ${colors.cyan}${server.name}${colors.reset} [${server.id}] · ${toolCount} tools${tokens}`
           );
           console.log(
             `    ${colors.gray}${server.command} ${server.args.join(" ")}${colors.reset}`
@@ -99,9 +84,6 @@ export function registerServerCommands(program: Command): void {
         console.log(`${colors.bright}Remote Servers:${colors.reset}`);
         for (const server of remoteServers) {
           const filter = toolFilters[`remote:${server.id}`];
-          const status = server.disabled
-            ? `${colors.red}disabled${colors.reset}`
-            : `${colors.green}enabled${colors.reset}`;
           const toolCount = filter?.allTools?.length || 0;
           const tokens =
             options.tokens && filter?.totalTokens
@@ -128,7 +110,7 @@ export function registerServerCommands(program: Command): void {
           }
 
           console.log(
-            `  ${colors.cyan}${server.name}${colors.reset} [${server.id}] (${server.type}) - ${status} · ${toolCount} tools${tokens}${authStatus}`
+            `  ${colors.cyan}${server.name}${colors.reset} [${server.id}] (${server.type}) · ${toolCount} tools${tokens}${authStatus}`
           );
           console.log(`    ${colors.gray}${server.url}${colors.reset}`);
         }
@@ -509,75 +491,6 @@ export function registerServerCommands(program: Command): void {
           console.log(`${c.cross} ${updateResult.error}`);
           process.exit(1);
         }
-      }
-    });
-
-  // Enable server
-  program
-    .command("enable <nameOrId>")
-    .description("Enable a disabled server")
-    .action(async (nameOrId) => {
-      const configService = getConfigService();
-      const result = configService.findServer(nameOrId);
-
-      if (!result) {
-        console.log(`${c.cross} Server '${nameOrId}' not found`);
-        process.exit(1);
-      }
-
-      const { server } = result;
-      if (!server.disabled) {
-        console.log(`${colors.yellow}Server '${server.name}' is already enabled${colors.reset}`);
-        return;
-      }
-
-      const enableResult = configService.enableServer(server.id);
-      if (enableResult.success) {
-        console.log(`${c.checkmark} Server '${server.name}' enabled`);
-        refreshDaemonIfRunning("enabling server");
-      } else {
-        console.log(`${c.cross} ${enableResult.error}`);
-        process.exit(1);
-      }
-    });
-
-  // Disable server
-  program
-    .command("disable <nameOrId>")
-    .description("Disable a server without deleting it")
-    .option("--yes", "Confirm in non-interactive mode")
-    .action(async (nameOrId, options) => {
-      const isInteractive = process.stdin.isTTY;
-      if (!options.yes && !isInteractive) {
-        console.log(`${c.cross} Confirmation required in non-interactive mode`);
-        console.log(
-          `${colors.gray}Please run with --yes or -y to confirm disabling${colors.reset}`
-        );
-        console.log(`${colors.gray}Example: mcpsm disable ${nameOrId} --yes${colors.reset}`);
-        process.exit(1);
-      }
-
-      const configService = getConfigService();
-      const result = configService.findServer(nameOrId);
-
-      if (!result) {
-        console.log(`${c.cross} Server '${nameOrId}' not found`);
-        process.exit(1);
-      }
-
-      const { server } = result;
-      if (server.disabled) {
-        console.log(`${colors.yellow}Server '${server.name}' is already disabled${colors.reset}`);
-        return;
-      }
-
-      const disableResult = configService.disableServer(server.id);
-      if (disableResult.success) {
-        console.log(`${c.checkmark} Server '${server.name}' disabled`);
-        refreshDaemonIfRunning("disabling server");
-      } else {
-        console.log(`${c.cross} ${disableResult.error}`);
-        process.exit(1);
       }
     });
 
