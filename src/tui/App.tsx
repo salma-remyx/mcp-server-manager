@@ -78,7 +78,7 @@ interface AppState {
   confirmDelete?: { server: LocalServer | RemoteServer; type: "local" | "remote" }; // Server pending deletion confirmation
   editTarget?: { server: LocalServer | RemoteServer; type: "local" | "remote" };
   settingsInitialKey?: keyof Settings;
-  versionInfo?: { current: string; latest: string; hasUpdate: boolean };
+  versionInfo?: { current: string; latest: string; hasUpdate: boolean; installCommand: string };
 }
 
 interface AppProps {
@@ -947,6 +947,7 @@ export function App({ onExit }: AppProps): React.ReactElement {
           <VersionBanner
             currentVersion={state.versionInfo.current}
             latestVersion={state.versionInfo.latest}
+            installCommand={state.versionInfo.installCommand}
           />
         </Box>
       )}
