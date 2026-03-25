@@ -13,7 +13,8 @@ export type ClientId =
   | "gemini"
   | "zed"
   | "antigravity"
-  | "opencode";
+  | "opencode"
+  | "copilot";
 
 /** Platform types */
 export type Platform = "darwin" | "win32" | "linux";
@@ -57,6 +58,8 @@ export interface ClientServerConfig {
   type?: string;
   url?: string;
   env?: Record<string, string>;
+  headers?: Record<string, string>;
+  tools?: string[];
 }
 
 /** Client MCP configuration */
