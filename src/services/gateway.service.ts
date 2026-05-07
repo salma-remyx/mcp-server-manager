@@ -253,7 +253,7 @@ async function connectRemoteServer(server: RemoteServer): Promise<ConnectedServe
     logger.info(`Connecting to remote server: ${server.name} (${server.type})`);
 
     const url = new URL(server.url);
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { ...(server.headers || {}) };
     const transportOptions: {
       requestInit?: { headers: Record<string, string> };
       authProvider?: ReturnType<typeof createTransportAuthProvider>;
@@ -355,11 +355,18 @@ function buildProfileView(profileId: string): ProfileView | null {
 
   // Build the set of server IDs this profile includes.
   // Empty arrays = include all connected servers (backwards compat).
-  const includesAll = profile.servers.length === 0 && profile.remoteServers.length === 0;
+  // Note: remoteServers may contain string IDs or full server objects (legacy data).
+  const localIds = profile.servers.map((s) =>
+    typeof s === "string" ? s : (s as { id: string }).id
+  );
+  const remoteIds = profile.remoteServers.map(
+    (s) => `remote:${typeof s === "string" ? s : (s as { id: string }).id}`
+  );
+  const includesAll = localIds.length === 0 && remoteIds.length === 0;
 
   const profileServerIds = includesAll
     ? null // null = match everything
-    : new Set<string>([...profile.servers, ...profile.remoteServers.map((id) => `remote:${id}`)]);
+    : new Set<string>([...localIds, ...remoteIds]);
 
   const tools: Tool[] = [];
   const toolMap = new Map<string, string>();
@@ -511,8 +518,10 @@ export async function startGateway(
     for (const profileItem of profileService.list()) {
       const profile = profileService.getProfile(profileItem.id);
       if (!profile) continue;
-      for (const id of profile.servers) serverIdsToStart.add(id);
-      for (const id of profile.remoteServers) serverIdsToStart.add(`remote:${id}`);
+      for (const s of profile.servers)
+        serverIdsToStart.add(typeof s === "string" ? s : (s as { id: string }).id);
+      for (const s of profile.remoteServers)
+        serverIdsToStart.add(`remote:${typeof s === "string" ? s : (s as { id: string }).id}`);
     }
 
     // Filter servers to only those in the start set
@@ -841,8 +850,10 @@ export async function refreshGateway(
     for (const profileItem of profileService.list()) {
       const profile = profileService.getProfile(profileItem.id);
       if (!profile) continue;
-      for (const id of profile.servers) serverIdsToStart.add(id);
-      for (const id of profile.remoteServers) serverIdsToStart.add(`remote:${id}`);
+      for (const s of profile.servers)
+        serverIdsToStart.add(typeof s === "string" ? s : (s as { id: string }).id);
+      for (const s of profile.remoteServers)
+        serverIdsToStart.add(`remote:${typeof s === "string" ? s : (s as { id: string }).id}`);
     }
 
     const localServers = configService.getLocalServers().filter((s) => serverIdsToStart.has(s.id));

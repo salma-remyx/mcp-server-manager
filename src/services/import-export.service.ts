@@ -34,7 +34,9 @@ interface ClaudeFormat {
       args?: string[];
       env?: Record<string, string>;
       url?: string;
+      serverUrl?: string;
       type?: string;
+      headers?: Record<string, string>;
       bearerToken?: string;
     }
   >;
@@ -57,6 +59,22 @@ interface McpsmFormat {
   servers: LocalServer[];
   remoteServers: RemoteServer[];
   port?: number;
+}
+
+function normalizeHeaders(headers: unknown): Record<string, string> | undefined {
+  if (!headers || typeof headers !== "object" || Array.isArray(headers)) {
+    return undefined;
+  }
+
+  const normalized = Object.fromEntries(
+    Object.entries(headers as Record<string, unknown>)
+      .filter((entry): entry is [string, string | number | boolean] =>
+        ["string", "number", "boolean"].includes(typeof entry[1])
+      )
+      .map(([key, value]) => [key, String(value)])
+  );
+
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
 }
 
 /** Import/Export service class */
@@ -137,13 +155,14 @@ export class ImportExportService {
           args: server.args || [],
           env: server.env,
         });
-      } else if (server.url) {
+      } else if (server.url || server.serverUrl) {
         servers.push({
           id,
           name: id,
           serverType: "remote",
-          url: server.url,
+          url: server.url || server.serverUrl,
           type: (server.type as TransportType) || "http",
+          headers: normalizeHeaders(server.headers),
           bearerToken: server.bearerToken,
         });
       }
@@ -177,6 +196,7 @@ export class ImportExportService {
           serverType: "remote",
           url: server.url,
           type: server.type,
+          headers: normalizeHeaders(server.headers),
           bearerToken: server.bearerToken,
         });
       }
@@ -199,6 +219,7 @@ export class ImportExportService {
         serverType: "remote",
         url: server.url,
         type,
+        headers: normalizeHeaders(server.headers),
       });
     }
 
@@ -220,6 +241,7 @@ export class ImportExportService {
         env: server.env as Record<string, string> | undefined,
         url: server.url ? String(server.url) : undefined,
         type: (server.type as TransportType) || "http",
+        headers: normalizeHeaders(server.headers),
         bearerToken: server.bearerToken ? String(server.bearerToken) : undefined,
       } as ImportedServer;
     });
@@ -351,6 +373,17 @@ export class ImportExportService {
         });
       }
 
+      const existingHeaders = JSON.stringify(existingRemote.headers || {});
+      const incomingHeaders = JSON.stringify(incoming.headers || {});
+      if (existingHeaders !== incomingHeaders) {
+        differences.push({
+          field: "headers",
+          existing: existingRemote.headers,
+          incoming: incoming.headers,
+          isDifferent: true,
+        });
+      }
+
       // Compare name
       if (existingRemote.name !== incoming.name) {
         differences.push({
@@ -430,12 +463,17 @@ export class ImportExportService {
       } as LocalServer;
     } else {
       const existingRemote = existing as RemoteServer;
+      const mergedHeaders = {
+        ...(existingRemote.headers || {}),
+        ...(incoming.headers || {}),
+      };
       // For remote servers, prefer incoming URL but keep existing token if not provided
       return {
         id: existingRemote.id,
         name: incoming.name || existingRemote.name,
         url: incoming.url || existingRemote.url,
         type: incoming.type || existingRemote.type,
+        headers: Object.keys(mergedHeaders).length > 0 ? mergedHeaders : undefined,
         bearerToken: incoming.bearerToken || existingRemote.bearerToken,
       } as RemoteServer;
     }
@@ -467,6 +505,7 @@ export class ImportExportService {
               name: server.name || server.id,
               url: server.url,
               type: (server.type || "http") as TransportType,
+              headers: server.headers,
               bearerToken: server.bearerToken,
             });
             results.updated++;
@@ -485,6 +524,7 @@ export class ImportExportService {
             name: server.name || server.id,
             url: server.url,
             type: (server.type || "http") as TransportType,
+            headers: server.headers,
             bearerToken: server.bearerToken,
           });
           results.added++;
@@ -555,6 +595,7 @@ export class ImportExportService {
               name: server.name || server.id,
               url: server.url,
               type: (server.type || "http") as TransportType,
+              headers: server.headers,
               bearerToken: server.bearerToken,
             });
             results.updated++;
@@ -567,6 +608,7 @@ export class ImportExportService {
             name: server.name || server.id,
             url: server.url,
             type: (server.type || "http") as TransportType,
+            headers: server.headers,
             bearerToken: server.bearerToken,
           });
           results.added++;
@@ -657,6 +699,7 @@ export class ImportExportService {
         name: s.name,
         type: s.type,
         url: s.url,
+        headers: s.headers,
         bearerToken: s.bearerToken,
       })),
       port: configService.getPort(),
