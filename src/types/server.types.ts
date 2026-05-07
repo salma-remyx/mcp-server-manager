@@ -64,6 +64,8 @@ export interface RemoteServer extends BaseServer {
   type: TransportType;
   /** Server endpoint URL */
   url: string;
+  /** Custom HTTP headers for remote transports */
+  headers?: Record<string, string>;
   /** Bearer token for authentication (static token) */
   bearerToken?: string;
   /** OAuth configuration (dynamic tokens) */

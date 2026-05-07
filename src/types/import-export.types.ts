@@ -17,6 +17,7 @@ export interface ImportedServer {
   // Remote server fields
   url?: string;
   type?: TransportType;
+  headers?: Record<string, string>;
   bearerToken?: string;
 }
 

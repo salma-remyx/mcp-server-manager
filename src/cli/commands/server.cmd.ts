@@ -12,6 +12,17 @@ import { getAuthService } from "../../services/auth.service.js";
 import type { LocalServer, RemoteServer, TransportType, OAuthConfig } from "../../types/index.js";
 import { redactServerForOutput } from "../../shared/redaction.js";
 
+function parseHeaderOptions(
+  input: unknown
+): { success: true; data?: Record<string, string> } | { success: false; error: string } {
+  const parsed = parseEnvInput(input as string[] | string | undefined);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error || "Invalid header input" };
+  }
+
+  return { success: true, data: normalizeEnv(parsed.data) };
+}
+
 /** Register server commands */
 export function registerServerCommands(program: Command): void {
   // List servers
@@ -130,6 +141,10 @@ export function registerServerCommands(program: Command): void {
     )
     .option("-u, --url <url>", "Server URL (for http/sse)")
     .option("--token <token>", "Bearer token (for http/sse)")
+    .option(
+      "--header <header...>",
+      "HTTP header(s) for http/sse servers (KEY=VALUE, space/comma separated)"
+    )
     .option("--oauth", "Enable OAuth authentication (for http/sse)")
     .option("--client-id <id>", "OAuth client ID (optional)")
     .option("--client-secret <secret>", "OAuth client secret (optional)")
@@ -230,6 +245,17 @@ export function registerServerCommands(program: Command): void {
 
         if (options.token) {
           server.bearerToken = options.token;
+        }
+
+        if (options.header !== undefined) {
+          const parsedHeaders = parseHeaderOptions(options.header);
+          if (!parsedHeaders.success) {
+            console.log(`${c.cross} ${parsedHeaders.error}`);
+            process.exit(1);
+          }
+          if (parsedHeaders.data && Object.keys(parsedHeaders.data).length > 0) {
+            server.headers = parsedHeaders.data;
+          }
         }
 
         // Configure OAuth if enabled
@@ -377,6 +403,10 @@ export function registerServerCommands(program: Command): void {
     .option("-u, --url <url>", "New URL (remote only)")
     .option("-t, --type <type>", "New type: http or sse (remote only)")
     .option("--token <token>", "New bearer token (remote only)")
+    .option(
+      "--header <header...>",
+      "HTTP header(s) to merge into remote server headers (KEY=VALUE, space/comma separated)"
+    )
     .option("--oauth", "Enable OAuth authentication (remote only)")
     .option("--no-oauth", "Disable OAuth authentication (remote only)")
     .option("--client-id <id>", "OAuth client ID (remote only)")
@@ -434,6 +464,17 @@ export function registerServerCommands(program: Command): void {
         if (options.url) updates.url = options.url;
         if (options.type) updates.type = options.type as TransportType;
         if (options.token) updates.bearerToken = options.token;
+        if (options.header !== undefined) {
+          const parsedHeaders = parseHeaderOptions(options.header);
+          if (!parsedHeaders.success) {
+            console.log(`${c.cross} ${parsedHeaders.error}`);
+            process.exit(1);
+          }
+          updates.headers = {
+            ...(remoteServer.headers || {}),
+            ...(parsedHeaders.data || {}),
+          };
+        }
 
         // Handle OAuth configuration
         if (options.oauth === true) {
