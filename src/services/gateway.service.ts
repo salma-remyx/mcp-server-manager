@@ -674,7 +674,7 @@ export async function startGateway(
       };
 
       httpServer.once("error", onError);
-      httpServer.listen(port, () => {
+      httpServer.listen(port, "127.0.0.1", () => {
         httpServer.off("error", onError);
         logger.info(`Gateway listening on http://localhost:${port}`);
         resolve();
