@@ -829,7 +829,7 @@ export async function refreshGateway(
         };
 
         server.once("error", onError);
-        server.listen(configuredPort, () => {
+        server.listen(configuredPort, "127.0.0.1", () => {
           server.off("error", onError);
           resolve();
         });
