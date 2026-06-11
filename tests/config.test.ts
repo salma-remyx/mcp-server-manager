@@ -7,6 +7,8 @@ import { ConfigService, resetConfigService } from "../src/services/config.servic
 // Test directory setup
 const testConfigDir = path.join(os.tmpdir(), "mcpsm-config-test-" + Date.now());
 
+const fileMode = (filePath: string): number => fs.statSync(filePath).mode & 0o777;
+
 describe("ConfigService", () => {
   let configService: ConfigService;
 
@@ -41,6 +43,36 @@ describe("ConfigService", () => {
 
       const paths = configService.getPaths();
       expect(fs.existsSync(paths.configPath)).toBe(true);
+    });
+
+    it("creates the config directory and config file with private permissions", () => {
+      if (process.platform === "win32") return;
+
+      fs.rmSync(testConfigDir, { recursive: true, force: true });
+      const originalUmask = process.umask(0o022);
+      try {
+        configService = new ConfigService(testConfigDir);
+      } finally {
+        process.umask(originalUmask);
+      }
+
+      const paths = configService.getPaths();
+      expect(fileMode(paths.configDir)).toBe(0o700);
+      expect(fileMode(paths.configPath)).toBe(0o600);
+    });
+
+    it("repairs existing insecure config directory and file permissions", () => {
+      if (process.platform === "win32") return;
+
+      const configPath = path.join(testConfigDir, "config.json");
+      fs.chmodSync(testConfigDir, 0o755);
+      fs.writeFileSync(configPath, JSON.stringify({ port: 8850 }), { mode: 0o644 });
+      fs.chmodSync(configPath, 0o644);
+
+      configService = new ConfigService(testConfigDir);
+
+      expect(fileMode(testConfigDir)).toBe(0o700);
+      expect(fileMode(configPath)).toBe(0o600);
     });
 
     it("should load existing config", () => {
