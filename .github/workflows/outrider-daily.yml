@@ -40,6 +40,7 @@ jobs:
         with:
           interest-id: '59627b41-c649-4360-acdb-520f6b350a20'
           publish: branch
+          claude-timeout: 2700
           model-base-url: https://api.z.ai/api/anthropic
           # Drafter's distinctive defaults: accumulate intel, skip the
           # research phase. Research is proportionate for the refiner
