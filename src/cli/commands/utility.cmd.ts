@@ -9,6 +9,8 @@ import { colors, c } from "../../shared/colors.js";
 import { formatTokens, outputJson } from "../../shared/formatters.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getSettingsService } from "../../services/settings.service.js";
+import { getSecurityService } from "../../services/security.service.js";
+import type { AnalyzableTool } from "../../services/security.service.js";
 import { VERSION } from "../../shared/version.js";
 
 /** Check if a command exists */
@@ -29,6 +31,13 @@ function getVersion(cmd: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** Color for a security severity label. */
+function severityColor(severity: string): string {
+  if (severity === "critical" || severity === "high") return colors.red;
+  if (severity === "medium") return colors.yellow;
+  return colors.gray;
 }
 
 /** Register utility commands */
@@ -121,6 +130,53 @@ export function registerUtilityCommands(program: Command): void {
         const icon = check.status ? c.checkmark : c.cross;
         const infoColor = check.status ? colors.green : colors.yellow;
         console.log(`  ${icon} ${check.name}: ${infoColor}${check.info}${colors.reset}`);
+      }
+
+      // Tool metadata security scan (MCP attack taxonomy, adapted from MSB).
+      const toolFilters = configService.getToolFilters();
+      const securityService = getSecurityService();
+      const toAnalyzable = (
+        toolsData: Record<string, { description?: string }> | undefined
+      ): AnalyzableTool[] =>
+        Object.entries(toolsData ?? {}).map(([name, data]) => ({
+          name,
+          description: data.description,
+        }));
+
+      const securityEntries: Array<{ label: string; tools: AnalyzableTool[] }> = [];
+      for (const server of localServers) {
+        const toolsData = toolFilters[server.id]?.toolsData;
+        if (toolsData) securityEntries.push({ label: server.name, tools: toAnalyzable(toolsData) });
+      }
+      for (const server of remoteServers) {
+        const toolsData = toolFilters[`remote:${server.id}`]?.toolsData;
+        if (toolsData) securityEntries.push({ label: server.name, tools: toAnalyzable(toolsData) });
+      }
+
+      const allFindings = securityEntries.flatMap((entry) =>
+        securityService
+          .analyzeTools(entry.tools)
+          .map((finding) => ({ ...finding, server: entry.label }))
+      );
+
+      if (allFindings.length > 0) {
+        console.log(`\n${colors.bright}${colors.cyan}Tool Security${colors.reset}`);
+        console.log(`${colors.gray}Risks in discovered MCP tool metadata${colors.reset}\n`);
+        for (const finding of allFindings.slice(0, 50)) {
+          const sevColor = severityColor(finding.severity);
+          console.log(
+            `  ${sevColor}[${finding.severity}]${colors.reset} ${finding.toolName}` +
+              ` ${colors.gray}(${finding.server} · ${finding.category})${colors.reset}`
+          );
+          console.log(`    ${colors.gray}${finding.message}${colors.reset}`);
+        }
+        if (allFindings.length > 50) {
+          console.log(`  ${colors.gray}…and ${allFindings.length - 50} more${colors.reset}`);
+        }
+        const sec = securityService.summarize(allFindings);
+        console.log(
+          `\n  ${colors.yellow}${sec.total} finding(s), worst ${sec.worst}.${colors.reset}`
+        );
       }
 
       const allOk = checks.every((c) => c.status || c.name.includes("uv"));

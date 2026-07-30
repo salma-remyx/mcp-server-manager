@@ -101,3 +101,18 @@ Contributions are welcome! Please see our [contributing guidelines](https://gith
 ## License
 
 MIT © [Sardine AI](https://github.com/sardine-ai)
+
+---
+
+## Tool Security Scanning
+
+`mcpsm` scans the metadata of discovered MCP tools for common tool-poisoning risks
+drawn from the MCP Security Bench (MSB) attack taxonomy — prompt injection carried
+in descriptions, system-namespace impersonation, cross-tool interference, overly
+broad access, and opaque metadata.
+
+- Run `mcpsm test` to discover tools and have risky metadata logged inline.
+- Run `mcpsm doctor` to review an aggregated report across all configured servers.
+
+This is a static, parameter-free heuristic (not an LLM-driven attacker) intended to
+flag metadata worth a second look before a client calls the tool.

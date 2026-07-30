@@ -17,6 +17,7 @@ import type {
 import { getConfigService } from "./config.service.js";
 import { getAuthService } from "./auth.service.js";
 import { getEnvironmentService } from "./environment.service.js";
+import { getSecurityService } from "./security.service.js";
 import { createLogger } from "../shared/logger.js";
 
 const log = createLogger("TestingService");
@@ -131,6 +132,20 @@ export class TestingService {
         description: tool.description,
       };
       totalTokens += tokens;
+    }
+
+    // Surface MCP-security risks in the discovered tool metadata (MSB taxonomy).
+    const securityFindings = getSecurityService().analyzeTools(tools);
+    if (securityFindings.length > 0) {
+      const summary = getSecurityService().summarize(securityFindings);
+      log.warn(
+        `Security: ${securityFindings.length} finding(s) on "${filterId}" (worst: ${summary.worst})`
+      );
+      for (const finding of securityFindings.slice(0, 20)) {
+        log.warn(
+          `  [${finding.severity}] ${finding.toolName} (${finding.category}): ${finding.message}`
+        );
+      }
     }
 
     // Preserve disabled tools, keeping only those that still exist on the server
