@@ -11,6 +11,18 @@ observed_landing_zones:
     branch: mcp-security-bench-msb-benchmarking-attacks-against-model-co
     timestamp: '2026-07-30T06:20:40Z'
   last_observed: '2026-07-30T06:20:40Z'
+- path: src/services/config/
+  shape_tags:
+  - unclassified
+  confirmed_by:
+  - arxiv: 2604.21816v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: '`mcpsm tools budget <server> <budget>` subcommand, registered
+      via `registerToolsCommands(program)` at src/cli/index.ts:47; the resulting gate
+      is written to `disabledTools`, which `GatewayService` read'
+    branch: tool-attention-is-all-you-need-dynamic-tool-gating-and-lazy-
+    timestamp: '2026-08-02T08:43:51Z'
+  last_observed: '2026-08-02T08:43:51Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -21,4 +33,4 @@ rejected_shapes:
   - arxiv: 2510.15994v2
     timestamp: '2026-08-01T18:59:38Z'
 coordination_signals: []
-last_updated: '2026-08-01T18:59:38Z'
+last_updated: '2026-08-02T08:43:51Z'
