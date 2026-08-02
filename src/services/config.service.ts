@@ -14,6 +14,7 @@ import { SelectionService } from "./config/selection.service.js";
 import { ToolFilterService } from "./config/tool-filter.service.js";
 import { ServerManager } from "./config/server.manager.js";
 import { GatewayConfigService } from "./config/gateway-config.service.js";
+import type { BudgetGateOptions, BudgetGateResult } from "./config/tool-budget.service.js";
 
 export class ConfigService {
   private repository: ConfigRepository;
@@ -178,6 +179,15 @@ export class ConfigService {
 
   resetToolFilters(filterId: string): Result {
     return this.toolFilterService.resetToolFilters(filterId);
+  }
+
+  applyTokenBudget(
+    filterId: string,
+    budget: number,
+    options?: BudgetGateOptions,
+    dryRun = false
+  ): Result<BudgetGateResult> {
+    return this.toolFilterService.applyTokenBudget(filterId, budget, options, dryRun);
   }
 
   isToolEnabled(filterId: string, toolName: string): boolean {

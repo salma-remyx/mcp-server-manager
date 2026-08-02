@@ -8,6 +8,10 @@ import { formatTokens, outputJson } from "../../shared/formatters.js";
 import { getConfigService } from "../../services/config.service.js";
 import { getTestingService } from "../../services/testing.service.js";
 import { getDaemonService } from "../../services/daemon.service.js";
+import {
+  parseTokenBudget,
+  type BudgetStrategy,
+} from "../../services/config/tool-budget.service.js";
 
 async function refreshDaemonIfRunning(): Promise<void> {
   const daemonService = getDaemonService();
@@ -334,5 +338,116 @@ export function registerToolsCommands(program: Command): void {
       await refreshDaemonIfRunning();
 
       console.log(`${c.checkmark} Disabled tool '${toolName}' for '${server.name}'`);
+    });
+
+  // Budget gating - auto-disable lowest-value tools to fit a schema-token budget
+  tools
+    .command("budget <server> <budget>")
+    .description("Auto-disable tools to fit a per-server schema-token budget (cut the tools tax)")
+    .option("--keep <tools>", "Comma-separated tools to keep enabled (never gated)")
+    .option("--strategy <strategy>", "Drop order: largest-first (default) or smallest-first")
+    .option("--dry-run", "Show what would be gated without applying")
+    .option("--json", "Output in JSON format")
+    .action(async (serverNameOrId: string, budgetArg: string, options) => {
+      const configService = getConfigService();
+
+      const result = configService.findServer(serverNameOrId);
+      if (!result) {
+        console.log(`${c.cross} Server '${serverNameOrId}' not found`);
+        process.exit(1);
+      }
+
+      const { server, type } = result;
+      const filterId = configService.getFilterId(server.id, type);
+
+      const budget = parseTokenBudget(budgetArg);
+      if (budget === null) {
+        console.log(
+          `${c.cross} Invalid budget '${budgetArg}'. Use a number or k/m suffix (e.g. 8000, 8k, 1m).`
+        );
+        process.exit(1);
+      }
+
+      const keep =
+        typeof options.keep === "string"
+          ? options.keep
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean)
+          : [];
+      const strategy: BudgetStrategy =
+        options.strategy === "smallest-first" ? "smallest-first" : "largest-first";
+
+      const res = configService.applyTokenBudget(
+        filterId,
+        budget,
+        { keep, strategy },
+        !!options.dryRun
+      );
+      if (!res.success || !res.data) {
+        console.log(`${c.cross} ${res.error ?? "Failed to apply tool budget"}`);
+        process.exit(1);
+      }
+
+      const gate = res.data;
+
+      if (options.json) {
+        outputJson({
+          server: server.name,
+          budget: gate.budget,
+          strategy,
+          beforeTokens: gate.beforeTokens,
+          afterTokens: gate.afterTokens,
+          disabled: gate.disable,
+          enabled: gate.enabled,
+          withinBudget: gate.withinBudget,
+          dryRun: !!options.dryRun,
+        });
+        return;
+      }
+
+      const mode = options.dryRun ? `${colors.yellow}(dry run)${colors.reset} ` : "";
+      console.log(
+        `\n${colors.bright}${colors.cyan}Tool budget for ${server.name}${colors.reset} ${mode}`
+      );
+      console.log(
+        `${colors.gray}Strategy: ${strategy} · Budget: ${formatTokens(gate.budget)} tokens${colors.reset}\n`
+      );
+
+      if (gate.disable.length === 0) {
+        if (gate.beforeTokens <= gate.budget) {
+          console.log(
+            `${c.checkmark} Already within budget (${formatTokens(gate.beforeTokens)} tokens).`
+          );
+        } else {
+          console.log(
+            `${c.cross} Cannot fit budget. No per-tool token data for '${server.name}' — ` +
+              `run 'mcpsm tools discover ${serverNameOrId}' first.`
+          );
+        }
+        return;
+      }
+
+      const filter = configService.getServerToolFilter(filterId);
+      for (const tool of gate.disable) {
+        const tokens = filter?.toolsData?.[tool]?.tokens || 0;
+        console.log(
+          `  ${colors.red}☒${colors.reset} ${colors.cyan}${tool}${colors.reset} ${colors.gray}(${formatTokens(tokens)})${colors.reset}`
+        );
+      }
+
+      console.log(
+        `\n${c.checkmark} ${options.dryRun ? "Would disable" : "Disabled"} ${gate.disable.length} tool(s): ` +
+          `${formatTokens(gate.beforeTokens)} → ${formatTokens(gate.afterTokens)} tokens`
+      );
+      if (!gate.withinBudget) {
+        console.log(
+          `${colors.yellow}Still over budget after gating remaining tools.${colors.reset}`
+        );
+      }
+
+      if (!options.dryRun) {
+        await refreshDaemonIfRunning();
+      }
     });
 }

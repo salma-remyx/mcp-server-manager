@@ -112,6 +112,14 @@ export const FEATURES: Feature[] = [
     tuiImplementation: "ToolsScreen.tsx",
     requiredInTui: true,
   },
+  {
+    id: "tools-budget",
+    name: "Auto-gate tools to a token budget",
+    category: "tools",
+    cliCommands: ["tools budget"],
+    tuiImplementation: null, // CLI-only for now; TUI screen is a follow-up
+    requiredInTui: false,
+  },
 
   // === Clients ===
   {

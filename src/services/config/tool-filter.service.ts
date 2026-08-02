@@ -1,5 +1,10 @@
 import type { Result, ServerToolFilter, ToolFilters } from "../../types/index.js";
 import { ConfigRepository } from "./config.repository.js";
+import {
+  computeBudgetGate,
+  type BudgetGateOptions,
+  type BudgetGateResult,
+} from "./tool-budget.service.js";
 
 export class ToolFilterService {
   constructor(private readonly repository: ConfigRepository) {}
@@ -114,5 +119,41 @@ export class ToolFilterService {
     const filter = this.repository.getToolFilters()[filterId];
     if (!filter) return [];
     return filter.disabledTools || [];
+  }
+
+  /**
+   * Auto-gate tools to fit a per-server token budget, cutting the per-turn
+   * "tools tax" of eager schema injection. Disables the lowest-value enabled
+   * tools (largest schemas first by default) until the enabled-schema token
+   * total fits the budget. The gate is written to `disabledTools` — the field
+   * the gateway reads at proxy time — so it takes effect live.
+   *
+   * Adapted from arXiv:2604.21816 (tool-attention gating); see
+   * tool-budget.service.ts for the value-proxy rationale.
+   */
+  applyTokenBudget(
+    filterId: string,
+    budget: number,
+    options?: BudgetGateOptions,
+    dryRun = false
+  ): Result<BudgetGateResult> {
+    const filter = this.repository.getToolFilters()[filterId];
+    if (!filter) {
+      return { success: false, error: `No tool filter found for '${filterId}'` };
+    }
+
+    const gate = computeBudgetGate(filter, budget, options);
+
+    if (!dryRun && gate.disable.length > 0) {
+      this.repository.updateToolFilters((filters) => {
+        const target = filters[filterId];
+        if (!target) return;
+        const disabled = new Set(target.disabledTools || []);
+        for (const tool of gate.disable) disabled.add(tool);
+        target.disabledTools = Array.from(disabled);
+      });
+    }
+
+    return { success: true, data: gate };
   }
 }
