@@ -29,6 +29,12 @@ import { getAuthService } from "./auth.service.js";
 import { getEnvironmentService } from "./environment.service.js";
 import { getProfileService } from "./profile.service.js";
 import { createTransportAuthProvider } from "./oauth-transport.provider.js";
+import { getSettingsService } from "./settings.service.js";
+import {
+  LAZY_SCHEMA_TOOL_NAME,
+  buildHydrationResponse,
+  buildLazyToolListing,
+} from "./lazy-tool-schema.js";
 import path from "node:path";
 import { createLogger } from "../shared/logger.js";
 import { VERSION } from "../shared/version.js";
@@ -449,6 +455,46 @@ async function handleToolCall(
   }
 }
 
+/**
+ * Resolve the aggregated (full-schema) tool set exposed for a session. Profiled
+ * sessions are scoped to their profile view; the default session sees every
+ * connected server's tools.
+ */
+function aggregatedToolsFor(profileId?: string): Tool[] {
+  if (profileId) {
+    return gatewayState.profileViews.get(profileId)?.aggregatedTools ?? [];
+  }
+  return gatewayState.aggregatedTools;
+}
+
+/**
+ * Whether the gateway should serve lazy (summarized) tool schemas. Reads the
+ * operator-facing `lazyToolSchemas` setting; defaults to off and never throws,
+ * so a misconfigured settings layer cannot take the gateway down.
+ */
+function isLazyToolSchemasEnabled(): boolean {
+  try {
+    return Boolean(getSettingsService().get("lazyToolSchemas"));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Build the `tools/list` response for a session. With lazy-tool-schema mode off
+ * (the default) this returns full schemas unchanged — the eager behavior the
+ * MCP client expects. With it on, it returns summarized tools plus the on-demand
+ * hydration meta-tool, cutting the per-turn MCP/Tools Tax. Exported so the
+ * wiring is unit-testable without a network round-trip.
+ */
+export function buildListToolsResponse(profileId?: string): { tools: Tool[] } {
+  const tools = aggregatedToolsFor(profileId);
+  if (!isLazyToolSchemasEnabled()) {
+    return { tools };
+  }
+  return { tools: buildLazyToolListing(tools) };
+}
+
 function createSessionServer(profileId?: string): Server {
   const sessionServer = new Server(
     { name: "mcpsm-gateway", version: VERSION },
@@ -459,17 +505,15 @@ function createSessionServer(profileId?: string): Server {
     }
   );
 
-  sessionServer.setRequestHandler(ListToolsRequestSchema, () => {
-    if (profileId) {
-      const view = gatewayState.profileViews.get(profileId);
-      return { tools: view?.aggregatedTools ?? [] };
-    }
-    return { tools: gatewayState.aggregatedTools };
-  });
+  sessionServer.setRequestHandler(ListToolsRequestSchema, () => buildListToolsResponse(profileId));
 
   sessionServer.setRequestHandler(CallToolRequestSchema, async (request) => {
     const toolName = request.params.name;
     const args = request.params.arguments || {};
+    // Lazy schema loading: hydrate a full tool schema on demand via the meta-tool.
+    if (toolName === LAZY_SCHEMA_TOOL_NAME) {
+      return buildHydrationResponse(aggregatedToolsFor(profileId), String(args.toolName ?? ""));
+    }
     const toolMap = profileId
       ? (gatewayState.profileViews.get(profileId)?.toolToServerMap ?? new Map<string, string>())
       : gatewayState.toolToServerMap;

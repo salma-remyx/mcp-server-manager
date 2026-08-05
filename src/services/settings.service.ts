@@ -14,6 +14,7 @@ const log = createLogger("SettingsService");
 const DEFAULT_SETTINGS: Settings = {
   port: 8850,
   editor: process.env.EDITOR || process.env.VISUAL || "vi",
+  lazyToolSchemas: false,
 };
 
 /** Internal settings (not exposed in Settings interface, kept for future expansion) */
@@ -30,6 +31,11 @@ const SETTINGS_INFO: SettingsInfo = {
     description: "Preferred editor for config files",
     type: "string",
     default: "vi",
+  },
+  lazyToolSchemas: {
+    description: "Serve summarized tool schemas (lazy loading) to cut the per-turn MCP/Tools Tax",
+    type: "boolean",
+    default: false,
   },
 };
 
@@ -90,6 +96,13 @@ export class SettingsService {
         return { success: false, error: `Invalid number: ${value}` };
       }
       parsedValue = num as Settings[K];
+    } else if (info.type === "boolean") {
+      const truthy = value === true || value === "true" || value === "1" || value === 1;
+      const falsy = value === false || value === "false" || value === "0" || value === 0;
+      if (!truthy && !falsy) {
+        return { success: false, error: `Invalid boolean: ${value}` };
+      }
+      parsedValue = truthy as Settings[K];
     } else {
       parsedValue = String(value) as Settings[K];
     }

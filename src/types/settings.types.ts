@@ -8,6 +8,8 @@ export interface Settings {
   port: number;
   /** Preferred editor for config files */
   editor: string;
+  /** Serve summarized tool schemas (lazy loading) to cut the per-turn MCP/Tools Tax */
+  lazyToolSchemas: boolean;
 }
 
 /** Available theme options (kept for future use) */
