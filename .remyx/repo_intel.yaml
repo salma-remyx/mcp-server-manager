@@ -10,7 +10,14 @@ observed_landing_zones:
     call_site_specifics: ''
     branch: mcp-security-bench-msb-benchmarking-attacks-against-model-co
     timestamp: '2026-07-30T06:20:40Z'
-  last_observed: '2026-07-30T06:20:40Z'
+  - arxiv: 2604.21816v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: 'createSessionServer in src/services/gateway.service.ts:
+      the ListToolsRequestSchema handler now calls buildListToolsResponse (which routes
+      into lazy-tool-schema.ts when enabled), and the CallToolReques'
+    branch: tool-attention-is-all-you-need-dynamic-tool-gating-and-lazy--v2
+    timestamp: '2026-08-05T17:26:11Z'
+  last_observed: '2026-08-05T17:26:11Z'
 - path: src/services/config/
   shape_tags:
   - unclassified
@@ -33,4 +40,4 @@ rejected_shapes:
   - arxiv: 2510.15994v2
     timestamp: '2026-08-01T18:59:38Z'
 coordination_signals: []
-last_updated: '2026-08-02T08:43:51Z'
+last_updated: '2026-08-05T17:26:11Z'
