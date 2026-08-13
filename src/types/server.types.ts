@@ -2,6 +2,8 @@
  * Server-related type definitions
  */
 
+import type { PersonaCredentialClass } from "./persona-auth.types.js";
+
 /** Transport type for remote servers */
 export type TransportType = "http" | "sse";
 
@@ -38,6 +40,8 @@ export interface StoredOAuthTokens {
   tokenType: string;
   /** Scopes granted */
   scopes?: string[];
+  /** Persona × credential classification stamped at issue time (governance/audit). */
+  personaClass?: PersonaCredentialClass;
 }
 
 /** Base server interface with common properties */

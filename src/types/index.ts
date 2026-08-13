@@ -99,6 +99,15 @@ export type {
   ServerAuthRequirements,
 } from "./auth.types.js";
 
+// Persona auth types (two-axis persona × credential classification)
+export type {
+  Persona,
+  CredentialType,
+  TokenProvisioningModel,
+  IdentityFlow,
+  PersonaCredentialClass,
+} from "./persona-auth.types.js";
+
 // Daemon types
 export type {
   DaemonStatus,

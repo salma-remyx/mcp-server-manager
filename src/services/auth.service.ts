@@ -25,7 +25,9 @@ import type {
   ServerAuthRequirements,
   StoredOAuthTokens,
   RemoteServer,
+  PersonaCredentialClass,
 } from "../types/index.js";
+import { classifyPersonaAuth, stampPersonaClass } from "./persona-auth.js";
 import { createLogger } from "../shared/logger.js";
 import { renderCallbackPage } from "./auth-callback.html.js";
 import {
@@ -834,11 +836,31 @@ export class AuthService {
   }
 
   /** Save/overwrite stored tokens for a server */
-  saveTokensForServer(serverId: string, tokens: StoredOAuthTokens): void {
-    this.tokens.set(serverId, tokens);
+  saveTokensForServer(serverId: string, tokens: StoredOAuthTokens, server?: RemoteServer): void {
+    // Stamp the persona × credential classification (interactive user vs.
+    // automated non-user) so the governance/audit signal travels with the
+    // stored credential. Optional `server` sharpens the classification when
+    // available; without it, presence of a token still implies an OAuth flow.
+    const stamped = stampPersonaClass(tokens, classifyPersonaAuth(server, tokens));
+    this.tokens.set(serverId, stamped);
     this.saveTokens();
     // Note: proactive refresh rescheduling requires a RemoteServer object,
     // so it's handled by the caller or by scheduleRefreshForServer() directly.
+  }
+
+  /**
+   * Classify the stored credential for a server onto the two-axis persona ×
+   * credential model (interactive user vs. automated non-user × credential
+   * type). Returns the persisted classification if it was stamped at issue
+   * time, otherwise computes it live — this is the "who/what reached this
+   * backend" governance signal.
+   */
+  getAuthPersona(serverId: string, server?: RemoteServer): PersonaCredentialClass | null {
+    const tokens = this.tokens.get(serverId) ?? null;
+    if (!tokens && !server) {
+      return null;
+    }
+    return tokens?.personaClass ?? classifyPersonaAuth(server, tokens);
   }
 
   /** Get valid access token for a server (refreshes if needed) */
