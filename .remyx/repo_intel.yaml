@@ -30,6 +30,18 @@ observed_landing_zones:
     branch: tool-attention-is-all-you-need-dynamic-tool-gating-and-lazy-
     timestamp: '2026-08-02T08:43:51Z'
   last_observed: '2026-08-02T08:43:51Z'
+- path: src/types/
+  shape_tags:
+  - unclassified
+  confirmed_by:
+  - arxiv: 2608.10760v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "Gateway daemon OAuth token-save path: src/services/oauth-transport.provider.ts:50,152,165\
+      \ \u2192 AuthService.saveTokensForServer() (src/services/auth.service.ts:839),\
+      \ reached via the mcpsm daemon entry poi"
+    branch: a-gateway-architecture-for-enterprise-mcp-authentication-uni
+    timestamp: '2026-08-13T23:31:56Z'
+  last_observed: '2026-08-13T23:31:56Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -42,4 +54,4 @@ rejected_shapes:
   - arxiv: 2607.22445v1
     timestamp: '2026-08-07T01:41:16Z'
 coordination_signals: []
-last_updated: '2026-08-07T01:41:16Z'
+last_updated: '2026-08-13T23:31:56Z'
